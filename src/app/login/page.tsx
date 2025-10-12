@@ -11,10 +11,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/hook/useAuth";
+import authServices from "@/services/authServices";
 
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 
 const GoogleLogo = () => (
   <svg
@@ -42,6 +46,9 @@ const GoogleLogo = () => (
 );
 
 export default function LoginPage() {
+  const { handleLogin } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -87,6 +94,8 @@ export default function LoginPage() {
                   type="email"
                   placeholder=""
                   className="pl-10 h-12 rounded-full border-gray-300"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
             </div>
@@ -106,6 +115,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder=""
                   className="pl-10 pr-10 h-12 rounded-full border-gray-300"
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"
@@ -122,7 +132,13 @@ export default function LoginPage() {
             </div>
 
             {/* Login Button */}
-            <Button className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base">
+            <Button
+              className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base"
+              onClick={(e) => {
+                e.preventDefault();
+                handleLogin({ email, password });
+              }}
+            >
               Đăng nhập
             </Button>
 

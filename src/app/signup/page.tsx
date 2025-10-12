@@ -13,10 +13,28 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import authServices from "@/services/authServices";
 
 export default function SignupPage() {
+  const [form, setForm] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const handleSignup = async () => {
+    try {
+      const res = await authServices.signup(form);
+      if (res.status === 201) {
+        alert("Signup successfully");
+      }
+    } catch (error) {
+      console.error("Error when sign up:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#a8c5e6] to-[#d4e4f7]">
@@ -59,6 +77,10 @@ export default function SignupPage() {
                 type="text"
                 placeholder=""
                 className="h-12 rounded-full border-gray-300"
+                value={form.full_name}
+                onChange={(e) =>
+                  setForm({ ...form, full_name: e.target.value })
+                }
               />
             </div>
 
@@ -72,6 +94,8 @@ export default function SignupPage() {
                 type="email"
                 placeholder=""
                 className="h-12 rounded-full border-gray-300"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
 
@@ -89,6 +113,10 @@ export default function SignupPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder=""
                   className="pr-10 h-12 rounded-full border-gray-300"
+                  value={form.password}
+                  onChange={(e) =>
+                    setForm({ ...form, password: e.target.value })
+                  }
                 />
                 <button
                   type="button"
@@ -118,6 +146,10 @@ export default function SignupPage() {
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder=""
                   className="pr-10 h-12 rounded-full border-gray-300"
+                  value={form.confirmPassword}
+                  onChange={(e) =>
+                    setForm({ ...form, confirmPassword: e.target.value })
+                  }
                 />
                 <button
                   type="button"
@@ -134,7 +166,13 @@ export default function SignupPage() {
             </div>
 
             {/* Signup Button */}
-            <Button className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base mt-6">
+            <Button
+              className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base mt-6"
+              onClick={(e) => {
+                e.preventDefault();
+                handleSignup();
+              }}
+            >
               Đăng ký
             </Button>
           </CardContent>

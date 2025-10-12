@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+/* Thêm đoạn code tùy chỉnh cho Sonner toast ở đây */
+@layer components {
+  .toaster {
+    --card: hsl(0 0% 100%); /* Nền trắng */
+    --card-foreground: hsl(222.2 84% 4.9%); /* Chữ màu đậm */
+    --border: hsl(214.3 31.8% 91.4%); /* Viền xám nhạt */
+  }
+}
