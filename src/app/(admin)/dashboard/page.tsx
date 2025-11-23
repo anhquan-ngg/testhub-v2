@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +36,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   Users,
   FileText,
@@ -60,65 +59,10 @@ import {
   Rectangle,
 } from "recharts";
 import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
-import authServices from "@/services/authServices";
 import { useAuth } from "@/hook/useAuth";
-
-// Mock data
-const mockUsers = [
-  {
-    id: 1,
-    name: "Nguyễn Văn A",
-    email: "nguyenvana@example.com",
-    role: "Thí sinh",
-    phone: "0901234567",
-  },
-  {
-    id: 2,
-    name: "Trần Thị B",
-    email: "tranthib@example.com",
-    role: "Giảng viên",
-    phone: "0912345678",
-  },
-  {
-    id: 3,
-    name: "Lê Văn C",
-    email: "levanc@example.com",
-    role: "Thí sinh",
-    phone: "0923456789",
-  },
-  {
-    id: 4,
-    name: "Phạm Thị D",
-    email: "phamthid@example.com",
-    role: "Thí sinh",
-    phone: "0934567890",
-  },
-];
-
-const mockExams = [
-  {
-    id: 1,
-    title: "Kiểm tra Toán học",
-    questions: 20,
-    duration: 60,
-    status: "Đang hoạt động",
-  },
-  {
-    id: 2,
-    title: "Kiểm tra Tiếng Anh",
-    questions: 30,
-    duration: 90,
-    status: "Đang hoạt động",
-  },
-  {
-    id: 3,
-    title: "Kiểm tra Lý thuyết",
-    questions: 25,
-    duration: 45,
-    status: "Tạm dừng",
-  },
-];
+import { useFindManyExam, useFindManyUser } from "../../../../generated/hooks";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 const mockQuestions = [
   {
@@ -154,10 +98,77 @@ const mockScoreData = [
 
 export default function AdminDashboard() {
   const { handleLogout } = useAuth();
-  const [users, setUsers] = useState(mockUsers);
-  const [exams, setExams] = useState(mockExams);
+  const [users, setUsers] = useState([] as any);
+  const [exams, setExams] = useState([] as any);
   const [questions, setQuestions] = useState(mockQuestions);
   const [searchTerm, setSearchTerm] = useState("");
+  const [questionForm, setQuestionForm] = useState({
+    question_text: "",
+    topic: "",
+    options: ["", "", "", ""],
+    correct_answer: "",
+    image_url: "",
+    question_type: "single-choice",
+    question_format: "Một lựa chọn",
+  });
+
+  const {
+    data: usersData,
+    isLoading,
+    error,
+  } = useFindManyUser({
+    orderBy: { created_at: "desc" },
+  });
+
+  const {
+    data: examsData,
+    // isLoading,
+    // error,
+  } = useFindManyExam({
+    include: {
+      _count: {
+        select: { questions: true },
+      },
+    },
+    orderBy: { created_at: "desc" },
+  });
+
+  // const {
+  //   data: examsData,
+  //   fetchNextPage,
+  //   hasNextPage,
+  //   isFetchingNextPage,
+  // } = useInfiniteFindManyExam(
+  //   {
+  //     take: 5,
+  //     orderBy: { created_at: "desc" },
+  //   },
+  //   {
+  //     getNextPageParam: (lastPage, pages) => {
+  //       // If last page has under 5 items => end page
+  //       if (lastPage.length < 5) {
+  //         return undefined;
+  //       }
+  //       return pages.length + 1;
+  //     },
+  //   }
+  // );
+
+  useEffect(() => {
+    setUsers(usersData);
+  }, [usersData]);
+
+  useEffect(() => {
+    setExams(examsData);
+  }, [examsData]);
+
+  if (isLoading) {
+    return <Spinner />;
+  }
+
+  if (error) {
+    toast.error("Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.");
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#a8c5e6] to-[#d4e4f7] p-6">
@@ -190,7 +201,7 @@ export default function AdminDashboard() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{users.length}</div>
+              <div className="text-2xl font-bold">{usersData?.length}</div>
             </CardContent>
           </Card>
           <Card className="bg-white border-gray-300">
@@ -201,7 +212,7 @@ export default function AdminDashboard() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{exams.length}</div>
+              <div className="text-2xl font-bold">{examsData?.length}</div>
             </CardContent>
           </Card>
           <Card className="bg-white border-gray-300">
@@ -333,20 +344,22 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.map((user) => (
+                    {users?.map((user: any) => (
                       <TableRow key={user.id} className="border-gray-300">
                         <TableCell className="font-medium">
-                          {user.name}
+                          {user.full_name}
                         </TableCell>
                         <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.phone}</TableCell>
+                        <TableCell>{/* {user?.phone} */}</TableCell>
                         <TableCell>
                           <Badge
-                            variant={
-                              user.role === "Giảng viên"
-                                ? "default"
-                                : "secondary"
-                            }
+                            className={`px-2 py-1 text-white rounded-lg ${
+                              user.role === "ADMIN"
+                                ? "text-red-500 bg-red-100"
+                                : user.role === "LECTURER"
+                                ? "text-green-500 bg-green-100"
+                                : "text-blue-500 bg-blue-100"
+                            }`}
                           >
                             {user.role}
                           </Badge>
@@ -363,7 +376,7 @@ export default function AdminDashboard() {
                                 <DialogHeader>
                                   <DialogTitle>Thay đổi phân quyền</DialogTitle>
                                   <DialogDescription>
-                                    Thay đổi vai trò của {user.name}
+                                    Thay đổi vai trò của {user.full_name}
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
@@ -371,9 +384,11 @@ export default function AdminDashboard() {
                                     <Label>Vai trò hiện tại: {user.role}</Label>
                                     <Select
                                       defaultValue={
-                                        user.role === "Thí sinh"
-                                          ? "student"
-                                          : "instructor"
+                                        user.role === "ADMIN"
+                                          ? "destructive"
+                                          : user.role === "STUDENT"
+                                          ? "default"
+                                          : "secondary"
                                       }
                                     >
                                       <SelectTrigger className="bg-white border-gray-300">
@@ -493,20 +508,22 @@ export default function AdminDashboard() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {exams.map((exam) => (
+                    {exams?.map((exam: any) => (
                       <TableRow key={exam.id} className="border-gray-300">
                         <TableCell className="font-medium">
                           {exam.title}
                         </TableCell>
-                        <TableCell>{exam.questions} câu</TableCell>
+                        <TableCell>{exam._count.questions} câu</TableCell>
                         <TableCell>{exam.duration} phút</TableCell>
                         <TableCell>
                           <Badge
-                            variant={
-                              exam.status === "Đang hoạt động"
-                                ? "default"
-                                : "secondary"
-                            }
+                            className={`px-2 py-1 text-white rounded-lg ${
+                              exam.status === "INACTIVE"
+                                ? "text-red-500 bg-red-100"
+                                : exam.status === "ACTIVE"
+                                ? "text-green-500 bg-green-100"
+                                : "text-blue-500 bg-blue-100"
+                            }`}
                           >
                             {exam.status}
                           </Badge>
@@ -546,80 +563,208 @@ export default function AdminDashboard() {
                   </div>
                   <Dialog>
                     <DialogTrigger asChild>
-                      <Button className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white">
+                      <Button className="bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white">
                         <Plus className="h-4 w-4 mr-2" />
                         Thêm câu hỏi
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl bg-white border-gray-300">
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white border-gray-300">
                       <DialogHeader>
                         <DialogTitle>Thêm câu hỏi mới</DialogTitle>
                         <DialogDescription>
-                          Nhập thông tin câu hỏi
+                          Nhập thông tin chi tiết câu hỏi
                         </DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
-                          <Label htmlFor="question-content">
-                            Nội dung câu hỏi
+                          <Label htmlFor="question-text">
+                            Nội dung câu hỏi{" "}
+                            <span className="text-red-500">*</span>
                           </Label>
                           <Input
-                            id="question-content"
+                            id="question-text"
                             placeholder="Nhập câu hỏi"
-                            className="bg-white border-gray-300"
+                            value={questionForm.question_text}
+                            onChange={(e) =>
+                              setQuestionForm({
+                                ...questionForm,
+                                question_text: e.target.value,
+                              })
+                            }
                           />
                         </div>
+
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="question-category">Danh mục</Label>
-                            <Select>
-                              <SelectTrigger className="bg-white border-gray-300">
-                                <SelectValue placeholder="Chọn danh mục" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-white border-gray-300">
-                                <SelectItem value="math">Toán học</SelectItem>
-                                <SelectItem value="english">
-                                  Tiếng Anh
-                                </SelectItem>
-                                <SelectItem value="science">
-                                  Khoa học
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <Label htmlFor="question-topic">
+                              Chủ đề <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="question-topic"
+                              placeholder="Nhập chủ đề"
+                              value={questionForm.topic}
+                              onChange={(e) =>
+                                setQuestionForm({
+                                  ...questionForm,
+                                  topic: e.target.value,
+                                })
+                              }
+                            />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="question-difficulty">Độ khó</Label>
-                            <Select>
-                              <SelectTrigger className="bg-white border-gray-300">
-                                <SelectValue placeholder="Chọn độ khó" />
+                            <Label htmlFor="question-type">
+                              Loại câu hỏi{" "}
+                              <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                              value={questionForm.question_type}
+                              onValueChange={(value) =>
+                                setQuestionForm({
+                                  ...questionForm,
+                                  question_type: value,
+                                })
+                              }
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
                               </SelectTrigger>
-                              <SelectContent className="bg-white border-gray-300">
-                                <SelectItem value="easy">Dễ</SelectItem>
-                                <SelectItem value="medium">
-                                  Trung bình
+                              <SelectContent>
+                                <SelectItem value="single-choice">
+                                  Trắc nghiệm một đáp án
                                 </SelectItem>
-                                <SelectItem value="hard">Khó</SelectItem>
+                                <SelectItem value="multi-choice">
+                                  Trắc nghiệm nhiều đáp án
+                                </SelectItem>
+                                <SelectItem value="essay">Tự luận</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
+
                         <div className="space-y-2">
-                          <Label htmlFor="question-type">Loại câu hỏi</Label>
-                          <Select>
-                            <SelectTrigger className="bg-white border-gray-300">
-                              <SelectValue placeholder="Chọn loại" />
+                          <Label htmlFor="question-format">
+                            Định dạng câu hỏi{" "}
+                            <span className="text-red-500">*</span>
+                          </Label>
+                          <Select
+                            value={questionForm.question_format}
+                            onValueChange={(value) =>
+                              setQuestionForm({
+                                ...questionForm,
+                                question_format: value,
+                              })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-white border-gray-300">
-                              <SelectItem value="multiple">
-                                Trắc nghiệm
+                            <SelectContent>
+                              <SelectItem value="Một lựa chọn">
+                                Một lựa chọn
                               </SelectItem>
-                              <SelectItem value="essay">Tự luận</SelectItem>
+                              <SelectItem value="Nhiều lựa chọn">
+                                Nhiều lựa chọn
+                              </SelectItem>
+                              <SelectItem value="Tự do">Tự do</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="image-url">URL hình ảnh</Label>
+                          <Input
+                            id="image-url"
+                            placeholder="Nhập URL hình ảnh (tùy chọn)"
+                            value={questionForm.image_url}
+                            onChange={(e) =>
+                              setQuestionForm({
+                                ...questionForm,
+                                image_url: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+
+                        {(questionForm.question_type === "single-choice" ||
+                          questionForm.question_type === "multi-choice") && (
+                          <>
+                            <div className="space-y-3">
+                              <Label>
+                                Các lựa chọn{" "}
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              {questionForm.options.map((option, index) => (
+                                <Input
+                                  key={index}
+                                  placeholder={`Lựa chọn ${index + 1}`}
+                                  value={option}
+                                  onChange={(e) => {
+                                    const newOptions = [
+                                      ...questionForm.options,
+                                    ];
+                                    newOptions[index] = e.target.value;
+                                    setQuestionForm({
+                                      ...questionForm,
+                                      options: newOptions,
+                                    });
+                                  }}
+                                />
+                              ))}
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="correct-answer">
+                                Đáp án đúng{" "}
+                                <span className="text-red-500">*</span>
+                              </Label>
+                              <Select
+                                value={questionForm.correct_answer}
+                                onValueChange={(value) =>
+                                  setQuestionForm({
+                                    ...questionForm,
+                                    correct_answer: value,
+                                  })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Chọn đáp án đúng" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {questionForm.options
+                                    .filter((option) => option.trim() !== "")
+                                    .map((option, index) => (
+                                      <SelectItem key={index} value={option}>
+                                        {option}
+                                      </SelectItem>
+                                    ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </>
+                        )}
+
+                        {questionForm.question_type === "Tự luận" && (
+                          <div className="space-y-2">
+                            <Label htmlFor="correct-answer">
+                              Đáp án tham khảo{" "}
+                              <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              id="correct-answer"
+                              placeholder="Nhập đáp án tham khảo"
+                              value={questionForm.correct_answer}
+                              onChange={(e) =>
+                                setQuestionForm({
+                                  ...questionForm,
+                                  correct_answer: e.target.value,
+                                })
+                              }
+                            />
+                          </div>
+                        )}
                       </div>
                       <DialogFooter>
-                        <Button className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white">
+                        <Button className="bg-[#0066cc] hover:bg-[#0052a3]">
                           Thêm câu hỏi
                         </Button>
                       </DialogFooter>
@@ -699,7 +844,7 @@ export default function AdminDashboard() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white border-gray-300">
-                        {exams.map((exam) => (
+                        {exams?.map((exam: any) => (
                           <SelectItem key={exam.id} value={exam.id.toString()}>
                             {exam.title}
                           </SelectItem>

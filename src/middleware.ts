@@ -7,7 +7,7 @@ const secretKey = new TextEncoder().encode(process.env.NEXT_JWT_SECRET);
 // 1. Thống nhất tên role: LECTURER
 const roleBasedRoutes = {
   ADMIN: ["/dashboard"],
-  LECTURER: ["/lecturer-dashboard", "/manage-lectures"],
+  LECTURER: ["/lecturer/exams", "/lecturer/questions"],
   STUDENT: ["/home"],
 };
 
@@ -60,9 +60,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/home", request.url));
       // SỬA LỖI: Dùng LECTURER
       case "LECTURER":
-        return NextResponse.redirect(
-          new URL("/lecturer-dashboard", request.url)
-        );
+        return NextResponse.redirect(new URL("/lecturer/exams", request.url));
       default:
         // Nếu role không xác định, có thể gửi họ về trang login
         return NextResponse.redirect(new URL("/login", request.url));
