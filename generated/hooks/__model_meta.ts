@@ -116,6 +116,18 @@ const metadata: ModelMeta = {
                     name: "practice",
                     type: "Boolean",
                     attributes: [{ "name": "@default", "args": [{ "name": "value", "value": false }] }],
+                }, mode: {
+                    name: "mode",
+                    type: "SelectionMode",
+                    attributes: [{ "name": "@default", "args": [{ "name": "value" }] }],
+                }, sample_size: {
+                    name: "sample_size",
+                    type: "Int",
+                    isOptional: true,
+                }, distribution: {
+                    name: "distribution",
+                    type: "String",
+                    isOptional: true,
                 }, status: {
                     name: "status",
                     type: "ExamStatus",

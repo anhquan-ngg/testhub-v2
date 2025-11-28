@@ -148,6 +148,7 @@ export default function LecturerExams() {
                 <TableHead>Thời lượng</TableHead>
                 <TableHead>Loại bài thi</TableHead>
                 <TableHead>Trạng thái</TableHead>
+                <TableHead>Loại cấu hình</TableHead>
                 <TableHead>Sinh viên</TableHead>
                 <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
@@ -184,6 +185,7 @@ export default function LecturerExams() {
                         {exam.status}
                       </Badge>
                     </TableCell>
+                    <TableCell>{exam.mode}</TableCell>
                     <TableCell>
                       <Dialog>
                         <DialogTrigger asChild>

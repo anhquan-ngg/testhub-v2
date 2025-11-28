@@ -62,19 +62,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-const QuestionTypeMap = {
-  SINGLE_CHOICE: "Trắc nghiệm một đáp án",
-  MULTIPLE_CHOICE: "Trắc nghiệm nhiều đáp án",
-  ESSAY: "Tự luận",
-};
-
-const QuestionFormatMap = {
-  KNOWLEDGE: "Nhận biết",
-  UNDERSTANDING: "Thông hiểu",
-  APPLYING: "Vận dụng",
-  ADVANCED: "Nâng cao",
-};
+import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
 
 const getInitialFormState = () => ({
   question_text: "",

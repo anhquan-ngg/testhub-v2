@@ -25,7 +25,11 @@ import {
   useFindManyQuestion,
   useFindUniqueExam,
   useUpdateExam,
+  useUpsertExamQuestions,
+  useDeleteManyExamQuestions,
+  useFindManyExamQuestions,
 } from "../../../../../../generated/hooks";
+// ... (skip lines)
 import {
   Dialog,
   DialogContent,
@@ -44,6 +48,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus, Trash2 } from "lucide-react";
+import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
 
 type EditExamPageProps = {
   params: Promise<{ id: string }>;
@@ -81,7 +86,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   const [questionSelectionMode, setQuestionSelectionMode] = useState<
     "MANUAL" | "RANDOM_N" | "BY_TYPE"
   >("MANUAL");
-  const [selectedQuestions, setSelectedQuestions] = useState<any[]>([]);
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [randomCount, setRandomCount] = useState("10");
   const [configRows, setConfigRows] = useState<QuestionConfig[]>([
     {
@@ -128,19 +133,12 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleToggleQuestion = (questionId: number) => {
+  const handleToggleQuestion = (questionId: string) => {
     setSelectedQuestions((prev) =>
       prev.includes(questionId)
         ? prev.filter((id) => id !== questionId)
         : [...prev, questionId]
     );
-  };
-
-  const handleRandomSelect = (count: number) => {
-    const shuffled = [...questionBank]
-      .sort(() => 0.5 - Math.random())
-      .slice(0, count);
-    setSelectedQuestions(shuffled.map((q) => q.id));
   };
 
   const handleSelectByConfig = () => {
@@ -165,6 +163,29 @@ export default function EditExamPage({ params }: EditExamPageProps) {
 
   const { data: questionsData } = useFindManyQuestion({
     orderBy: { created_at: "desc" },
+  });
+
+  const { data: examQuestionsData } = useFindManyExamQuestions({
+    where: { exam_id: examId },
+  });
+
+  const upsertExamQuestions = useUpsertExamQuestions({
+    onSuccess: () => {
+      toast.success("Thêm câu hỏi vào bài thi thành công!");
+    },
+    onError: (error) => {
+      toast.error("Thêm câu hỏi vào bài thi thất bại. Vui lòng thử lại.");
+      console.log(error);
+    },
+  });
+
+  const deleteManyExamQuestions = useDeleteManyExamQuestions({
+    onSuccess: () => {
+      console.log("Đã xóa các câu hỏi không được chọn");
+    },
+    onError: (error) => {
+      console.error("Lỗi khi xóa câu hỏi:", error);
+    },
   });
 
   const handleEditExam = async (id: string) => {
@@ -196,10 +217,37 @@ export default function EditExamPage({ params }: EditExamPageProps) {
           : null,
     } as const;
 
-    await updateExamMutation.mutateAsync({
-      where: { id },
-      data: payload,
-    });
+    const upsertPromises = selectedQuestions.map((questionId) =>
+      upsertExamQuestions.mutateAsync({
+        where: {
+          exam_id_question_id: {
+            exam_id: id,
+            question_id: questionId,
+          },
+        },
+        create: {
+          exam_id: id,
+          question_id: questionId,
+        },
+        update: {},
+      })
+    );
+
+    await Promise.all([
+      updateExamMutation.mutateAsync({
+        where: { id },
+        data: payload,
+      }),
+      deleteManyExamQuestions.mutateAsync({
+        where: {
+          exam_id: id,
+          question_id: {
+            notIn: selectedQuestions,
+          },
+        },
+      }),
+      ...upsertPromises,
+    ]);
   };
 
   useEffect(() => {
@@ -212,12 +260,37 @@ export default function EditExamPage({ params }: EditExamPageProps) {
         duration: exam.duration.toString(),
         practice: exam.practice,
       });
+      setQuestionSelectionMode(exam.mode);
+      if (exam.mode === "RANDOM_N" && exam.sample_size) {
+        setRandomCount(exam.sample_size.toString());
+      } else if (exam.mode === "BY_TYPE" && exam.distribution) {
+        const parsedDistribution = JSON.parse(exam.distribution);
+        console.log(parsedDistribution);
+        const configRowsWithIds = parsedDistribution.map(
+          (item: any, index: number) => ({
+            id: index + 1,
+            question_type: item.question_type,
+            question_format: item.question_format,
+            quantity: item.quantity,
+          })
+        );
+        console.log(configRowsWithIds);
+        setConfigRows(configRowsWithIds);
+        setNextRowId(configRowsWithIds.length + 1);
+        setDistribution(parsedDistribution);
+      }
     }
   }, [exam]);
 
   useEffect(() => {
     setQuestionBank(questionsData);
-  }, questionsData);
+  }, [questionsData]);
+
+  useEffect(() => {
+    if (examQuestionsData) {
+      setSelectedQuestions(examQuestionsData.map((q) => q.question_id));
+    }
+  }, [examQuestionsData]);
 
   return (
     <div className="space-y-6">
@@ -404,8 +477,17 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                   </div>
                                   <div className="text-xs text-gray-500 mt-1">
                                     Chủ đề: {question.topic} | Loại:{" "}
-                                    {question.question_type} | Định dạng:{" "}
-                                    {question.question_format}
+                                    {
+                                      QuestionTypeMap[
+                                        question.question_type as keyof typeof QuestionTypeMap
+                                      ]
+                                    }{" "}
+                                    | Định dạng:{" "}
+                                    {
+                                      QuestionFormatMap[
+                                        question.question_format as keyof typeof QuestionFormatMap
+                                      ]
+                                    }
                                   </div>
                                 </label>
                               </div>

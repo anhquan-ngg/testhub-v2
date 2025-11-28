@@ -41,6 +41,11 @@ enum QuestionFormat {
     APPLYING
     ADVANCED
 }
+enum SelectionMode {
+    MANUAL
+    RANDOM_N
+    BY_TYPE
+}
 
 /// Enum for submissions.rating
 enum Rating {
@@ -95,7 +100,11 @@ model Exam extends Base {
     exam_end_time DateTime
     duration Int
     practice Boolean @default(false)
+    mode SelectionMode @default(MANUAL)
+    sample_size Int?
+    distribution String?
     status ExamStatus @default(PENDING)
+    
 
     submissions Submission[]
     questions ExamQuestions[]

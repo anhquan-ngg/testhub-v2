@@ -12,6 +12,7 @@ import { useMinIO } from "@/hook/useMinIO";
 import { toast } from "sonner";
 import { login as loginAction } from "@/store/slices/userSlice";
 import { useUpdateUser } from "../../../../generated/hooks";
+import axiosClient from "@/lib/axios";
 
 export default function LecturerProfile() {
   const user = useAppSelector((state) => state.user);
@@ -20,7 +21,7 @@ export default function LecturerProfile() {
 
   const [formData, setFormData] = useState({
     email: "lecturer@email.com",
-    username: "Lecturer Name",
+    username: "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -108,42 +109,85 @@ export default function LecturerProfile() {
     }
   };
 
-  const handleProfileSubmit = (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Updated profile:", formData);
+
+    if (!formData.username) {
+      toast.error("Tên giảng viên không được để trống");
+    }
+
+    try {
+      await updateUserMutation.mutateAsync({
+        where: { id: user.id },
+        data: {
+          full_name: formData.username,
+        },
+      });
+      toast.success("Cập nhật thông tin giảng viên thành công!");
+    } catch (error) {
+      toast.error("Lỗi khi cập nhật thông tin giảng viên. Vui lòng thử lại.");
+      console.log(error);
+    }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("Mật khẩu không khớp!");
+      toast.error("Mật khẩu mới không khớp!");
       return;
     }
-    console.log("Password changed");
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+
+    try {
+      const response = await axiosClient.post("/auth/change-password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      if (response.status === 200) {
+        toast.success("Thay đổi mật khẩu thành công!");
+      }
+    } catch (error) {
+      toast.error("Lỗi khi thay đổi mật khẩu. Vui lòng thử lại.");
+      console.log(error);
+    } finally {
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    }
   };
 
   useEffect(() => {
     const loadAvatarUrl = async () => {
+      // Chỉ load avatar nếu user đã login VÀ có avatar_url
+      if (!user.id || !user.isLoggedIn) {
+        return;
+      }
+
       if (user.avatar_url) {
         try {
           const avatarUrl = await getDownloadUrl(user.avatar_url);
-          console.log("User Id", user.id);
-          console.log(avatarUrl);
           setProfileImage(avatarUrl);
         } catch (error) {
           console.warn("Could not load avatar URL:", error);
-          // Nếu lỗi, dùng URL trực tiếp nếu có
           setProfileImage(user.avatar_url);
         }
+      } else {
+        console.log("User has no avatar_url (null/empty)");
       }
     };
+
     loadAvatarUrl();
-  }, [user, getDownloadUrl]);
+  }, [user.avatar_url]);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        email: user.email,
+        username: user.full_name,
+      });
+    }
+  }, [user]);
 
   return (
     <div className="space-y-6">
