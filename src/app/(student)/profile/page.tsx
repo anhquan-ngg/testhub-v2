@@ -15,6 +15,8 @@ import {
   Award,
   Clipboard,
   Edit,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -25,6 +27,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
+import axiosClient from "@/lib/axios";
+import { toast } from "sonner";
 
 export default function StudentProfile() {
   const [formData, setFormData] = useState({
@@ -35,6 +39,18 @@ export default function StudentProfile() {
     address: "",
   });
 
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -42,9 +58,44 @@ export default function StudentProfile() {
     });
   };
 
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordData({
+      ...passwordData,
+      [name]: value,
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Updated profile:", formData);
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("Mật khẩu mới không khớp!");
+      return;
+    }
+
+    try {
+      const response = await axiosClient.post("/auth/change-password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      if (response.status === 200) {
+        toast.success("Thay đổi mật khẩu thành công!");
+      }
+    } catch (error) {
+      toast.error("Lỗi khi thay đổi mật khẩu. Vui lòng thử lại.");
+      console.log(error);
+    } finally {
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    }
   };
 
   return (
@@ -177,6 +228,120 @@ export default function StudentProfile() {
                       className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white"
                     >
                       Cập nhật thông tin
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+
+              {/* Change Password Form */}
+              <Card className="shadow-lg bg-white border-gray-300">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                    Thay đổi mật khẩu
+                  </h3>
+                  <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">
+                        Mật khẩu hiện tại :
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="currentPassword"
+                          name="currentPassword"
+                          type={showPasswords.current ? "text" : "password"}
+                          value={passwordData.currentPassword}
+                          onChange={handlePasswordChange}
+                          className="bg-white border-gray-300"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowPasswords({
+                              ...showPasswords,
+                              current: !showPasswords.current,
+                            })
+                          }
+                          className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.current ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">Mật khẩu mới :</Label>
+                      <div className="relative">
+                        <Input
+                          id="newPassword"
+                          name="newPassword"
+                          type={showPasswords.new ? "text" : "password"}
+                          value={passwordData.newPassword}
+                          onChange={handlePasswordChange}
+                          className="bg-white border-gray-300"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowPasswords({
+                              ...showPasswords,
+                              new: !showPasswords.new,
+                            })
+                          }
+                          className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.new ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">
+                        Xác nhận mật khẩu :
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type={showPasswords.confirm ? "text" : "password"}
+                          value={passwordData.confirmPassword}
+                          onChange={handlePasswordChange}
+                          className="bg-white border-gray-300"
+                          required
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowPasswords({
+                              ...showPasswords,
+                              confirm: !showPasswords.confirm,
+                            })
+                          }
+                          className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPasswords.confirm ? (
+                            <EyeOff className="h-5 w-5" />
+                          ) : (
+                            <Eye className="h-5 w-5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer"
+                    >
+                      Thay đổi mật khẩu
                     </Button>
                   </form>
                 </CardContent>

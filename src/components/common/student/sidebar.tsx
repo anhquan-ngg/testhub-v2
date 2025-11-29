@@ -8,8 +8,8 @@ const StudentSideBar = () => {
   const pathname = usePathname();
 
   return (
-    <aside className="w-56 bg-white shadow-lg flex flex-col">
-      <div className="p-6 border-b border-gray-300">
+    <aside className="w-52 bg-white shadow-lg flex flex-col">
+      <div className="p-6 flex items-center justify-center border-b border-gray-300">
         <Link href="/">
           <h1 className="text-2xl font-bold text-[#0066cc]">TESTHUB</h1>
         </Link>

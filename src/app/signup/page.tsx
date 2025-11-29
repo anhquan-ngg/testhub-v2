@@ -14,6 +14,7 @@ import {
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import authServices from "@/services/authServices";
+import { toast } from "sonner";
 
 export default function SignupPage() {
   const [form, setForm] = useState({
@@ -29,10 +30,18 @@ export default function SignupPage() {
     try {
       const res = await authServices.signup(form);
       if (res.status === 201) {
-        alert("Signup successfully");
+        toast.success("Đăng ký tài khoản thành công");
       }
     } catch (error) {
+      toast.error("Đăng ký tài khoản thất bại. Vui lòng thử lại!");
       console.error("Error when sign up:", error);
+    } finally {
+      setForm({
+        full_name: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+      });
     }
   };
 
