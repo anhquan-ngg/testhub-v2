@@ -55,34 +55,30 @@ export default function ExamLandingPage() {
         background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
       }}
     >
-      <StudentSideBar />
       <div className="flex-1 flex flex-col">
-        <StudentMenu />
         <main className="flex-1 px-8 pb-8 flex items-center justify-center">
           <Card className="w-full max-w-4xl shadow-2xl border-0 bg-white/95 backdrop-blur">
-            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-500 text-white p-8 rounded-t-xl">
+            <CardHeader className="p-8">
               <div className="flex justify-between items-start">
                 <div>
-                  <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 mb-4">
+                  <Badge
+                    className={`border-0 mb-4 text-white ${
+                      exam.practice ? "bg-purple-500" : "bg-blue-500"
+                    }`}
+                  >
                     {exam.practice ? "Luyện tập" : "Bài thi chính thức"}
                   </Badge>
-                  <CardTitle className="text-3xl font-bold mb-2">
+                  <CardTitle className="text-3xl font-bold mb-4">
                     {exam.title}
                   </CardTitle>
-                  <p className="text-blue-100 text-lg opacity-90">
-                    {exam.topic}
+                  <p className="text-lg opacity-90">
+                    <span className="font-semibold">Chủ đề:</span> {exam.topic}
                   </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-4xl font-bold mb-1">
-                    {exam.duration}'
-                  </div>
-                  <div className="text-blue-100 text-sm">Thời gian làm bài</div>
                 </div>
               </div>
             </CardHeader>
 
-            <CardContent className="p-8 space-y-8">
+            <CardContent className="px-8 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="flex items-center gap-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
                   <div className="p-3 bg-blue-100 rounded-full text-blue-600">
@@ -127,11 +123,19 @@ export default function ExamLandingPage() {
                   Nội quy phòng thi
                 </h3>
                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-3">
-                  <div className="flex items-start gap-3">
+                  {/* <div className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                     <p className="text-gray-700">
                       Thí sinh phải có mặt đúng giờ. Quá giờ quy định sẽ không
                       được tham gia thi.
+                    </p>
+                  </div> */}
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-gray-700">
+                      <span className="font-semibold">Lưu ý:</span> Bài thi
+                      chính thức chỉ cho phép thực hiện một lần duy nhất. Bài
+                      luyện tập có thể thực hiện nhiều lần
                     </p>
                   </div>
                   <div className="flex items-start gap-3">

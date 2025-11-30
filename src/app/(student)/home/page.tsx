@@ -31,10 +31,8 @@ export default function StudentDashboard() {
         background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
       }}
     >
-      {/* Sidebar */}
       <StudentSideBar />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <StudentMenu />
 
@@ -50,23 +48,19 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {testsData?.map((test) => {
                 const isPractice = test.practice;
-                const borderLeftColor = isPractice
-                  ? "border-l-green-500"
-                  : "border-l-blue-600";
                 const bgGradient = isPractice
-                  ? "bg-gradient-to-r from-green-50 to-white"
+                  ? "bg-gradient-to-r from-purple-50 to-white"
                   : "bg-gradient-to-r from-blue-50 to-white";
                 const badgeColor = isPractice
-                  ? "bg-green-500 hover:bg-green-600"
+                  ? "bg-purple-500 hover:bg-purple-600"
                   : "bg-blue-600 hover:bg-blue-700";
                 const Icon = isPractice ? BookOpen : Award;
 
                 return (
                   <Card
                     key={test.id}
-                    className={`shadow-lg hover:shadow-2xl transition-all duration-300 bg-white border border-gray-300 border-l-4 ${borderLeftColor} overflow-hidden hover:scale-[1.02]`}
+                    className={`shadow-lg hover:shadow-2xl transition-all duration-300 bg-white border border-gray-300 overflow-hidden hover:scale-[1.02]`}
                   >
-                    {/* Header with gradient */}
                     <div
                       className={`${bgGradient} px-6 pt-6 pb-4 border-b border-gray-100`}
                     >
@@ -76,7 +70,7 @@ export default function StudentDashboard() {
                         </h3>
                         <Icon
                           className={`w-6 h-6 ${
-                            isPractice ? "text-green-600" : "text-blue-600"
+                            isPractice ? "text-purple-600" : "text-blue-600"
                           } flex-shrink-0`}
                         />
                       </div>
@@ -143,12 +137,9 @@ export default function StudentDashboard() {
                             );
                           } else if (now >= startTime && now <= endTime) {
                             // Trong khoảng thời gian thi
-                            const buttonColor = isPractice
-                              ? "bg-green-500 hover:bg-green-600"
-                              : "bg-blue-600 hover:bg-blue-700";
                             return (
                               <Button
-                                className={`w-full ${buttonColor} text-white hover:cursor-pointer font-semibold shadow-md hover:shadow-lg transition-all`}
+                                className={`w-full bg-green-500 hover:bg-green-600 text-white hover:cursor-pointer font-semibold shadow-md hover:shadow-lg transition-all`}
                                 asChild
                               >
                                 <Link href={`/exam/${test.id}`}>Vào thi</Link>

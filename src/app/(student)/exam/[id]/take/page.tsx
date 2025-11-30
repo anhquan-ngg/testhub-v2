@@ -99,6 +99,16 @@ export default function ExamTakePage() {
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
+            onClick={() => router.push("/home")}
+            className="text-gray-500 hover:text-gray-700 gap-2"
+            title="Trở về trang chủ"
+            hidden={exam.practice === false}
+          >
+            <ChevronLeft className="w-5 h-5" />
+            Quay lại trang chủ
+          </Button>
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="lg:hidden"
