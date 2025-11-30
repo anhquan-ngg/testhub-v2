@@ -63,6 +63,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
+import { MathInput } from "@/components/MathInput";
+import { MathRenderer } from "@/components/MathRenderer";
 
 const getInitialFormState = () => ({
   question_text: "",
@@ -151,14 +153,17 @@ export default function LecturerQuestions() {
 
   const handleAddQuestion = async () => {
     const newQuestion = {
-      lecturer_id: "8ecc2685-d347-438a-bce5-1efe8d6fc326",
+      lecturer_id: lecturerId,
       question_text: questionForm.question_text,
       topic: questionForm.topic,
       options:
         questionForm.question_type === QuestionType.ESSAY
           ? null
           : JSON.stringify(questionForm.options),
-      correct_answer: JSON.stringify(questionForm.correct_answer),
+      correct_answer:
+        questionForm.question_type === QuestionType.ESSAY
+          ? questionForm.correct_answer
+          : null,
       image_url: questionForm.image_url ? questionForm.image_url : null,
       question_type: questionForm.question_type,
       question_format: questionForm.question_format,
@@ -304,14 +309,14 @@ export default function LecturerQuestions() {
                 <Label htmlFor="question-text">
                   Nội dung câu hỏi <span className="text-red-500">*</span>
                 </Label>
-                <Input
+                <MathInput
                   id="question-text"
-                  placeholder="Nhập câu hỏi"
+                  placeholder="Nhập câu hỏi (có thể sử dụng $công thức$ cho toán học)"
                   value={questionForm.question_text}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     setQuestionForm({
                       ...questionForm,
-                      question_text: e.target.value,
+                      question_text: value,
                     })
                   }
                   className="bg-white border-gray-300"
@@ -426,12 +431,22 @@ export default function LecturerQuestions() {
                     >
                       {questionForm.options.map((option, index) => (
                         <div className="flex items-center gap-2" key={index}>
-                          <Input
-                            placeholder={`Lựa chọn ${index + 1}`}
-                            value={option.text}
-                            onChange={(e) => handleTextChange(e, index)}
-                            className="bg-white border-gray-300"
-                          />
+                          <div className="flex-1">
+                            <MathInput
+                              id={`option-${index}`}
+                              placeholder={`Lựa chọn ${index + 1}`}
+                              value={option.text}
+                              onChange={(value) => {
+                                const newOptions = [...questionForm.options];
+                                newOptions[index].text = value;
+                                setQuestionForm({
+                                  ...questionForm,
+                                  options: newOptions,
+                                });
+                              }}
+                              className="bg-white border-gray-300"
+                            />
+                          </div>
                           <RadioGroupItem
                             value={String(index)}
                             id={`option-${index}`}
@@ -451,12 +466,22 @@ export default function LecturerQuestions() {
                   </Label>
                   {questionForm.options.map((option, index) => (
                     <div className="flex items-center gap-2" key={index}>
-                      <Input
-                        placeholder={`Lựa chọn ${index + 1}`}
-                        value={option.text}
-                        onChange={(e) => handleTextChange(e, index)}
-                        className="bg-white border-gray-300"
-                      />
+                      <div className="flex-1">
+                        <MathInput
+                          id={`multi-option-${index}`}
+                          placeholder={`Lựa chọn ${index + 1}`}
+                          value={option.text}
+                          onChange={(value) => {
+                            const newOptions = [...questionForm.options];
+                            newOptions[index].text = value;
+                            setQuestionForm({
+                              ...questionForm,
+                              options: newOptions,
+                            });
+                          }}
+                          className="bg-white border-gray-300"
+                        />
+                      </div>
                       <Checkbox
                         checked={option.isCorrect}
                         onCheckedChange={() => handleCorrectChange(index)}
@@ -474,14 +499,14 @@ export default function LecturerQuestions() {
                   <Label htmlFor="correct-answer">
                     Đáp án tham khảo <span className="text-red-500">*</span>
                   </Label>
-                  <Input
+                  <MathInput
                     id="correct-answer"
-                    placeholder="Nhập đáp án tham khảo"
+                    placeholder="Nhập đáp án tham khảo (có thể dùng công thức toán học)"
                     value={questionForm.correct_answer}
-                    onChange={(e) =>
+                    onChange={(value) =>
                       setQuestionForm({
                         ...questionForm,
-                        correct_answer: e.target.value,
+                        correct_answer: value,
                       })
                     }
                     className="bg-white border-gray-300"
@@ -578,16 +603,22 @@ export default function LecturerQuestions() {
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {question.question_type === "ESSAY"
-                        ? question.correct_answer
-                        : question.options
-                        ? JSON.parse(question.options as unknown as string)
+                      {question.question_type === "ESSAY" ? (
+                        <MathRenderer content={question.correct_answer || ""} />
+                      ) : question.options ? (
+                        <MathRenderer
+                          content={JSON.parse(
+                            question.options as unknown as string
+                          )
                             .filter(
                               (option: QuestionOption) => option.isCorrect
                             )
                             .map((option: QuestionOption) => option.text)
-                            .join(", ")
-                        : ""}
+                            .join(", ")}
+                        />
+                      ) : (
+                        ""
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
@@ -641,14 +672,14 @@ export default function LecturerQuestions() {
                                   Nội dung câu hỏi{" "}
                                   <span className="text-red-500">*</span>
                                 </Label>
-                                <Input
+                                <MathInput
                                   id="edit-question-text"
                                   placeholder="Nhập câu hỏi"
                                   value={questionForm.question_text}
-                                  onChange={(e) =>
+                                  onChange={(value) =>
                                     setQuestionForm({
                                       ...questionForm,
-                                      question_text: e.target.value,
+                                      question_text: value,
                                     })
                                   }
                                   className="bg-white border-gray-300"
@@ -786,16 +817,27 @@ export default function LecturerQuestions() {
                                             className="flex items-center gap-2"
                                             key={index}
                                           >
-                                            <Input
-                                              placeholder={`Lựa chọn ${
-                                                index + 1
-                                              }`}
-                                              value={option.text}
-                                              onChange={(e) =>
-                                                handleTextChange(e, index)
-                                              }
-                                              className="bg-white border-gray-300"
-                                            />
+                                            <div className="flex-1">
+                                              <MathInput
+                                                id={`option-${index}`}
+                                                placeholder={`Lựa chọn ${
+                                                  index + 1
+                                                }`}
+                                                value={option.text}
+                                                onChange={(value) => {
+                                                  const newOptions = [
+                                                    ...questionForm.options,
+                                                  ];
+                                                  newOptions[index].text =
+                                                    value;
+                                                  setQuestionForm({
+                                                    ...questionForm,
+                                                    options: newOptions,
+                                                  });
+                                                }}
+                                                className="bg-white border-gray-300"
+                                              />
+                                            </div>
                                             <RadioGroupItem
                                               value={String(index)}
                                               id={`edit-option-${index}`}
@@ -821,14 +863,24 @@ export default function LecturerQuestions() {
                                       className="flex items-center gap-2"
                                       key={index}
                                     >
-                                      <Input
-                                        placeholder={`Lựa chọn ${index + 1}`}
-                                        value={option.text}
-                                        onChange={(e) =>
-                                          handleTextChange(e, index)
-                                        }
-                                        className="bg-white border-gray-300"
-                                      />
+                                      <div className="flex-1">
+                                        <MathInput
+                                          id={`multi-option-${index}`}
+                                          placeholder={`Lựa chọn ${index + 1}`}
+                                          value={option.text}
+                                          onChange={(value) => {
+                                            const newOptions = [
+                                              ...questionForm.options,
+                                            ];
+                                            newOptions[index].text = value;
+                                            setQuestionForm({
+                                              ...questionForm,
+                                              options: newOptions,
+                                            });
+                                          }}
+                                          className="bg-white border-gray-300"
+                                        />
+                                      </div>
                                       <Checkbox
                                         checked={option.isCorrect}
                                         onCheckedChange={() =>
@@ -849,14 +901,14 @@ export default function LecturerQuestions() {
                                     Đáp án tham khảo{" "}
                                     <span className="text-red-500">*</span>
                                   </Label>
-                                  <Input
+                                  <MathInput
                                     id="edit-correct-answer"
-                                    placeholder="Nhập đáp án tham khảo"
+                                    placeholder="Nhập đáp án tham khảo (có thể dùng công thức toán học)"
                                     value={questionForm.correct_answer}
-                                    onChange={(e) =>
+                                    onChange={(value) =>
                                       setQuestionForm({
                                         ...questionForm,
-                                        correct_answer: e.target.value,
+                                        correct_answer: value,
                                       })
                                     }
                                     className="bg-white border-gray-300"
