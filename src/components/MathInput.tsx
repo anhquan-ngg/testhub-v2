@@ -16,6 +16,8 @@ interface MathInputProps {
 
 const MATH_SYMBOLS = [
   { label: "x²", latex: "x^2" },
+  { label: "log", latex: "\\log_{a}{b}" },
+  { label: "ln", latex: "\\ln" },
   { label: "a/b", latex: "\\frac{a}{b}" },
   { label: "√", latex: "\\sqrt{}" },
   { label: "∑", latex: "\\sum" },

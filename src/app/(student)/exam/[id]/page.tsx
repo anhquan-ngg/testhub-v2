@@ -24,6 +24,20 @@ export default function ExamLandingPage() {
     where: {
       id: examId,
     },
+    include: {
+      questions: {
+        select: {
+          question: {
+            select: {
+              id: true,
+              question_text: true,
+              image_url: true,
+              options: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   if (isLoading) {
@@ -112,7 +126,9 @@ export default function ExamLandingPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Số lượng câu hỏi</p>
-                    <p className="font-semibold text-gray-900">-- câu</p>
+                    <p className="font-semibold text-gray-900">
+                      {exam.questions?.length || 0} câu
+                    </p>
                   </div>
                 </div>
               </div>
@@ -123,13 +139,6 @@ export default function ExamLandingPage() {
                   Nội quy phòng thi
                 </h3>
                 <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-3">
-                  {/* <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <p className="text-gray-700">
-                      Thí sinh phải có mặt đúng giờ. Quá giờ quy định sẽ không
-                      được tham gia thi.
-                    </p>
-                  </div> */}
                   <div className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
                     <p className="text-gray-700">

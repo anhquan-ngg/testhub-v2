@@ -43,12 +43,11 @@ import {
   useUpdateQuestion,
 } from "../../../../generated/hooks";
 import { toast } from "sonner";
-import { useAppSelector, useAppStore, useUser } from "@/store/hook";
-import { Question, QuestionFormat, QuestionType } from "@prisma/client";
+import { useAppSelector } from "@/store/hook";
+import { QuestionFormat, QuestionType } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { IQuestion, QuestionOption } from "@/types/question";
 import { useMinIO } from "@/hook/useMinIO";
-import { get } from "http";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -92,6 +91,7 @@ export default function LecturerQuestions() {
   const [questionForm, setQuestionForm] = useState(getInitialFormState());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const { data: questionsData } = useFindManyQuestion({
     orderBy: { created_at: "desc" },
@@ -177,6 +177,7 @@ export default function LecturerQuestions() {
     ]);
     setImage(null);
     setQuestionForm(getInitialFormState());
+    setIsDialogOpen(false);
   };
 
   const handleUpdateQuestion = async (questionId: string) => {
@@ -256,16 +257,6 @@ export default function LecturerQuestions() {
     });
   };
 
-  const handleTextChange = (e: any, index: number) => {
-    if (!questionForm.options) return;
-    const newOptions = [...questionForm.options];
-    newOptions[index].text = e.target.value;
-    setQuestionForm({
-      ...questionForm,
-      options: newOptions,
-    });
-  };
-
   const handleCorrectChange = (indexToToggle: number) => {
     if (!questionForm.options) return;
     const newOptions = questionForm.options.map(
@@ -290,7 +281,7 @@ export default function LecturerQuestions() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold text-gray-900">Ngân hàng câu hỏi</h2>
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer">
               <Plus className="h-4 w-4 mr-2" />
@@ -571,7 +562,7 @@ export default function LecturerQuestions() {
                 .map((question: IQuestion) => (
                   <TableRow key={question.id} className="border-gray-300">
                     <TableCell className="font-medium max-w-xs truncate">
-                      {question.question_text}
+                      <MathRenderer content={question.question_text} />
                     </TableCell>
                     <TableCell>{question.topic}</TableCell>
                     <TableCell>

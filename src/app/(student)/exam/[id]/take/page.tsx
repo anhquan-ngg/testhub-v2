@@ -6,41 +6,93 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+
 import { Clock, ChevronLeft, ChevronRight, Flag, Menu } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useFindUniqueExam } from "../../../../../../generated/hooks";
+import { QuestionType } from "@prisma/client";
+import { Textarea } from "@/components/ui/textarea";
+import { MathRenderer } from "@/components/MathRenderer";
 
 // Mock questions data (since we might not have a hook for questions yet)
-const MOCK_QUESTIONS = Array.from({ length: 20 }, (_, i) => ({
-  id: `q${i + 1}`,
-  text: `Câu hỏi số ${
-    i + 1
-  }: Đây là nội dung câu hỏi mẫu để kiểm tra giao diện. Bạn hãy chọn đáp án đúng nhất trong các phương án dưới đây?`,
-  options: [
-    { id: "A", text: "Phương án A: Đây là một câu trả lời mẫu." },
-    { id: "B", text: "Phương án B: Đây là một câu trả lời mẫu khác." },
-    { id: "C", text: "Phương án C: Đây cũng là một câu trả lời mẫu." },
-    { id: "D", text: "Phương án D: Tất cả các phương án trên đều đúng." },
-  ],
-}));
+
+interface Question {
+  id: string;
+  question_text: string;
+  image_url: string;
+  options: any[];
+  question_type: QuestionType;
+}
 
 export default function ExamTakePage() {
   const params = useParams();
   const router = useRouter();
   const examId = params.id as string;
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [timeLeft, setTimeLeft] = useState(0); // in seconds
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const [questions, setQuestions] = useState<Question[]>([]);
 
   const { data: exam, isLoading } = useFindUniqueExam({
     where: {
       id: examId,
     },
+    include: {
+      questions: {
+        select: {
+          question: {
+            select: {
+              id: true,
+              question_text: true,
+              image_url: true,
+              options: true,
+              question_type: true,
+            },
+          },
+        },
+      },
+    },
   });
 
   useEffect(() => {
     if (exam) {
+      const questionsWithParsedOptions = exam.questions.map((item) => {
+        const question = item.question;
+
+        const clonedQuestion: any = { ...question };
+        if (
+          clonedQuestion.options &&
+          clonedQuestion.options !== null &&
+          typeof clonedQuestion.options === "string"
+        ) {
+          try {
+            clonedQuestion.options = JSON.parse(clonedQuestion.options);
+            if (
+              clonedQuestion.options &&
+              Array.isArray(clonedQuestion.options)
+            ) {
+              clonedQuestion.options = clonedQuestion.options.map(
+                (option: any, index: number) => ({
+                  ...option,
+                  id: index + 1,
+                })
+              );
+            }
+            console.log(clonedQuestion.options);
+          } catch (error) {
+            console.error("Failed to parse options:", error);
+          }
+        }
+        return clonedQuestion;
+      });
+
+      const randomizedQuestions = questionsWithParsedOptions.sort(
+        () => Math.random() - 0.5
+      );
+      setQuestions(randomizedQuestions as any[]);
       setTimeLeft(exam.duration * 60);
     }
   }, [exam]);
@@ -65,11 +117,31 @@ export default function ExamTakePage() {
       .padStart(2, "0")}`;
   };
 
-  const handleAnswer = (questionId: string, optionId: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: optionId,
-    }));
+  const handleAnswer = (
+    questionId: string,
+    value: string,
+    type: QuestionType = "SINGLE_CHOICE"
+  ) => {
+    setAnswers((prev) => {
+      if (type === "MULTIPLE_CHOICE") {
+        const currentAnswers = (prev[questionId] as string[]) || [];
+        if (currentAnswers.includes(value)) {
+          return {
+            ...prev,
+            [questionId]: currentAnswers.filter((v) => v !== value),
+          };
+        } else {
+          return {
+            ...prev,
+            [questionId]: [...currentAnswers, value],
+          };
+        }
+      }
+      return {
+        ...prev,
+        [questionId]: value,
+      };
+    });
   };
 
   const handleSubmit = () => {
@@ -90,7 +162,15 @@ export default function ExamTakePage() {
     return <div>Exam not found</div>;
   }
 
-  const currentQuestion = MOCK_QUESTIONS[currentQuestionIndex];
+  const currentQuestion = questions[currentQuestionIndex];
+
+  if (!currentQuestion) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -163,7 +243,7 @@ export default function ExamTakePage() {
 
           <ScrollArea className="flex-1 p-4">
             <div className="grid grid-cols-5 gap-2">
-              {MOCK_QUESTIONS.map((q, index) => {
+              {questions.map((q, index) => {
                 const isAnswered = !!answers[q.id];
                 const isCurrent = index === currentQuestionIndex;
 
@@ -212,43 +292,109 @@ export default function ExamTakePage() {
 
                 <div className="prose max-w-none mb-8">
                   <p className="text-lg text-gray-800 leading-relaxed">
-                    {currentQuestion.text}
+                    <MathRenderer
+                      content={currentQuestion?.question_text || ""}
+                    />
                   </p>
                 </div>
 
-                <RadioGroup
-                  value={answers[currentQuestion.id] || ""}
-                  onValueChange={(value) =>
-                    handleAnswer(currentQuestion.id, value)
-                  }
-                  className="space-y-4"
-                >
-                  {currentQuestion.options.map((option) => (
-                    <div
-                      key={option.id}
-                      className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                        answers[currentQuestion.id] === option.id
-                          ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
-                          : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                      }`}
-                      onClick={() =>
-                        handleAnswer(currentQuestion.id, option.id)
-                      }
-                    >
-                      <RadioGroupItem
-                        value={option.id}
-                        id={option.id}
-                        className="text-blue-600"
-                      />
-                      <Label
-                        htmlFor={option.id}
-                        className="flex-1 cursor-pointer font-medium text-gray-700"
+                {currentQuestion.question_type === "SINGLE_CHOICE" && (
+                  <RadioGroup
+                    value={(answers[currentQuestion.id] as string) || ""}
+                    onValueChange={(value) =>
+                      handleAnswer(currentQuestion.id, value)
+                    }
+                    className="space-y-4"
+                  >
+                    {currentQuestion.options.map((option: any) => (
+                      <div
+                        key={option.id}
+                        className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
+                          answers[currentQuestion.id] === option.id
+                            ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
+                            : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                        }`}
+                        onClick={() =>
+                          handleAnswer(currentQuestion.id, option.id)
+                        }
                       >
-                        {option.text}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                        <RadioGroupItem
+                          value={option.id}
+                          id={option.id}
+                          className="text-blue-600"
+                        />
+                        <Label
+                          htmlFor={option.id}
+                          className="flex-1 cursor-pointer font-medium text-gray-700"
+                        >
+                          <MathRenderer content={option.text} />
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                )}
+
+                {currentQuestion.question_type === "MULTIPLE_CHOICE" && (
+                  <div className="space-y-4">
+                    {currentQuestion.options.map((option: any) => (
+                      <div
+                        key={option.id}
+                        className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
+                          (answers[currentQuestion.id] as string[])?.includes(
+                            option.id
+                          )
+                            ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
+                            : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+                        }`}
+                        onClick={() =>
+                          handleAnswer(
+                            currentQuestion.id,
+                            option.id,
+                            "MULTIPLE_CHOICE"
+                          )
+                        }
+                      >
+                        <Checkbox
+                          checked={(
+                            (answers[currentQuestion.id] as string[]) || []
+                          ).includes(option.id)}
+                          onCheckedChange={() =>
+                            handleAnswer(
+                              currentQuestion.id,
+                              option.id,
+                              "MULTIPLE_CHOICE"
+                            )
+                          }
+                          id={option.id}
+                          className="text-blue-600"
+                        />
+                        <Label
+                          htmlFor={option.id}
+                          className="flex-1 cursor-pointer font-medium text-gray-700"
+                        >
+                          <MathRenderer content={option.text} />
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {currentQuestion.question_type === "ESSAY" && (
+                  <div className="space-y-4">
+                    <Textarea
+                      placeholder="Nhập câu trả lời của bạn..."
+                      value={(answers[currentQuestion.id] as string) || ""}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+                        handleAnswer(
+                          currentQuestion.id,
+                          e.target.value,
+                          "ESSAY"
+                        )
+                      }
+                      className="min-h-[200px] p-4 text-base"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -267,7 +413,7 @@ export default function ExamTakePage() {
 
               <Button
                 onClick={() => {
-                  if (currentQuestionIndex < MOCK_QUESTIONS.length - 1) {
+                  if (currentQuestionIndex < questions.length - 1) {
                     setCurrentQuestionIndex((prev) => prev + 1);
                   } else {
                     handleSubmit();
@@ -275,7 +421,7 @@ export default function ExamTakePage() {
                 }}
                 className="w-32 bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {currentQuestionIndex === MOCK_QUESTIONS.length - 1 ? (
+                {currentQuestionIndex === questions.length - 1 ? (
                   "Nộp bài"
                 ) : (
                   <>

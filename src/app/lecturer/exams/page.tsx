@@ -170,7 +170,7 @@ export default function LecturerExams() {
                     </TableCell>
                     <TableCell>{exam.duration} phút</TableCell>
                     <TableCell>
-                      {exam.practice ? "Chính thức" : "Luyện tập"}
+                      {exam.practice ? "Luyện tập" : "Chính thức"}
                     </TableCell>
                     <TableCell>
                       <Badge
