@@ -28,3 +28,11 @@ export const useUser = () => useAppSelector(selectUser);
 export const useIsLoggedIn = () => useAppSelector(selectIsLoggedIn);
 export const useUserRole = () => useAppSelector(selectUserRole);
 export const useUserInfo = () => useAppSelector(selectUserInfo);
+
+// Selector helpers cho exam state
+export const selectExam = (state: RootState) => state.exam;
+export const selectTestStarted = (state: RootState) => state.exam.testStarted;
+
+// Custom hooks để dễ dàng truy cập exam state
+export const useExam = () => useAppSelector(selectExam);
+export const useTestStarted = () => useAppSelector(selectTestStarted);

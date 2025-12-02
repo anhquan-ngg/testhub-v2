@@ -196,9 +196,11 @@ const metadata: ModelMeta = {
                 }, start_time: {
                     name: "start_time",
                     type: "DateTime",
+                    isOptional: true,
                 }, end_time: {
                     name: "end_time",
                     type: "DateTime",
+                    isOptional: true,
                 }, questions: {
                     name: "questions",
                     type: "SubmissionQuestions",
