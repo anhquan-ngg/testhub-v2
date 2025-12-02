@@ -291,11 +291,11 @@ export default function ExamTakePage() {
                 </div>
 
                 <div className="prose max-w-none mb-8">
-                  <p className="text-lg text-gray-800 leading-relaxed">
+                  <div className="text-lg text-gray-800 leading-relaxed">
                     <MathRenderer
                       content={currentQuestion?.question_text || ""}
                     />
-                  </p>
+                  </div>
                 </div>
 
                 {currentQuestion.question_type === "SINGLE_CHOICE" && (
@@ -391,7 +391,7 @@ export default function ExamTakePage() {
                           "ESSAY"
                         )
                       }
-                      className="min-h-[200px] p-4 text-base"
+                      className="min-h-[200px] p-4 bg-white border-gray-300 text-base"
                     />
                   </div>
                 )}
