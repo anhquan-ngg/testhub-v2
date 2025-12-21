@@ -1,6 +1,6 @@
 "use client";
 
-import { FileText, User } from "lucide-react";
+import { ClipboardCheck, FileText, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -26,6 +26,18 @@ const StudentSideBar = () => {
           >
             <FileText className="h-5 w-5" />
             <span className="font-medium">Bài thi</span>
+          </button>
+        </Link>
+        <Link href="/result">
+          <button
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mt-2 ${
+              pathname === "/result"
+                ? "bg-blue-50 text-[#0066cc]"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <ClipboardCheck className="h-5 w-5" />
+            <span className="font-medium">Kết quả</span>
           </button>
         </Link>
         <Link href="/profile">

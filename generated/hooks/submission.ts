@@ -326,9 +326,9 @@ export function useSuspenseCountSubmission<TArgs extends Prisma.SubmissionCountA
     const { endpoint, fetch } = getHooksContext();
     return useSuspenseModelQuery<TQueryFnData, TData, TError>('Submission', `${endpoint}/submission/count`, args, options, fetch);
 }
-import type { Rating } from '@prisma/client';
+import type { Rating, SubmissionStatus } from '@prisma/client';
 
-export function useCheckSubmission<TError = DefaultError>(args: { operation: PolicyCrudKind; where?: { id?: string; exam_id?: string; student_id?: string; rating?: Rating }; }, options?: (Omit<UseQueryOptions<boolean, TError, boolean>, 'queryKey'> & ExtraQueryOptions)) {
+export function useCheckSubmission<TError = DefaultError>(args: { operation: PolicyCrudKind; where?: { id?: string; exam_id?: string; student_id?: string; rating?: Rating; status?: SubmissionStatus }; }, options?: (Omit<UseQueryOptions<boolean, TError, boolean>, 'queryKey'> & ExtraQueryOptions)) {
     const { endpoint, fetch } = getHooksContext();
     return useModelQuery<boolean, boolean, TError>('Submission', `${endpoint}/submission/check`, args, options, fetch);
 }

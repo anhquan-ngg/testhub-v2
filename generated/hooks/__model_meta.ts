@@ -201,6 +201,10 @@ const metadata: ModelMeta = {
                     name: "end_time",
                     type: "DateTime",
                     isOptional: true,
+                }, status: {
+                    name: "status",
+                    type: "SubmissionStatus",
+                    attributes: [{ "name": "@default", "args": [{ "name": "value" }] }],
                 }, questions: {
                     name: "questions",
                     type: "SubmissionQuestions",

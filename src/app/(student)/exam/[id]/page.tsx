@@ -56,28 +56,9 @@ export default function ExamPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [startTime, setStartTime] = useState<Date | null>(null);
   const timerInitialized = useRef(false);
-
-  // const { data: exam, isLoading } = useFindUniqueExam({
-  //   where: {
-  //     id: examId,
-  //   },
-  //   include: {
-  //     questions: {
-  //       select: {
-  //         question: {
-  //           select: {
-  //             id: true,
-  //             question_text: true,
-  //             image_url: true,
-  //             options: true,
-  //             question_type: true,
-  //           },
-  //         },
-  //       },
-  //     },
-  //   },
-  // });
+  const dataFetched = useRef(false);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -100,7 +81,8 @@ export default function ExamPage() {
   };
 
   useEffect(() => {
-    if (userId) {
+    if (userId && !dataFetched.current) {
+      dataFetched.current = true;
       fetchData();
     }
   }, [examId, userId]);
@@ -198,13 +180,68 @@ export default function ExamPage() {
     });
   };
 
-  const handleSubmit = () => {
-    alert("Nộp bài thành công! (Chức năng đang phát triển)");
-    dispatch(endTest());
-    router.push("/home");
+  const handleSubmitQuestion = async (index: number = currentQuestionIndex) => {
+    if (!exam?.submissionId) return;
+
+    const question = questions[index];
+    if (!question) return;
+
+    const answer = answers[question.id];
+
+    const payload: any = {
+      submission_id: exam.submissionId,
+      question_id: question.id,
+    };
+
+    if (
+      question.question_type === "SINGLE_CHOICE" ||
+      question.question_type === "MULTIPLE_CHOICE"
+    ) {
+      if (Array.isArray(question.options)) {
+        payload.options = question.options.map((opt: any) => ({
+          text: opt.text,
+          isCorrect: Array.isArray(answer)
+            ? answer.includes(opt.id)
+            : answer === opt.id,
+        }));
+        payload.options = JSON.stringify(payload.options);
+      }
+    } else if (question.question_type === "ESSAY") {
+      payload.answer = answer || "";
+    }
+
+    try {
+      await axiosClient.post("/submission/submit-by-question", payload);
+      toast.success(`Đã nộp câu ${index + 1}`);
+    } catch (error) {
+      toast.error("Gửi câu trả lời thất bại");
+      console.error(error);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!exam?.submissionId) return;
+
+    const payload = {
+      start_time: startTime || new Date(),
+      end_time: new Date(),
+      submission_id: exam.submissionId,
+      question_length: questions.length,
+    };
+
+    try {
+      await axiosClient.post("/submission/submit-exam", payload);
+      toast.success("Nộp bài thành công!");
+      dispatch(endTest());
+      router.push("/home");
+    } catch (error) {
+      toast.error("Nộp bài thất bại");
+      console.error(error);
+    }
   };
 
   const handleStartTest = () => {
+    setStartTime(new Date());
     dispatch(startTest());
   };
 
@@ -348,7 +385,7 @@ export default function ExamPage() {
                   </Button>
                   <Button
                     size="lg"
-                    className="px-12 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
+                    className="px-12 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl hover:cursor-pointer transition-all"
                     onClick={handleStartTest}
                   >
                     Làm bài ngay
@@ -617,22 +654,25 @@ export default function ExamPage() {
 
               <Button
                 onClick={() => {
+                  handleSubmitQuestion();
+                }}
+                className="w-36 bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
+              >
+                Nộp câu này
+              </Button>
+
+              <Button
+                onClick={() => {
                   if (currentQuestionIndex < questions.length - 1) {
                     setCurrentQuestionIndex((prev) => prev + 1);
-                  } else {
-                    handleSubmit();
                   }
                 }}
-                className="w-32 bg-blue-600 hover:bg-blue-700 text-white"
+                variant="outline"
+                className="w-32"
+                disabled={currentQuestionIndex === questions.length - 1}
               >
-                {currentQuestionIndex === questions.length - 1 ? (
-                  "Nộp bài"
-                ) : (
-                  <>
-                    Câu sau
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
+                Câu sau
+                <ChevronRight className="w-4 h-4 ml-2" />
               </Button>
             </div>
           </div>
