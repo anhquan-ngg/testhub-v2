@@ -2,7 +2,6 @@
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/lib/axios";
-// import StoreProviderWrapper from "@/components/StoreProviderWrapper";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ReduxProvider } from "@/store";
 import { Provider as ZenStackHooksProvider } from "../../generated/hooks";

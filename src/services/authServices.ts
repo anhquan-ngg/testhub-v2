@@ -18,6 +18,11 @@ const authServices = {
   logout: () => {
     return axiosClient.post("auth/logout", {}, { withCredentials: true });
   },
+  loginGoogle: (data: { accessToken?: string; code?: string }) => {
+    return axiosClient.post("auth/google-login", data, {
+      withCredentials: true,
+    });
+  },
 };
 
 export default authServices;

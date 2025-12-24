@@ -2,7 +2,12 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  useCountSubmission,
+  useFindUniqueUser,
+  useUpdateUser,
+} from "../../../../generated/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,15 +34,41 @@ import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
 import axiosClient from "@/lib/axios";
 import { toast } from "sonner";
+import { useAppSelector } from "@/store/hook";
 
 export default function StudentProfile() {
+  const student = useAppSelector((state) => state.user);
+
+  const { data: userProfile } = useFindUniqueUser({
+    where: { id: student.id },
+    include: { exams: false, questions: false, submissions: false }, // Optimize fetch if needed, though default is usually fine
+  });
+
+  const { data: submissionCount } = useCountSubmission({
+    where: { student_id: student.id, status: "COMPLETED" },
+  });
+
+  const { mutate: updateUser } = useUpdateUser();
+
   const [formData, setFormData] = useState({
-    email: "user@email.com",
-    fullName: "Username",
+    email: "",
+    full_name: "",
     school: "",
     phone: "",
     address: "",
   });
+
+  useEffect(() => {
+    if (userProfile) {
+      setFormData({
+        email: userProfile.email || "",
+        full_name: userProfile.full_name || "",
+        school: userProfile.school || "",
+        phone: userProfile.phone || "",
+        address: userProfile.address || "",
+      });
+    }
+  }, [userProfile]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -68,7 +99,28 @@ export default function StudentProfile() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Updated profile:", formData);
+    if (!student.id) return;
+
+    updateUser(
+      {
+        where: { id: student.id },
+        data: {
+          full_name: formData.full_name,
+          school: formData.school,
+          phone: formData.phone,
+          address: formData.address,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Cập nhật thông tin thành công!");
+        },
+        onError: (error) => {
+          console.error("Update failed:", error);
+          toast.error("Cập nhật thất bại. Vui lòng thử lại.");
+        },
+      }
+    );
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -125,7 +177,9 @@ export default function StudentProfile() {
                       <User className="h-12 w-12 text-gray-500" />
                     </div>
                   </div>
-                  <p className="font-semibold text-gray-900">Username</p>
+                  <p className="font-semibold text-gray-900">
+                    {student.full_name}
+                  </p>
                 </CardContent>
               </Card>
 
@@ -134,7 +188,9 @@ export default function StudentProfile() {
                 <CardContent className="p-6 flex flex-col items-center space-y-4">
                   <Award className="h-8 w-8 text-gray-700" />
                   <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-teal-600">0</span>
+                    <span className="text-2xl font-bold text-teal-600">
+                      {submissionCount || 0}
+                    </span>
                   </div>
                   <p className="font-medium text-gray-700">Bài đã làm</p>
                 </CardContent>
@@ -176,13 +232,13 @@ export default function StudentProfile() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="fullName">
+                      <Label htmlFor="full_name">
                         Họ tên <span className="text-red-500">*</span> :
                       </Label>
                       <Input
-                        id="fullName"
-                        name="fullName"
-                        value={formData.fullName}
+                        id="full_name"
+                        name="full_name"
+                        value={formData.full_name}
                         onChange={handleInputChange}
                         required
                         className="bg-white border-gray-300"
@@ -225,7 +281,7 @@ export default function StudentProfile() {
 
                     <Button
                       type="submit"
-                      className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white"
+                      className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer"
                     >
                       Cập nhật thông tin
                     </Button>

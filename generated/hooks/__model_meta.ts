@@ -48,6 +48,18 @@ const metadata: ModelMeta = {
                     name: "provider_id",
                     type: "String",
                     isOptional: true,
+                }, school: {
+                    name: "school",
+                    type: "String",
+                    isOptional: true,
+                }, phone: {
+                    name: "phone",
+                    type: "String",
+                    isOptional: true,
+                }, address: {
+                    name: "address",
+                    type: "String",
+                    isOptional: true,
                 }, exams: {
                     name: "exams",
                     type: "Exam",

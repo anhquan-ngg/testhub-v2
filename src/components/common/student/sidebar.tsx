@@ -18,7 +18,7 @@ const StudentSideBar = () => {
       <nav className="flex-1 p-4">
         <Link href="/home">
           <button
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:cursor-pointer ${
               pathname === "/home"
                 ? "bg-blue-50 text-[#0066cc]"
                 : "text-gray-700 hover:bg-gray-50"
@@ -30,7 +30,7 @@ const StudentSideBar = () => {
         </Link>
         <Link href="/result">
           <button
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mt-2 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mt-2 hover:cursor-pointer ${
               pathname === "/result"
                 ? "bg-blue-50 text-[#0066cc]"
                 : "text-gray-700 hover:bg-gray-50"
@@ -42,7 +42,7 @@ const StudentSideBar = () => {
         </Link>
         <Link href="/profile">
           <button
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mt-2 ${
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mt-2 hover:cursor-pointer ${
               pathname === "/profile"
                 ? "bg-blue-50 text-[#0066cc]"
                 : "text-gray-700 hover:bg-gray-50"

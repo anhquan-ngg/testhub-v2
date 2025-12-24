@@ -18,7 +18,6 @@ import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast } from "react-hot-toast";
 
 const GoogleLogo = () => (
   <svg
@@ -46,7 +45,7 @@ const GoogleLogo = () => (
 );
 
 export default function LoginPage() {
-  const { handleLogin } = useAuth();
+  const { handleLogin, handleGoogleLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -151,13 +150,26 @@ export default function LoginPage() {
             </div>
 
             {/* Gmail Login Button */}
-            <Button
-              variant="outline"
-              className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
-            >
-              <GoogleLogo />
-              Đăng nhập bằng Gmail
-            </Button>
+            <div className="w-full flex justify-center">
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
+                onClick={() => {
+                  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+                  const redirectUri =
+                    process.env.NEXT_PUBLIC_GOOGLE_CALLBACK_URL ||
+                    "http://localhost:3000/auth/callback";
+                  const scope = "email profile openid";
+                  const responseType = "code";
+                  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&access_type=offline&prompt=consent`;
+
+                  window.location.href = authUrl;
+                }}
+              >
+                <GoogleLogo />
+                Đăng nhập bằng Gmail
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

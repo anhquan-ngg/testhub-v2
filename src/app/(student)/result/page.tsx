@@ -11,14 +11,12 @@ import {
   Clock,
   TrendingUp,
   CheckCircle,
-  XCircle,
   FileText,
 } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
 import { useFindManySubmission } from "../../../../generated/hooks";
 import { useAppSelector } from "@/store/hook";
-import { MathRenderer } from "@/components/MathRenderer";
 
 interface SubmissionWithDetails {
   id: string;
