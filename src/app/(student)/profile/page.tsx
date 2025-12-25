@@ -36,13 +36,29 @@ import axiosClient from "@/lib/axios";
 import { toast } from "sonner";
 import { useAppSelector } from "@/store/hook";
 
+import { useMinIO } from "@/hook/useMinIO";
+
 export default function StudentProfile() {
   const student = useAppSelector((state) => state.user);
+  const { getViewUrl } = useMinIO("avatars");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const { data: userProfile } = useFindUniqueUser({
     where: { id: student.id },
-    include: { exams: false, questions: false, submissions: false }, // Optimize fetch if needed, though default is usually fine
+    include: { exams: false, questions: false, submissions: false },
   });
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+      // Ưu tiên lấy từ userProfile mới fetch, hoặc fallback về redux student
+      const fname = userProfile?.avatar_url || student.avatar_url;
+      if (fname) {
+        const url = await getViewUrl(fname);
+        if (url) setAvatarUrl(url);
+      }
+    };
+    fetchAvatar();
+  }, [userProfile, student.avatar_url]);
 
   const { data: submissionCount } = useCountSubmission({
     where: { student_id: student.id, status: "COMPLETED" },
@@ -173,8 +189,16 @@ export default function StudentProfile() {
                 <CardContent className="p-6 flex flex-col items-center space-y-4">
                   <div className="relative">
                     <Camera className="absolute -top-2 -right-2 h-6 w-6 text-gray-700 bg-white rounded-full p-1 shadow-md cursor-pointer" />
-                    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300">
-                      <User className="h-12 w-12 text-gray-500" />
+                    <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300 overflow-hidden">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt="Avatar"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="h-12 w-12 text-gray-500" />
+                      )}
                     </div>
                   </div>
                   <p className="font-semibold text-gray-900">

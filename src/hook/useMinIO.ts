@@ -103,6 +103,22 @@ export const useMinIO = (bucket: string) => {
     await fetchList(); // reload danh sách
   };
 
+  // Hàm lấy URL xem file (ảnh)
+  const getViewUrl = async (objectName: string) => {
+    try {
+      const res = await axiosClient.get(
+        `/minio/view-file?objectName=${bucket}/${objectName}`
+      );
+      if (res.status === 200) {
+        return res.data.url;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting view URL:", error);
+      return null;
+    }
+  };
+
   return {
     list,
     loading,
@@ -110,6 +126,7 @@ export const useMinIO = (bucket: string) => {
     checkAndUpload,
     fetchList,
     getDownloadUrl,
+    getViewUrl,
     removeFile,
   };
 };

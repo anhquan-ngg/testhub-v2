@@ -17,7 +17,7 @@ import axiosClient from "@/lib/axios";
 export default function LecturerProfile() {
   const user = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
-  const { uploadFile, getDownloadUrl } = useMinIO("avatars");
+  const { uploadFile, getViewUrl } = useMinIO("avatars");
 
   const [formData, setFormData] = useState({
     email: "lecturer@email.com",
@@ -166,7 +166,7 @@ export default function LecturerProfile() {
 
       if (user.avatar_url) {
         try {
-          const avatarUrl = await getDownloadUrl(user.avatar_url);
+          const avatarUrl = await getViewUrl(user.avatar_url);
           setProfileImage(avatarUrl);
         } catch (error) {
           console.warn("Could not load avatar URL:", error);

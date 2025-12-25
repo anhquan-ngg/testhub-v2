@@ -41,12 +41,15 @@ interface Question {
   question_type: QuestionType;
 }
 
+import { useMinIO } from "@/hook/useMinIO";
+
 export default function ExamPage() {
   const params = useParams();
   const router = useRouter();
   const dispatch = useDispatch();
   const userId = useAppSelector((state) => state.user.id);
   const examId = params.id as string;
+  const { getViewUrl } = useMinIO("questions-images");
 
   const testStarted = useSelector((state: RootState) => state.exam.testStarted);
   const [exam, setExam] = useState<ExamData | null>(null);
@@ -57,8 +60,16 @@ export default function ExamPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
+
+  // ... (existing code, I need to be careful with context matching)
+  // I will insert useMinIO and state at top, and the effect later or merge?
+  // Since replace_file_content handles contiguous blocks, I have to be precise.
+  // The file is large. I will use multiple replace calls or one if possible.
+  // Wait, I can't insert hooks easily in the middle without replacing huge chunk.
+  // I'll start with imports and component start.
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -144,6 +155,26 @@ export default function ExamPage() {
       handleSubmit();
     }
   }, [timeLeft, testStarted]);
+
+  useEffect(() => {
+    const fetchImage = async () => {
+      const currentQ = questions[currentQuestionIndex];
+      if (currentQ?.image_url) {
+        // Nếu là link http(s) thì dùng luôn (trường hợp user nhập link ngoài), nếu không thì fetch minio
+        if (currentQ.image_url.startsWith("http")) {
+          setCurrentImageUrl(currentQ.image_url);
+        } else {
+          const url = await getViewUrl(currentQ.image_url);
+          setCurrentImageUrl(url);
+        }
+      } else {
+        setCurrentImageUrl(null);
+      }
+    };
+    if (testStarted && questions.length > 0) {
+      fetchImage();
+    }
+  }, [currentQuestionIndex, questions, testStarted]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -532,6 +563,15 @@ export default function ExamPage() {
                 </div>
 
                 <div className="prose max-w-none mb-8">
+                  {currentImageUrl && (
+                    <div className="mb-4 flex justify-center">
+                      <img
+                        src={currentImageUrl}
+                        alt="Question Image"
+                        className="max-h-96 object-contain rounded-lg shadow-sm"
+                      />
+                    </div>
+                  )}
                   <div className="text-lg text-gray-800 leading-relaxed">
                     <MathRenderer
                       content={currentQuestion?.question_text || ""}
