@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
-import { requestHandler } from "@zenstackhq/server";
-import { PrismaClient } from "@prisma/client";
+import { NextRequestHandler } from "@zenstackhq/server/next";
+import { PrismaClient, UserRole } from "@prisma/client";
 import { enhance } from "@zenstackhq/runtime";
 import { jwtVerify, JWTPayload } from "jose";
 
@@ -10,7 +10,7 @@ const secretKey = new TextEncoder().encode(process.env.NEXT_JWT_SECRET);
 async function getUserFromRequest(req: NextRequest) {
   try {
     const token = req.cookies.get("testhub_token")?.value;
-    if (!token) return null;
+    if (!token) return undefined;
 
     const { payload } = await jwtVerify(token, secretKey);
     return payload as JWTPayload & {
@@ -20,7 +20,7 @@ async function getUserFromRequest(req: NextRequest) {
     };
   } catch (error) {
     console.error("Token verification failed:", error);
-    return null;
+    return undefined;
   }
 }
 
@@ -33,17 +33,17 @@ async function getPrisma(req: NextRequest) {
   return enhance(prisma, {
     user: user
       ? {
-          id: user.id,
-          role: user.role,
-          email: user.email,
+          id: user.id || "",
+          role: (user.role as UserRole) || UserRole.STUDENT,
+          email: user.email || "",
         }
-      : null,
+      : undefined,
   });
 }
 
 async function handler(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  context: { params: { path: string[] } }
 ) {
   try {
     // Debug: Log request info
@@ -51,15 +51,17 @@ async function handler(
       method: req.method,
       url: req.url,
       pathname: new URL(req.url).pathname,
-      path: params.path,
+      path: context.params.path,
       hasBody: req.body !== null,
     });
 
     const enhancedPrisma = await getPrisma(req);
-    return requestHandler({
+    // Use 'as any' here because the ZenStack v2 types for Next.js can sometimes
+    // conflict between Pages and App Router in certain TypeScript configurations.
+    return (NextRequestHandler as any)({
       getPrisma: () => enhancedPrisma,
       zodSchemas: undefined,
-    })(req);
+    })(req, context);
   } catch (error) {
     console.error("API Route Error:", error);
     return new Response(

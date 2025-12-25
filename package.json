@@ -46,7 +46,12 @@
     "recharts": "^3.2.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
-    "zenstack": "^2.21.0"
+    "zenstack": "^2.21.0",
+    "class-variance-authority": "^0.7.1",
+    "@tailwindcss/postcss": "^4",
+    "tailwindcss": "^4.1.13",
+    "postcss": "^8.5.6",
+    "autoprefixer": "^10.4.21"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -57,13 +62,9 @@
     "@types/react-dom": "^19",
     "@types/react-katex": "^3.0.4",
     "@zenstackhq/trpc": "^2.21.0",
-    "autoprefixer": "^10.4.21",
-    "class-variance-authority": "^0.7.1",
     "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.13",
     "typescript": "^5"
   }
 }
