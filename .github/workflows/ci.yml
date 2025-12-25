@@ -26,7 +26,6 @@ jobs:
       - name: Generate ZenStack & Prisma
         run: npx zenstack generate
         env:
-          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
 
       - name: Run Lint
         run: npm run lint
@@ -34,6 +33,4 @@ jobs:
       - name: Build application
         run: npm run build
         env:
-          DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/postgres"
-          # Thêm các biến môi trường cần thiết cho build nếu có
           NEXT_PUBLIC_BASE_URL: "http://localhost:3000"
