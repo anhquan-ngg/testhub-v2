@@ -1,4 +1,4 @@
-// middleware.ts
+// proxy.ts - Next.js 16 renamed middleware to proxy
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify, JWTPayload } from "jose";
 
@@ -21,7 +21,7 @@ async function verifyToken(token: string): Promise<JWTPayload | null> {
   }
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("testhub_token")?.value;
 
