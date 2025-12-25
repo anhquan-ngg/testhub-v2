@@ -70,7 +70,13 @@ export default function UsersPage() {
   const [users, setUsers] = useState([] as any);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [userForm, setUserForm] = useState({
+  const [userForm, setUserForm] = useState<{
+    full_name: string;
+    email: string;
+    password: string;
+    phone: string;
+    role: UserRole;
+  }>({
     full_name: "",
     email: "",
     password: "",
