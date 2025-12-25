@@ -43,15 +43,18 @@ async function getPrisma(req: NextRequest) {
 
 async function handler(
   req: NextRequest,
-  context: { params: { path: string[] } }
+  context: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    // Next.js 15 requires awaiting params
+    const { path } = await context.params;
+
     // Debug: Log request info
     console.log("API Route - Request:", {
       method: req.method,
       url: req.url,
       pathname: new URL(req.url).pathname,
-      path: context.params.path,
+      path: path,
       hasBody: req.body !== null,
     });
 
@@ -61,7 +64,7 @@ async function handler(
     return (NextRequestHandler as any)({
       getPrisma: () => enhancedPrisma,
       zodSchemas: undefined,
-    })(req, context);
+    })(req, { params: { path } });
   } catch (error) {
     console.error("API Route Error:", error);
     return new Response(
