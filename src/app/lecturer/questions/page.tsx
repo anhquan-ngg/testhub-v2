@@ -575,17 +575,17 @@ export default function LecturerQuestions() {
               <TableHeader>
                 <TableRow className="border-gray-300">
                   <TableHead className="w-[30%]">Câu hỏi</TableHead>
-                  <TableHead className="w-[15%]">Chủ đề</TableHead>
+                  <TableHead className="w-[10%]">Chủ đề</TableHead>
                   <TableHead className="w-[15%]">Loại</TableHead>
                   <TableHead className="w-[10%]">Định dạng</TableHead>
-                  <TableHead className="w-[20%]">Đáp án</TableHead>
+                  <TableHead className="w-[25%]">Đáp án</TableHead>
                   <TableHead className="text-right w-[10%]">Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedQuestions.map((question: IQuestion) => (
                   <TableRow key={question.id} className="border-gray-300">
-                    <TableCell>
+                    <TableCell className="whitespace-normal">
                       <div className="line-clamp-2 break-words overflow-hidden">
                         <MathRenderer content={question.question_text} />
                       </div>
@@ -619,7 +619,7 @@ export default function LecturerQuestions() {
                         {QuestionFormatMap[question.question_format]}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="whitespace-normal">
                       <div className="line-clamp-2 break-words overflow-hidden">
                         {question.question_type === "ESSAY" ? (
                           <MathRenderer
