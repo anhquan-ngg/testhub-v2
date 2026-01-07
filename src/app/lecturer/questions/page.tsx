@@ -40,6 +40,8 @@ import {
   Pencil,
   Trash2,
   Search,
+  AlertCircle,
+  FileQuestion,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -105,6 +107,9 @@ export default function LecturerQuestions() {
   const ITEMS_PER_PAGE = 10;
 
   const { data: questionsData } = useFindManyQuestion({
+    where: {
+      lecturer_id: lecturerId,
+    },
     orderBy: { created_at: "desc" },
   });
 
@@ -583,160 +588,195 @@ export default function LecturerQuestions() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedQuestions.map((question: IQuestion) => (
-                  <TableRow key={question.id} className="border-gray-300">
-                    <TableCell className="whitespace-normal">
-                      <div className="line-clamp-2 break-words overflow-hidden">
-                        <MathRenderer content={question.question_text} />
-                      </div>
-                    </TableCell>
-                    <TableCell>{question.topic}</TableCell>
-                    <TableCell>
-                      <Badge
-                        className={`px-2 py-1 text-white rounded-lg ${
-                          question.question_type === "SINGLE_CHOICE"
-                            ? "text-red-500 bg-red-100"
-                            : question.question_type === "MULTIPLE_CHOICE"
-                            ? "text-green-500 bg-green-100"
-                            : "text-blue-500 bg-blue-100"
-                        }`}
-                      >
-                        {QuestionTypeMap[question.question_type]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={`px-2 py-1 text-white rounded-lg ${
-                          question.question_format === "ADVANCED"
-                            ? "text-red-500 bg-red-100"
-                            : question.question_format === "APPLYING"
-                            ? "text-orange-500 bg-orange-100"
-                            : question.question_format === "UNDERSTANDING"
-                            ? "text-green-500 bg-green-100"
-                            : "text-blue-500 bg-blue-100"
-                        }`}
-                      >
-                        {QuestionFormatMap[question.question_format]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-normal">
-                      <div className="line-clamp-2 break-words overflow-hidden">
-                        {question.question_type === "ESSAY" ? (
-                          <MathRenderer
-                            content={question.correct_answer || ""}
-                          />
-                        ) : question.options ? (
-                          <MathRenderer
-                            content={JSON.parse(
-                              question.options as unknown as string
-                            )
-                              .filter(
-                                (option: QuestionOption) => option.isCorrect
-                              )
-                              .map((option: QuestionOption) => option.text)
-                              .join(", ")}
-                          />
-                        ) : (
-                          ""
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Dialog
-                          open={editingId === question.id}
-                          onOpenChange={(open) => {
-                            if (!open) {
-                              setEditingId(null);
-                              setQuestionForm(getInitialFormState());
-                              setImage(null);
-                            }
-                          }}
+                {filteredQuestions.length > 0 ? (
+                  paginatedQuestions.map((question: IQuestion) => (
+                    <TableRow key={question.id} className="border-gray-300">
+                      <TableCell className="whitespace-normal">
+                        <div className="line-clamp-2 break-words overflow-hidden">
+                          <MathRenderer content={question.question_text} />
+                        </div>
+                      </TableCell>
+                      <TableCell>{question.topic}</TableCell>
+                      <TableCell>
+                        <Badge
+                          className={`px-2 py-1 text-white rounded-lg ${
+                            question.question_type === "SINGLE_CHOICE"
+                              ? "text-red-500 bg-red-100"
+                              : question.question_type === "MULTIPLE_CHOICE"
+                              ? "text-green-500 bg-green-100"
+                              : "text-blue-500 bg-blue-100"
+                          }`}
                         >
-                          <DialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setEditingId(question.id);
-                                const parsedOptions = question.options
-                                  ? JSON.parse(
-                                      question.options as unknown as string
-                                    )
-                                  : getInitialFormState().options;
-                                setQuestionForm({
-                                  question_text: question.question_text,
-                                  topic: question.topic,
-                                  options: parsedOptions as any,
-                                  correct_answer: question.correct_answer || "",
-                                  image_url: question.image_url || "",
-                                  question_type: question.question_type as any,
-                                  question_format:
-                                    question.question_format as any,
-                                });
-                              }}
-                              className="hover:cursor-pointer"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white border-gray-300">
-                            <DialogHeader>
-                              <DialogTitle>Chỉnh sửa câu hỏi</DialogTitle>
-                              <DialogDescription>
-                                Cập nhật thông tin câu hỏi
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4 py-4">
-                              <div className="space-y-2">
-                                <Label htmlFor="edit-question-text">
-                                  Nội dung câu hỏi{" "}
-                                  <span className="text-red-500">*</span>
-                                </Label>
-                                <MathInput
-                                  id="edit-question-text"
-                                  placeholder="Nhập câu hỏi"
-                                  value={questionForm.question_text}
-                                  onChange={(value) =>
-                                    setQuestionForm({
-                                      ...questionForm,
-                                      question_text: value,
-                                    })
-                                  }
-                                  className="bg-white border-gray-300"
-                                />
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-4">
+                          {QuestionTypeMap[question.question_type]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={`px-2 py-1 text-white rounded-lg ${
+                            question.question_format === "ADVANCED"
+                              ? "text-red-500 bg-red-100"
+                              : question.question_format === "APPLYING"
+                              ? "text-orange-500 bg-orange-100"
+                              : question.question_format === "UNDERSTANDING"
+                              ? "text-green-500 bg-green-100"
+                              : "text-blue-500 bg-blue-100"
+                          }`}
+                        >
+                          {QuestionFormatMap[question.question_format]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-normal">
+                        <div className="line-clamp-2 break-words overflow-hidden">
+                          {question.question_type === "ESSAY" ? (
+                            <MathRenderer
+                              content={question.correct_answer || ""}
+                            />
+                          ) : question.options ? (
+                            <MathRenderer
+                              content={JSON.parse(
+                                question.options as unknown as string
+                              )
+                                .filter(
+                                  (option: QuestionOption) => option.isCorrect
+                                )
+                                .map((option: QuestionOption) => option.text)
+                                .join(", ")}
+                            />
+                          ) : (
+                            ""
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Dialog
+                            open={editingId === question.id}
+                            onOpenChange={(open) => {
+                              if (!open) {
+                                setEditingId(null);
+                                setQuestionForm(getInitialFormState());
+                                setImage(null);
+                              }
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setEditingId(question.id);
+                                  const parsedOptions = question.options
+                                    ? JSON.parse(
+                                        question.options as unknown as string
+                                      )
+                                    : getInitialFormState().options;
+                                  setQuestionForm({
+                                    question_text: question.question_text,
+                                    topic: question.topic,
+                                    options: parsedOptions as any,
+                                    correct_answer:
+                                      question.correct_answer || "",
+                                    image_url: question.image_url || "",
+                                    question_type:
+                                      question.question_type as any,
+                                    question_format:
+                                      question.question_format as any,
+                                  });
+                                }}
+                                className="hover:cursor-pointer"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white border-gray-300">
+                              <DialogHeader>
+                                <DialogTitle>Chỉnh sửa câu hỏi</DialogTitle>
+                                <DialogDescription>
+                                  Cập nhật thông tin câu hỏi
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
                                 <div className="space-y-2">
-                                  <Label htmlFor="edit-question-topic">
-                                    Chủ đề{" "}
+                                  <Label htmlFor="edit-question-text">
+                                    Nội dung câu hỏi{" "}
                                     <span className="text-red-500">*</span>
                                   </Label>
-                                  <Input
-                                    id="edit-question-topic"
-                                    placeholder="Nhập chủ đề"
-                                    value={questionForm.topic}
-                                    onChange={(e) =>
+                                  <MathInput
+                                    id="edit-question-text"
+                                    placeholder="Nhập câu hỏi"
+                                    value={questionForm.question_text}
+                                    onChange={(value) =>
                                       setQuestionForm({
                                         ...questionForm,
-                                        topic: e.target.value,
+                                        question_text: value,
                                       })
                                     }
                                     className="bg-white border-gray-300"
                                   />
                                 </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-question-topic">
+                                      Chủ đề{" "}
+                                      <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Input
+                                      id="edit-question-topic"
+                                      placeholder="Nhập chủ đề"
+                                      value={questionForm.topic}
+                                      onChange={(e) =>
+                                        setQuestionForm({
+                                          ...questionForm,
+                                          topic: e.target.value,
+                                        })
+                                      }
+                                      className="bg-white border-gray-300"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-question-type">
+                                      Loại câu hỏi{" "}
+                                      <span className="text-red-500">*</span>
+                                    </Label>
+                                    <Select
+                                      value={questionForm.question_type}
+                                      onValueChange={(value) =>
+                                        setQuestionForm({
+                                          ...questionForm,
+                                          question_type: value as any,
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger className="bg-white border-gray-300">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white border-gray-300">
+                                        <SelectItem value="SINGLE_CHOICE">
+                                          Trắc nghiệm một đáp án
+                                        </SelectItem>
+                                        <SelectItem value="MULTIPLE_CHOICE">
+                                          Trắc nghiệm nhiều đáp án
+                                        </SelectItem>
+                                        <SelectItem value="ESSAY">
+                                          Tự luận
+                                        </SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+
                                 <div className="space-y-2">
-                                  <Label htmlFor="edit-question-type">
-                                    Loại câu hỏi{" "}
+                                  <Label htmlFor="edit-question-format">
+                                    Định dạng câu hỏi{" "}
                                     <span className="text-red-500">*</span>
                                   </Label>
                                   <Select
-                                    value={questionForm.question_type}
+                                    value={questionForm.question_format}
                                     onValueChange={(value) =>
                                       setQuestionForm({
                                         ...questionForm,
-                                        question_type: value as any,
+                                        question_format: value as any,
                                       })
                                     }
                                   >
@@ -744,271 +784,289 @@ export default function LecturerQuestions() {
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent className="bg-white border-gray-300">
-                                      <SelectItem value="SINGLE_CHOICE">
-                                        Trắc nghiệm một đáp án
+                                      <SelectItem value="KNOWLEDGE">
+                                        Nhận biết
                                       </SelectItem>
-                                      <SelectItem value="MULTIPLE_CHOICE">
-                                        Trắc nghiệm nhiều đáp án
+                                      <SelectItem value="UNDERSTANDING">
+                                        Thông hiểu
                                       </SelectItem>
-                                      <SelectItem value="ESSAY">
-                                        Tự luận
+                                      <SelectItem value="APPLYING">
+                                        Vận dụng
+                                      </SelectItem>
+                                      <SelectItem value="ADVANCED">
+                                        Nâng cao
                                       </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
-                              </div>
 
-                              <div className="space-y-2">
-                                <Label htmlFor="edit-question-format">
-                                  Định dạng câu hỏi{" "}
-                                  <span className="text-red-500">*</span>
-                                </Label>
-                                <Select
-                                  value={questionForm.question_format}
-                                  onValueChange={(value) =>
-                                    setQuestionForm({
-                                      ...questionForm,
-                                      question_format: value as any,
-                                    })
-                                  }
-                                >
-                                  <SelectTrigger className="bg-white border-gray-300">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white border-gray-300">
-                                    <SelectItem value="KNOWLEDGE">
-                                      Nhận biết
-                                    </SelectItem>
-                                    <SelectItem value="UNDERSTANDING">
-                                      Thông hiểu
-                                    </SelectItem>
-                                    <SelectItem value="APPLYING">
-                                      Vận dụng
-                                    </SelectItem>
-                                    <SelectItem value="ADVANCED">
-                                      Nâng cao
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                                <div className="space-y-2">
+                                  <Label
+                                    htmlFor={`edit-image-file-${question.id}`}
+                                    className="cursor-pointer"
+                                  >
+                                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-[#0066cc] transition-colors">
+                                      {previewUrl ? (
+                                        <div className="relative group">
+                                          <img
+                                            src={previewUrl}
+                                            alt="Preview"
+                                            className="max-h-40 rounded-lg shadow-sm"
+                                          />
+                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                                            <Plus className="h-6 w-6 text-white" />
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <Plus className="h-8 w-8 text-gray-400 mb-2" />
+                                          <span className="text-sm text-gray-500">
+                                            Nhấp để tải ảnh lên
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </Label>
+                                  <Input
+                                    id={`edit-image-file-${question.id}`}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0] || null;
+                                      if (!file) return;
+                                      setImage(file);
+                                      setQuestionForm({
+                                        ...questionForm,
+                                        image_url: file.name,
+                                      });
+                                    }}
+                                  />
+                                </div>
 
-                              <div className="space-y-2">
-                                <Label
-                                  htmlFor={`edit-image-file-${question.id}`}
-                                >
-                                  Hình ảnh (tùy chọn)
-                                </Label>
-                                <Input
-                                  id={`edit-image-file-${question.id}`}
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0] || null;
-                                    if (!file) return;
-                                    setImage(file);
-                                    setQuestionForm({
-                                      ...questionForm,
-                                      image_url: file.name,
-                                    });
-                                  }}
-                                  className="bg-white border-gray-300"
-                                />
-                                {previewUrl && (
-                                  <div className="relative mt-2 w-fit">
-                                    <img
-                                      src={previewUrl}
-                                      alt="Preview"
-                                      className="max-w-xs max-h-64 rounded-md border border-gray-200"
-                                    />
-                                    <button
-                                      onClick={() => {
-                                        setImage(null);
-                                        setQuestionForm({
-                                          ...questionForm,
-                                          image_url: "",
-                                        });
-                                        setPreviewUrl("");
-                                        const input = document.getElementById(
-                                          `edit-image-file-${question.id}`
-                                        ) as HTMLInputElement;
-                                        if (input) input.value = "";
-                                      }}
-                                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-md hover:bg-red-600 transition-colors"
-                                      type="button"
-                                      title="Xóa ảnh"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
-                                  </div>
+                                {questionForm.question_type ===
+                                  "SINGLE_CHOICE" && (
+                                  <>
+                                    <div className="space-y-3">
+                                      <Label>
+                                        Các lựa chọn{" "}
+                                        <span className="text-red-500">*</span>
+                                      </Label>
+                                      <RadioGroup
+                                        value={String(
+                                          questionForm.options.findIndex(
+                                            (opt) => opt.isCorrect
+                                          )
+                                        )}
+                                        onValueChange={(val) => {
+                                          const idx = parseInt(val);
+                                          const newOpts =
+                                            questionForm.options.map(
+                                              (opt, i) => ({
+                                                ...opt,
+                                                isCorrect: i === idx,
+                                              })
+                                            );
+                                          setQuestionForm({
+                                            ...questionForm,
+                                            options: newOpts,
+                                          });
+                                        }}
+                                      >
+                                        {questionForm.options.map(
+                                          (option, idx) => (
+                                            <div
+                                              className="flex items-center gap-2"
+                                              key={idx}
+                                            >
+                                              <div className="flex-1">
+                                                <MathInput
+                                                  placeholder={`Lựa chọn ${
+                                                    idx + 1
+                                                  }`}
+                                                  value={option.text}
+                                                  onChange={(val) => {
+                                                    const newOpts = [
+                                                      ...questionForm.options,
+                                                    ];
+                                                    newOpts[idx].text = val;
+                                                    setQuestionForm({
+                                                      ...questionForm,
+                                                      options: newOpts,
+                                                    });
+                                                  }}
+                                                  className="bg-white border-gray-300"
+                                                />
+                                              </div>
+                                              <RadioGroupItem
+                                                value={String(idx)}
+                                                className="bg-white border-gray-300"
+                                              />
+                                            </div>
+                                          )
+                                        )}
+                                      </RadioGroup>
+                                    </div>
+                                  </>
                                 )}
-                              </div>
 
-                              {questionForm.question_type ===
-                                "SINGLE_CHOICE" && (
-                                <>
+                                {questionForm.question_type ===
+                                  "MULTIPLE_CHOICE" && (
                                   <div className="space-y-3">
                                     <Label>
                                       Các lựa chọn{" "}
                                       <span className="text-red-500">*</span>
                                     </Label>
-                                    <RadioGroup
-                                      value={selectedValue}
-                                      onValueChange={handleSelectionChange}
-                                    >
-                                      {questionForm.options.map(
-                                        (option, index) => (
-                                          <div
-                                            className="flex items-center gap-2"
-                                            key={index}
-                                          >
-                                            <div className="flex-1">
-                                              <MathInput
-                                                id={`option-${index}`}
-                                                placeholder={`Lựa chọn ${
-                                                  index + 1
-                                                }`}
-                                                value={option.text}
-                                                onChange={(value) => {
-                                                  const newOptions = [
-                                                    ...questionForm.options,
-                                                  ];
-                                                  newOptions[index].text =
-                                                    value;
-                                                  setQuestionForm({
-                                                    ...questionForm,
-                                                    options: newOptions,
-                                                  });
-                                                }}
-                                                className="bg-white border-gray-300"
-                                              />
-                                            </div>
-                                            <RadioGroupItem
-                                              value={String(index)}
-                                              id={`edit-option-${index}`}
-                                              className="bg-white border-gray-300"
-                                            />
-                                          </div>
-                                        )
-                                      )}
-                                    </RadioGroup>
-                                  </div>
-                                </>
-                              )}
-
-                              {questionForm.question_type ===
-                                "MULTIPLE_CHOICE" && (
-                                <div className="space-y-3">
-                                  <Label>
-                                    Các lựa chọn{" "}
-                                    <span className="text-red-500">*</span>
-                                  </Label>
-                                  {questionForm.options.map((option, index) => (
-                                    <div
-                                      className="flex items-center gap-2"
-                                      key={index}
-                                    >
-                                      <div className="flex-1">
-                                        <MathInput
-                                          id={`multi-option-${index}`}
-                                          placeholder={`Lựa chọn ${index + 1}`}
-                                          value={option.text}
-                                          onChange={(value) => {
-                                            const newOptions = [
+                                    {questionForm.options.map((option, idx) => (
+                                      <div
+                                        className="flex items-center gap-2"
+                                        key={idx}
+                                      >
+                                        <div className="flex-1">
+                                          <MathInput
+                                            placeholder={`Lựa chọn ${idx + 1}`}
+                                            value={option.text}
+                                            onChange={(val) => {
+                                              const newOpts = [
+                                                ...questionForm.options,
+                                              ];
+                                              newOpts[idx].text = val;
+                                              setQuestionForm({
+                                                ...questionForm,
+                                                options: newOpts,
+                                              });
+                                            }}
+                                            className="bg-white border-gray-300"
+                                          />
+                                        </div>
+                                        <Checkbox
+                                          checked={option.isCorrect}
+                                          onCheckedChange={() => {
+                                            const newOpts = [
                                               ...questionForm.options,
                                             ];
-                                            newOptions[index].text = value;
+                                            newOpts[idx].isCorrect =
+                                              !newOpts[idx].isCorrect;
                                             setQuestionForm({
                                               ...questionForm,
-                                              options: newOptions,
+                                              options: newOpts,
                                             });
                                           }}
                                           className="bg-white border-gray-300"
                                         />
                                       </div>
-                                      <Checkbox
-                                        checked={option.isCorrect}
-                                        onCheckedChange={() =>
-                                          handleCorrectChange(index)
-                                        }
-                                        value={String(index)}
-                                        id={`edit-option-${index}`}
-                                        className="bg-white border-gray-300"
-                                      />
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
+                                    ))}
+                                  </div>
+                                )}
 
-                              {questionForm.question_type === "ESSAY" && (
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-correct-answer">
-                                    Đáp án tham khảo{" "}
-                                    <span className="text-red-500">*</span>
-                                  </Label>
-                                  <MathInput
-                                    id="edit-correct-answer"
-                                    placeholder="Nhập đáp án tham khảo (có thể dùng công thức toán học)"
-                                    value={questionForm.correct_answer}
-                                    onChange={(value) =>
-                                      setQuestionForm({
-                                        ...questionForm,
-                                        correct_answer: value,
-                                      })
-                                    }
-                                    className="bg-white border-gray-300"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                            <DialogFooter>
+                                {questionForm.question_type === "ESSAY" && (
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-correct-answer">
+                                      Đáp án tham khảo{" "}
+                                      <span className="text-red-500">*</span>
+                                    </Label>
+                                    <MathInput
+                                      id="edit-correct-answer"
+                                      placeholder="Nhập đáp án tham khảo"
+                                      value={questionForm.correct_answer}
+                                      onChange={(value) =>
+                                        setQuestionForm({
+                                          ...questionForm,
+                                          correct_answer: value,
+                                        })
+                                      }
+                                      className="bg-white border-gray-300"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                              <DialogFooter>
+                                <Button
+                                  onClick={() =>
+                                    handleUpdateQuestion(question.id)
+                                  }
+                                  className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+                                >
+                                  Lưu thay đổi
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
                               <Button
-                                className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
-                                onClick={() =>
-                                  handleUpdateQuestion(question.id)
-                                }
+                                variant="ghost"
+                                size="icon"
+                                className="text-red-600 hover:text-red-700 hover:cursor-pointer"
                               >
-                                Cập nhật
+                                <Trash2 className="h-4 w-4" />
                               </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-600 hover:text-red-700 hover:cursor-pointer"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="top-28 bg-black/80 text-white border-none">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Xác nhận xoá</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Bạn có chắc muốn xoá câu hỏi này? Hành động
-                                không thể hoàn tác.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="bg-gray-800 border-none hover:cursor-pointer">
-                                Huỷ
-                              </AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-red-600 hover:bg-red-700 text-white hover:cursor-pointer"
-                                onClick={() =>
-                                  handleDeleteQuestion(question.id)
-                                }
-                              >
-                                Xoá
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-white border-gray-300">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Xác nhận xoá
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Bạn có chắc muốn xoá câu hỏi này? Hành động
+                                  không thể hoàn tác.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel className="hover:cursor-pointer">
+                                  Huỷ
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-red-600 hover:bg-red-700 text-white hover:cursor-pointer"
+                                  onClick={() =>
+                                    handleDeleteQuestion(question.id)
+                                  }
+                                >
+                                  Xoá
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-72 text-center">
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <div className="p-4 bg-gray-50 rounded-full">
+                          {searchTerm ? (
+                            <AlertCircle className="h-10 w-10 text-gray-400" />
+                          ) : (
+                            <FileQuestion className="h-10 w-10 text-gray-400" />
+                          )}
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-lg font-medium text-gray-900">
+                            {searchTerm
+                              ? "Không tìm thấy câu hỏi nào"
+                              : "Chưa có câu hỏi nào"}
+                          </p>
+                          <p className="text-sm text-gray-500 max-w-xs mx-auto">
+                            {searchTerm
+                              ? `Không có câu hỏi nào khớp với từ khóa "${searchTerm}". Vui lòng thử lại với từ khóa khác.`
+                              : "Ngân hàng câu hỏi của bạn đang trống. Hãy thêm câu hỏi đầu tiên để bắt đầu tạo các bài thi."}
+                          </p>
+                        </div>
+                        {!searchTerm && (
+                          <Button
+                            onClick={() => setIsDialogOpen(true)}
+                            className="bg-[#0066cc] hover:bg-[#0052a3] text-white mt-2"
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Thêm câu hỏi ngay
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
 

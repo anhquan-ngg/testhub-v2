@@ -1,3 +1,9 @@
+export const UserRoleMap = {
+  ADMIN: "Quản trị viên",
+  LECTURER: "Giảng viên",
+  STUDENT: "Sinh viên",
+} as const;
+
 export const QuestionTypeMap = {
   SINGLE_CHOICE: "Trắc nghiệm một đáp án",
   MULTIPLE_CHOICE: "Trắc nghiệm nhiều đáp án",

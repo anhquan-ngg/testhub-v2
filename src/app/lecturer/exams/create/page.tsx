@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateExam } from "../../../../../generated/hooks";
 import { ExamStatus } from "@prisma/client";
 import { toast } from "sonner";
@@ -34,6 +35,7 @@ export default function CreateExamPage() {
     exam_end_time: "",
     duration: "",
     practice: false,
+    is_public: false,
   });
 
   const createExamMutation = useCreateExam({
@@ -65,6 +67,7 @@ export default function CreateExamPage() {
       exam_start_time: new Date(examForm.exam_start_time),
       exam_end_time: new Date(examForm.exam_end_time),
       duration: Number.parseInt(examForm.duration),
+      is_public: examForm.is_public,
       status: ExamStatus.PENDING,
     } as const;
 
@@ -81,6 +84,7 @@ export default function CreateExamPage() {
       exam_end_time: "",
       duration: "",
       practice: false,
+      is_public: false,
     });
     router.push("/lecturer/exams");
   };
@@ -203,6 +207,25 @@ export default function CreateExamPage() {
                     <SelectItem value="practice">Bài thi thực hành</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="flex items-center space-x-2 py-4">
+                <Checkbox
+                  id="is_public"
+                  checked={examForm.is_public}
+                  onCheckedChange={(checked) =>
+                    setExamForm({
+                      ...examForm,
+                      is_public: checked as boolean,
+                    })
+                  }
+                  className="bg-white border-gray-300"
+                />
+                <Label
+                  htmlFor="is_public"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Công khai bài thi (Sinh viên có thể thấy mà không cần đăng ký)
+                </Label>
               </div>
             </div>
 

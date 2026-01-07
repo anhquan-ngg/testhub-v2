@@ -10,6 +10,7 @@ export * from './submission';
 export * from './question';
 export * from './exam-questions';
 export * from './submission-questions';
+export * from './exam-registration';
 export { getQueryKey } from '@zenstackhq/tanstack-query/runtime-v5';
 export { Provider } from '@zenstackhq/tanstack-query/runtime-v5/react';
 export { default as metadata } from './__model_meta';

@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2 } from "lucide-react";
 import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
+import { useAppSelector } from "@/store/hook";
 
 type EditExamPageProps = {
   params: Promise<{ id: string }>;
@@ -81,6 +82,7 @@ const mergeQuestionConfigs = (items: QuestionConfig[]): QuestionConfig[] => {
 
 export default function EditExamPage({ params }: EditExamPageProps) {
   const examId = use(params).id;
+  const lecturerId = useAppSelector((state) => state.user.id);
   const router = useRouter();
   const [questionBank, setQuestionBank] = useState([] as any);
   const [questionSelectionMode, setQuestionSelectionMode] = useState<
@@ -130,6 +132,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     exam_end_time: "",
     duration: "",
     practice: false,
+    is_public: false,
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -162,6 +165,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   });
 
   const { data: questionsData } = useFindManyQuestion({
+    where: {
+      lecturer_id: lecturerId,
+    },
     orderBy: { created_at: "desc" },
   });
 
@@ -205,6 +211,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       exam_start_time: new Date(examForm.exam_start_time),
       exam_end_time: new Date(examForm.exam_end_time),
       duration: Number.parseInt(examForm.duration),
+      is_public: examForm.is_public,
       status: ExamStatus.PENDING,
       mode: questionSelectionMode,
       sample_size:
@@ -259,6 +266,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
         exam_end_time: exam.exam_end_time.toISOString().slice(0, 16),
         duration: exam.duration.toString(),
         practice: exam.practice,
+        is_public: exam.is_public,
       });
       setQuestionSelectionMode(exam.mode);
       if (exam.mode === "RANDOM_N" && exam.sample_size) {
@@ -410,6 +418,25 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                     <SelectItem value="practice">Bài thi thực hành</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="flex items-center space-x-2 py-4">
+                <Checkbox
+                  id="is_public"
+                  checked={examForm.is_public}
+                  onCheckedChange={(checked) =>
+                    setExamForm({
+                      ...examForm,
+                      is_public: checked as boolean,
+                    })
+                  }
+                  className="bg-white border-gray-300"
+                />
+                <Label
+                  htmlFor="is_public"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Công khai bài thi (Sinh viên có thể thấy mà không cần đăng ký)
+                </Label>
               </div>
             </div>
 

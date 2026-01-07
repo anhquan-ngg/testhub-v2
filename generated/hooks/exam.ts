@@ -328,7 +328,7 @@ export function useSuspenseCountExam<TArgs extends Prisma.ExamCountArgs, TQueryF
 }
 import type { SelectionMode, ExamStatus } from '@prisma/client';
 
-export function useCheckExam<TError = DefaultError>(args: { operation: PolicyCrudKind; where?: { id?: string; lecturer_id?: string; topic?: string; title?: string; duration?: number; practice?: boolean; mode?: SelectionMode; sample_size?: number; distribution?: string; status?: ExamStatus }; }, options?: (Omit<UseQueryOptions<boolean, TError, boolean>, 'queryKey'> & ExtraQueryOptions)) {
+export function useCheckExam<TError = DefaultError>(args: { operation: PolicyCrudKind; where?: { id?: string; lecturer_id?: string; topic?: string; title?: string; duration?: number; practice?: boolean; mode?: SelectionMode; sample_size?: number; distribution?: string; is_public?: boolean; status?: ExamStatus }; }, options?: (Omit<UseQueryOptions<boolean, TError, boolean>, 'queryKey'> & ExtraQueryOptions)) {
     const { endpoint, fetch } = getHooksContext();
     return useModelQuery<boolean, boolean, TError>('Exam', `${endpoint}/exam/check`, args, options, fetch);
 }

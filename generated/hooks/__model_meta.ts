@@ -78,6 +78,12 @@ const metadata: ModelMeta = {
                     isDataModel: true,
                     isArray: true,
                     backLink: 'student',
+                }, registrations: {
+                    name: "registrations",
+                    type: "ExamRegistration",
+                    isDataModel: true,
+                    isArray: true,
+                    backLink: 'student',
                 },
             }, uniqueConstraints: {
                 id: {
@@ -140,6 +146,10 @@ const metadata: ModelMeta = {
                     name: "distribution",
                     type: "String",
                     isOptional: true,
+                }, is_public: {
+                    name: "is_public",
+                    type: "Boolean",
+                    attributes: [{ "name": "@default", "args": [{ "name": "value", "value": false }] }],
                 }, status: {
                     name: "status",
                     type: "ExamStatus",
@@ -153,6 +163,12 @@ const metadata: ModelMeta = {
                 }, questions: {
                     name: "questions",
                     type: "ExamQuestions",
+                    isDataModel: true,
+                    isArray: true,
+                    backLink: 'exam',
+                }, registrations: {
+                    name: "registrations",
+                    type: "ExamRegistration",
                     isDataModel: true,
                     isArray: true,
                     backLink: 'exam',
@@ -439,11 +455,67 @@ const metadata: ModelMeta = {
                 },
             },
         },
+        examRegistration: {
+            name: 'ExamRegistration', fields: {
+                id: {
+                    name: "id",
+                    type: "String",
+                    isId: true,
+                    attributes: [{ "name": "@default", "args": [{ "name": "value" }] }],
+                }, created_at: {
+                    name: "created_at",
+                    type: "DateTime",
+                    attributes: [{ "name": "@default", "args": [{ "name": "value" }] }],
+                }, updated_at: {
+                    name: "updated_at",
+                    type: "DateTime",
+                    attributes: [{ "name": "@updatedAt", "args": [] }],
+                }, exam_id: {
+                    name: "exam_id",
+                    type: "String",
+                    isForeignKey: true,
+                    relationField: 'exam',
+                }, student_id: {
+                    name: "student_id",
+                    type: "String",
+                    isForeignKey: true,
+                    relationField: 'student',
+                }, status: {
+                    name: "status",
+                    type: "RegistrationStatus",
+                    attributes: [{ "name": "@default", "args": [{ "name": "value" }] }],
+                }, exam: {
+                    name: "exam",
+                    type: "Exam",
+                    isDataModel: true,
+                    backLink: 'registrations',
+                    isRelationOwner: true,
+                    onDeleteAction: 'Cascade',
+                    foreignKeyMapping: { "id": "exam_id" },
+                }, student: {
+                    name: "student",
+                    type: "User",
+                    isDataModel: true,
+                    backLink: 'registrations',
+                    isRelationOwner: true,
+                    onDeleteAction: 'Cascade',
+                    foreignKeyMapping: { "id": "student_id" },
+                },
+            }, uniqueConstraints: {
+                id: {
+                    name: "id",
+                    fields: ["id"]
+                }, exam_id_student_id: {
+                    name: "exam_id_student_id",
+                    fields: ["exam_id", "student_id"]
+                },
+            },
+        },
 
     },
     deleteCascade: {
-        user: ['Exam', 'Submission', 'Question'],
-        exam: ['Submission', 'ExamQuestions'],
+        user: ['Exam', 'Submission', 'Question', 'ExamRegistration'],
+        exam: ['Submission', 'ExamQuestions', 'ExamRegistration'],
         submission: ['SubmissionQuestions'],
         question: ['ExamQuestions', 'SubmissionQuestions'],
 
