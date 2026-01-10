@@ -112,7 +112,7 @@ export default function QuestionsPage() {
                         <MathRenderer content={question.question_text} />
                       </div>
                     </TableCell>
-                    <TableCell>{question.lecturer.full_name}</TableCell>
+                    <TableCell>{question.lecturer?.full_name}</TableCell>
                     <TableCell>{question.topic}</TableCell>
                     <TableCell>
                       <Badge

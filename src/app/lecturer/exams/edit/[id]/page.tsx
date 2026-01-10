@@ -202,7 +202,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       !examForm.exam_end_time ||
       !examForm.duration
     ) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+      toast.warning("Vui lòng điền đầy đủ thông tin!");
       return;
     }
 
@@ -212,7 +212,10 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       exam_end_time: new Date(examForm.exam_end_time),
       duration: Number.parseInt(examForm.duration),
       is_public: examForm.is_public,
-      status: ExamStatus.PENDING,
+      status:
+        exam?.status === ("INACTIVE" as any)
+          ? ExamStatus.INACTIVE
+          : ExamStatus.ACTIVE,
       mode: questionSelectionMode,
       sample_size:
         questionSelectionMode === "RANDOM_N"
@@ -223,6 +226,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
           ? JSON.stringify(distribution)
           : null,
     } as const;
+
+    console.log("DEBUG: submitting payload", payload);
 
     const upsertPromises = selectedQuestions.map((questionId) =>
       upsertExamQuestions.mutateAsync({

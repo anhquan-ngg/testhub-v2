@@ -1078,6 +1078,7 @@ export default function LecturerQuestions() {
                   onClick={() =>
                     setCurrentPage((prev) => Math.max(prev - 1, 1))
                   }
+                  className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -1092,6 +1093,7 @@ export default function LecturerQuestions() {
                   onClick={() =>
                     setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                   }
+                  className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
                   disabled={currentPage === totalPages}
                 >
                   Sau

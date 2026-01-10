@@ -1,7 +1,9 @@
 "use client";
 
+import axiosClient from "@/lib/axios";
+
 import { useRouter } from "next/navigation";
-import { use } from "react";
+import { use, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,27 +14,24 @@ import {
   CheckCircle,
   XCircle,
   FileText,
+  Printer,
 } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
 import { useFindUniqueSubmission } from "../../../../../generated/hooks";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useAppSelector } from "@/store/hook";
+import {
+  calculateScorePerQuestion,
+  calculateTotalQuesions,
+  parseOptions,
+} from "@/lib/exam-utils";
+import { toast } from "sonner";
 
 interface PageProps {
   params: Promise<{
     id: string;
   }>;
-}
-
-// Helper function to parse JSON options
-function parseOptions(optionsString: string | null): any[] {
-  if (!optionsString) return [];
-  try {
-    return JSON.parse(optionsString);
-  } catch {
-    return [];
-  }
 }
 
 // Helper function to calculate time taken
@@ -57,7 +56,11 @@ export default function ResultDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const router = useRouter();
-  const userId = useAppSelector((state) => state.user.id);
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  const user = useAppSelector((state) => state.user);
+  const userId = user.id;
+  const userRole = user.role;
 
   const {
     data: submission,
@@ -73,6 +76,14 @@ export default function ResultDetailPage({ params }: PageProps) {
             title: true,
             topic: true,
             practice: true,
+            mode: true,
+            sample_size: true,
+            distribution: true,
+            _count: {
+              select: {
+                questions: true,
+              },
+            },
           },
         },
         questions: {
@@ -88,6 +99,11 @@ export default function ResultDetailPage({ params }: PageProps) {
             },
           },
         },
+        student: {
+          select: {
+            full_name: true,
+          },
+        },
       },
     },
     {
@@ -95,8 +111,40 @@ export default function ResultDetailPage({ params }: PageProps) {
     }
   );
 
-  // Security check - ensure user owns this submission
-  if (submission && submission.student_id !== userId) {
+  // ... existing code ...
+
+  const handlePrint = async () => {
+    try {
+      setIsPrinting(true);
+      const response = await axiosClient.get(`/submission/${id}/pdf`, {
+        responseType: "blob",
+      });
+
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Ketqua_${submission?.student?.full_name?.replace(
+        /\s+/g,
+        "_"
+      )}_${id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Print error:", err);
+      toast.error("Có lỗi xảy ra khi tạo bản in. Vui lòng thử lại sau.");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  // Security check - allow owner, lecturer of the exam, or ADMIN
+  const isLecturer = userRole === "LECTURER";
+  const isAdmin = userRole === "ADMIN";
+  const isOwner = submission?.student_id === userId;
+
+  if (submission && !isOwner && !isAdmin && !isLecturer) {
     return (
       <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <StudentSideBar />
@@ -179,14 +227,25 @@ export default function ResultDetailPage({ params }: PageProps) {
         <main className="flex-1 p-8">
           <div className="mx-auto space-y-6">
             {/* Back Button */}
-            <Button
-              onClick={() => router.push("/result")}
-              variant="outline"
-              className="flex items-center gap-2 bg-white border-gray-300 hover:cursor-pointer"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Quay lại danh sách
-            </Button>
+            <div className="flex items-center justify-between no-print">
+              <Button
+                onClick={() => router.back()}
+                variant="outline"
+                className="flex items-center gap-2 bg-white border-gray-300 hover:cursor-pointer"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Quay lại
+              </Button>
+              <Button
+                onClick={handlePrint}
+                disabled={isPrinting}
+                variant="outline"
+                className="flex items-center gap-2 bg-white border-gray-300 hover:cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                {isPrinting ? "Đang chuẩn bị bản in..." : "In bài thi"}
+              </Button>
+            </div>
 
             {/* Header Card */}
             <Card className="shadow-lg bg-white border border-gray-300">
@@ -198,8 +257,11 @@ export default function ResultDetailPage({ params }: PageProps) {
                       <h1 className="text-2xl font-bold text-gray-900">
                         {submission.exam.title}
                       </h1>
-                      <Badge variant={isPractice ? "default" : "secondary"}>
-                        {isPractice ? "Luyện tập" : "Thi"}
+                      <Badge
+                        variant="default"
+                        className="bg-purple-50 text-purple-600 border-purple-200"
+                      >
+                        {isPractice ? "Luyện tập" : "Chính thức"}
                       </Badge>
                     </div>
                     <p className="text-gray-600 ml-9">
@@ -208,7 +270,6 @@ export default function ResultDetailPage({ params }: PageProps) {
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-2 text-3xl font-bold text-blue-600">
-                      <Award className="w-8 h-8" />
                       {submission.total_score !== null
                         ? Number(submission.total_score).toFixed(2)
                         : "0.00"}
@@ -245,7 +306,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                     <div>
                       <p className="text-sm text-gray-600">Số câu hỏi</p>
                       <p className="font-semibold text-gray-900">
-                        {submission.questions?.length || 0}
+                        {calculateTotalQuesions(submission)}
                       </p>
                     </div>
                   </div>
@@ -253,8 +314,8 @@ export default function ResultDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
 
-            {/* Questions List */}
-            {isPractice &&
+            {/* Questions List - Always show for lecturer/admin or if it's a practice exam */}
+            {(isPractice || isLecturer || isAdmin) &&
               submission.questions &&
               submission.questions.length > 0 && (
                 <div className="space-y-4">
@@ -300,10 +361,13 @@ export default function ResultDetailPage({ params }: PageProps) {
                                 />
                               </div>
                             </div>
-                            <Badge variant="outline" className="font-semibold">
-                              {sq.score !== null
-                                ? Number(sq.score).toFixed(2)
-                                : "0"}{" "}
+                            <Badge
+                              variant="outline"
+                              className="font-semibold border-gray-300 text-gray-900 bg-white"
+                            >
+                              {(
+                                calculateScorePerQuestion(submission) * sq.score
+                              ).toFixed(2)}{" "}
                               điểm
                             </Badge>
                           </div>
@@ -382,7 +446,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                                       {isStudentChoice && (
                                         <Badge
                                           variant="outline"
-                                          className="text-xs"
+                                          className="text-xs font-bold border-gray-300 text-gray-900 bg-white px-3 py-1 rounded-full whitespace-nowrap"
                                         >
                                           Bạn chọn
                                         </Badge>
@@ -411,6 +475,22 @@ export default function ResultDetailPage({ params }: PageProps) {
           </div>
         </main>
       </div>
+      <style jsx global>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          .flex-1 {
+            width: 100% !important;
+          }
+          nav,
+          aside,
+          .StudentSideBar,
+          .StudentMenu {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

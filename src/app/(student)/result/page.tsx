@@ -30,6 +30,12 @@ interface SubmissionWithDetails {
     title: string;
     topic: string;
     practice: boolean;
+    mode: string;
+    sample_size: number;
+    distribution: any;
+    _count: {
+      questions: number;
+    };
   };
   questions?: Array<{
     id: string;
@@ -55,6 +61,10 @@ export default function ResultPage() {
     {
       where: {
         student_id: userId,
+        status: "COMPLETED",
+        exam: {
+          status: "ACTIVE",
+        },
       },
       include: {
         exam: {
@@ -63,17 +73,12 @@ export default function ResultPage() {
             title: true,
             topic: true,
             practice: true,
-          },
-        },
-        questions: {
-          include: {
-            question: {
+            mode: true,
+            sample_size: true,
+            distribution: true,
+            _count: {
               select: {
-                id: true,
-                question_text: true,
-                question_type: true,
-                options: true,
-                correct_answer: true,
+                questions: true,
               },
             },
           },
@@ -88,10 +93,8 @@ export default function ResultPage() {
     }
   );
 
-  // Filter only completed submissions
-  const submissions = submissionsData?.filter(
-    (sub: any) => sub.status === "COMPLETED"
-  );
+  // Filter only completed submissions (already handled by the query)
+  const submissions = submissionsData;
 
   const calculateTimeTaken = (
     startTime: Date | null,
@@ -138,6 +141,15 @@ export default function ResultPage() {
     }
   };
 
+  const getDistributionQuestions = (distributions: any) => {
+    const parsedDistribution = JSON.parse(distributions);
+    let res = 0;
+    for (let i = 0; i < parsedDistribution.length; i++) {
+      res += parsedDistribution[i].quantity;
+    }
+    return res;
+  };
+
   const parseOptions = (optionsStr: string | null): any[] => {
     if (!optionsStr) return [];
     try {
@@ -182,7 +194,6 @@ export default function ResultPage() {
                 Kết quả bài thi
               </h2>
               <div className="flex items-center gap-2">
-                <Award className="w-6 h-6 text-yellow-500" />
                 <span className="text-lg font-semibold text-gray-700">
                   Tổng số bài: {submissions?.length || 0}
                 </span>
@@ -236,7 +247,6 @@ export default function ResultPage() {
                               </Badge>
                             </div>
                             <p className="text-gray-600 flex items-center gap-2">
-                              <BookOpen className="w-4 h-4" />
                               <span className="font-medium">Chủ đề:</span>
                               {submission.exam.topic}
                             </p>
@@ -251,7 +261,6 @@ export default function ResultPage() {
                               {getRatingText(submission.rating)}
                             </Badge>
                             <div className="flex items-center gap-2 text-lg font-bold text-gray-900">
-                              <TrendingUp className="w-5 h-5 text-green-600" />
                               <span>
                                 Điểm:{" "}
                                 {submission.total_score !== null
@@ -296,20 +305,26 @@ export default function ResultPage() {
                                 Số câu hỏi
                               </p>
                               <p className="font-semibold text-gray-900">
-                                {submission.questions?.length || 0}
+                                {submission.exam.mode === "RANDOM_N"
+                                  ? submission.exam.sample_size
+                                  : submission.exam.mode === "BY_TYPE"
+                                  ? getDistributionQuestions(
+                                      submission.exam.distribution
+                                    )
+                                  : submission.exam._count.questions || 0}
                               </p>
                             </div>
                           </div>
                         </div>
 
-                        {isPractice && submission.questions && (
+                        {isPractice && (
                           <div className="mt-4">
                             <Button
                               onClick={() =>
                                 router.push(`/result/${submission.id}`)
                               }
                               variant="outline"
-                              className="w-full flex items-center justify-center gap-2 hover:bg-gray-50"
+                              className="w-full flex items-center justify-center bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer gap-2"
                             >
                               <FileText className="w-4 h-4" />
                               Xem chi tiết câu trả lời

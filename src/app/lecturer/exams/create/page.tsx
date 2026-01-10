@@ -57,7 +57,7 @@ export default function CreateExamPage() {
       !examForm.exam_end_time ||
       !examForm.duration
     ) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+      toast.warning("Vui lòng điền đầy đủ thông tin!");
       return;
     }
 
@@ -68,7 +68,7 @@ export default function CreateExamPage() {
       exam_end_time: new Date(examForm.exam_end_time),
       duration: Number.parseInt(examForm.duration),
       is_public: examForm.is_public,
-      status: ExamStatus.PENDING,
+      status: ExamStatus.ACTIVE,
     } as const;
 
     console.log("New exam:", newExam);

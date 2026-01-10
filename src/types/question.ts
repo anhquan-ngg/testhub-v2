@@ -7,7 +7,7 @@ export interface QuestionOption {
 
 export interface IQuestion {
   id: string;
-  lectured_id: string;
+  lecturer_id: string;
   question_text: string;
   topic: string;
   options?: QuestionOption[];
@@ -17,4 +17,7 @@ export interface IQuestion {
   question_format: QuestionFormat;
   created_at: Date;
   updated_at: Date;
+  lecturer?: {
+    full_name: string;
+  };
 }

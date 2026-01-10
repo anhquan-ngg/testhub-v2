@@ -2,11 +2,13 @@
 
 import type React from "react";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   useCountSubmission,
   useFindUniqueUser,
   useUpdateUser,
+  useFindManyExamRegistration,
+  useFindManySubmission,
 } from "../../../../generated/hooks";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +24,7 @@ import {
   Edit,
   EyeOff,
   Eye,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -34,14 +37,18 @@ import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
 import axiosClient from "@/lib/axios";
 import { toast } from "sonner";
-import { useAppSelector } from "@/store/hook";
+import { useAppSelector, useAppDispatch } from "@/store/hook";
+import { login as loginAction } from "@/store/slices/userSlice";
 
 import { useMinIO } from "@/hook/useMinIO";
 
 export default function StudentProfile() {
   const student = useAppSelector((state) => state.user);
-  const { getViewUrl } = useMinIO("avatars");
+  const dispatch = useAppDispatch();
+  const { uploadFile, getViewUrl } = useMinIO("avatars");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: userProfile } = useFindUniqueUser({
     where: { id: student.id },
@@ -63,6 +70,40 @@ export default function StudentProfile() {
   const { data: submissionCount } = useCountSubmission({
     where: { student_id: student.id, status: "COMPLETED" },
   });
+
+  // Fetch user's exam registrations for official exams
+  const { data: userRegistrations } = useFindManyExamRegistration(
+    {
+      where: {
+        student_id: student.id,
+      },
+      include: {
+        exam: true,
+      },
+    },
+    {
+      enabled: !!student.id,
+    }
+  );
+
+  //Filter for official (non-practice) exams
+  const officialExamIds =
+    userRegistrations
+      ?.filter((reg: any) => reg.exam?.practice === false)
+      .map((reg: any) => reg.exam_id) || [];
+
+  // Fetch completed submissions for official exams
+  const { data: completedSubmissions } = useFindManySubmission({
+    where: {
+      student_id: student.id,
+      status: "COMPLETED",
+      exam_id: { in: officialExamIds },
+    },
+  });
+
+  // Calculate pending exams (registered but not completed)
+  const pendingExamsCount =
+    officialExamIds.length - (completedSubmissions?.length || 0);
 
   const { mutate: updateUser } = useUpdateUser();
 
@@ -166,6 +207,64 @@ export default function StudentProfile() {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+
+      // 1. Hiển thị preview ảnh
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setAvatarUrl(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // 2. Upload file lên MinIO
+      await uploadFile(file);
+
+      // 3. Cập nhật avatar_url trong Redux store (chỉ lưu file.name)
+      dispatch(
+        loginAction({
+          id: student.id,
+          full_name: student.full_name,
+          email: student.email,
+          avatar_url: file.name,
+          role: student.role!,
+        })
+      );
+
+      // 4. Cập nhật avatar_url trên backend (chỉ lưu file.name)
+      updateUser(
+        {
+          where: { id: student.id },
+          data: {
+            avatar_url: file.name,
+          },
+        },
+        {
+          onSuccess: () => {
+            toast.success("Cập nhật ảnh đại diện thành công!");
+          },
+          onError: (error) => {
+            console.error("Update failed:", error);
+            toast.error("Cập nhật thất bại. Vui lòng thử lại.");
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Lỗi khi tải ảnh lên. Vui lòng thử lại.");
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <div
       className="min-h-screen flex"
@@ -188,7 +287,6 @@ export default function StudentProfile() {
               <Card className="shadow-lg bg-white border-gray-300">
                 <CardContent className="p-6 flex flex-col items-center space-y-4">
                   <div className="relative">
-                    <Camera className="absolute -top-2 -right-2 h-6 w-6 text-gray-700 bg-white rounded-full p-1 shadow-md cursor-pointer" />
                     <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300 overflow-hidden">
                       {avatarUrl ? (
                         <img
@@ -200,7 +298,25 @@ export default function StudentProfile() {
                         <User className="h-12 w-12 text-gray-500" />
                       )}
                     </div>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="absolute bottom-0 right-0 bg-[#0066cc] text-white rounded-full p-2 shadow-lg hover:bg-[#0052a3] transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                   <p className="font-semibold text-gray-900">
                     {student.full_name}
                   </p>
@@ -209,8 +325,7 @@ export default function StudentProfile() {
 
               {/* Tests Completed Card */}
               <Card className="shadow-lg bg-white border-gray-300">
-                <CardContent className="p-6 flex flex-col items-center space-y-4">
-                  <Award className="h-8 w-8 text-gray-700" />
+                <CardContent className="p-6 flex flex-col items-center justify-center space-y-6">
                   <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
                     <span className="text-2xl font-bold text-teal-600">
                       {submissionCount || 0}
@@ -222,11 +337,10 @@ export default function StudentProfile() {
 
               {/* Tests To Do Card */}
               <Card className="shadow-lg bg-white border-gray-300">
-                <CardContent className="p-6 flex flex-col items-center space-y-4">
-                  <Clipboard className="h-8 w-8 text-gray-700" />
+                <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
                   <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
                     <span className="text-2xl font-bold text-orange-500">
-                      0
+                      {pendingExamsCount}
                     </span>
                   </div>
                   <p className="font-medium text-gray-700">Bài cần làm</p>

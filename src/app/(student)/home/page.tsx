@@ -11,6 +11,7 @@ import {
   useCreateExamRegistration,
   useFindManyExam,
   useFindManyExamRegistration,
+  useFindManySubmission,
 } from "../../../../generated/hooks";
 import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
@@ -35,17 +36,40 @@ export default function StudentDashboard() {
         },
       },
     },
+    where: {
+      status: "ACTIVE",
+    },
     orderBy: {
       created_at: "asc",
     },
   });
 
   const { data: registrationsData, refetch: refetchRegistrations } =
-    useFindManyExamRegistration({
+    useFindManyExamRegistration(
+      {
+        where: {
+          student_id: user.id,
+        },
+      },
+      {
+        enabled: !!user.id,
+      }
+    );
+
+  const { data: submissions } = useFindManySubmission(
+    {
       where: {
         student_id: user.id,
       },
-    });
+      select: {
+        exam_id: true,
+        status: true,
+      },
+    },
+    {
+      enabled: !!user.id,
+    }
+  );
 
   const createRegistrationMutation = useCreateExamRegistration();
 
@@ -228,6 +252,22 @@ export default function StudentDashboard() {
                           const now = new Date();
                           const startTime = new Date(test.exam_start_time);
                           const endTime = new Date(test.exam_end_time);
+
+                          const isCompleted = submissions?.some(
+                            (s) => s.exam_id === test.id
+                          );
+
+                          // Logic for official exams
+                          if (!test.practice && isCompleted) {
+                            return (
+                              <Button
+                                disabled
+                                className="w-full bg-green-100 text-green-700 cursor-not-allowed font-semibold border border-green-200"
+                              >
+                                Hoàn thành
+                              </Button>
+                            );
+                          }
 
                           if (!registration) {
                             return (

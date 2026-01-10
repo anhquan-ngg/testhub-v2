@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import {
   Card,
@@ -26,36 +27,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Search, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Search,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
+} from "lucide-react";
 import { useFindManyExam } from "../../../../../generated/hooks";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 
-const mockStudents = [
-  {
-    id: 1,
-    name: "Nguyễn Văn A",
-    email: "nguyenvana@example.com",
-    status: "Đã đăng ký",
-  },
-  {
-    id: 2,
-    name: "Trần Thị B",
-    email: "tranthib@example.com",
-    status: "Chưa đăng ký",
-  },
-  {
-    id: 3,
-    name: "Lê Văn C",
-    email: "levanc@example.com",
-    status: "Đã đăng ký",
-  },
-];
-
 export default function ExamsPage() {
+  const router = useRouter();
   const [exams, setExams] = useState([] as any);
-  const [students] = useState(mockStudents);
+  // const [students] = useState(mockStudents);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Pagination state
@@ -150,7 +137,8 @@ export default function ExamsPage() {
                 <TableHead>Thời lượng</TableHead>
                 <TableHead>Loại bài thi</TableHead>
                 <TableHead>Trạng thái</TableHead>
-                <TableHead>Sinh viên</TableHead>
+                {/* <TableHead>Sinh viên</TableHead> */}
+                <TableHead className="text-right">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -182,7 +170,7 @@ export default function ExamsPage() {
                       {exam.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  {/* <TableCell>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
@@ -234,6 +222,21 @@ export default function ExamsPage() {
                         </Table>
                       </DialogContent>
                     </Dialog>
+                  </TableCell> */}
+                  <TableCell className="text-center">
+                    <div className="flex justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          router.push(`/dashboard/exams/${exam.id}/report`)
+                        }
+                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:cursor-pointer"
+                        title="Xem báo cáo"
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Flag,
   Menu,
+  Printer,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -32,6 +33,7 @@ import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
 import axiosClient from "@/lib/axios";
 import { ExamData } from "@/types/exam";
+import { useReactToPrint } from "react-to-print";
 
 interface Question {
   id: string;
@@ -61,8 +63,54 @@ export default function ExamPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: exam?.title || "Exam",
+  });
+
+  const [printableQuestions, setPrintableQuestions] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchPrintData = async () => {
+      if (!exam?.questions) return;
+
+      const processed = await Promise.all(
+        exam.questions.map(async (q) => {
+          let opts = q.options;
+          if (typeof opts === "string") {
+            try {
+              opts = JSON.parse(opts);
+            } catch {}
+          }
+
+          let imageUrl = q.image_url;
+          if (imageUrl && !imageUrl.startsWith("http")) {
+            try {
+              const resolved = await getViewUrl(imageUrl);
+              if (resolved) imageUrl = resolved;
+            } catch (e) {
+              console.error("Error resolving print image:", e);
+            }
+          }
+
+          return {
+            ...q,
+            options: Array.isArray(opts) ? opts : [],
+            image_url: imageUrl,
+          };
+        })
+      );
+      setPrintableQuestions(processed);
+    };
+
+    fetchPrintData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam]);
 
   // ... (existing code, I need to be careful with context matching)
   // I will insert useMinIO and state at top, and the effect later or merge?
@@ -264,7 +312,8 @@ export default function ExamPage() {
       await axiosClient.post("/submission/submit-exam", payload);
       toast.success("Nộp bài thành công!");
       dispatch(endTest());
-      router.push("/home");
+      setIsSubmitted(true);
+      // router.push("/home");
     } catch (error) {
       toast.error("Nộp bài thất bại");
       console.error(error);
@@ -295,6 +344,56 @@ export default function ExamPage() {
             <Link href="/home">Quay lại trang chủ</Link>
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  // Completion View
+  if (isSubmitted) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{
+          background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
+        }}
+      >
+        <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/95 backdrop-blur text-center">
+          <CardHeader className="pt-10 pb-4">
+            <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            </div>
+            <CardTitle className="text-3xl font-bold text-gray-900">
+              Nộp bài thành công!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-8 pb-10 space-y-6">
+            <div className="space-y-2 text-gray-600">
+              <p className="text-lg">
+                Bạn đã hoàn thành bài thi <strong>{exam.title}</strong>.
+              </p>
+              <p>
+                Hệ thống đã ghi nhận kết quả của bạn. Vui lòng truy cập trang{" "}
+                <Link
+                  href={`/result/${examId}`}
+                  className="font-semibold text-blue-600 hover:underline"
+                >
+                  Kết quả thi
+                </Link>{" "}
+                để xem điểm số chi tiết.
+              </p>
+            </div>
+
+            <div className="pt-4">
+              <Button
+                size="lg"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
+                asChild
+              >
+                <Link href="/home">Quay lại trang chủ</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -411,6 +510,17 @@ export default function ExamPage() {
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
+                  {exam.practice && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:cursor-pointer"
+                      onClick={() => handlePrint()}
+                    >
+                      <Printer className="w-5 h-5" />
+                      In đề thi
+                    </Button>
+                  )}
                   <Button variant="outline" size="lg" className="px-8" asChild>
                     <Link href="/home">Quay lại</Link>
                   </Button>
@@ -425,6 +535,75 @@ export default function ExamPage() {
               </CardContent>
             </Card>
           </main>
+        </div>
+
+        {/* Hidden Printable Content */}
+        <div style={{ display: "none" }}>
+          <div ref={printRef} className="p-8 bg-white text-black">
+            <style type="text/css" media="print">
+              {`
+                @page { size: auto; margin: 20mm; }
+                body { -webkit-print-color-adjust: exact; }
+              `}
+            </style>
+            <div className="text-center mb-8 border-b pb-4">
+              <h1 className="text-2xl font-bold mb-2">{exam.title}</h1>
+              <div className="flex justify-center gap-6 text-sm text-gray-600">
+                <p>Chủ đề: {exam.topic}</p>
+                <p>Thời gian: {exam.duration} phút</p>
+                <p>Số câu: {printableQuestions.length}</p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {printableQuestions.map((q, i) => (
+                <div key={q.id} className="break-inside-avoid mb-6">
+                  <div className="flex gap-2">
+                    <span className="font-bold whitespace-nowrap">
+                      Câu {i + 1}:
+                    </span>
+                    <div className="flex-1">
+                      <div className="mb-2 font-medium">
+                        <MathRenderer content={q.question_text} />
+                      </div>
+
+                      {q.image_url && (
+                        <div className="my-2 max-w-[300px]">
+                          {/* Note: Images might need handling for auth/url if private, assuming public or handled */}
+                          <img
+                            src={
+                              q.image_url.startsWith("http") ? q.image_url : ""
+                            }
+                            alt="Question Image"
+                            className="max-h-48 object-contain"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-2 ml-2">
+                        {q.options.map((opt: any, optIndex: number) => (
+                          <div
+                            key={optIndex}
+                            className="flex gap-2 items-start"
+                          >
+                            <div className="w-4 h-4 rounded-full border border-black mt-1 flex-shrink-0" />
+                            <span className="text-sm">
+                              <MathRenderer content={opt.text} />
+                            </span>
+                          </div>
+                        ))}
+                        {q.question_type === "ESSAY" && (
+                          <div className="h-24 border border-gray-300 rounded p-2 text-sm text-gray-400 mt-2">
+                            (Phần trả lời tự luận)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -552,14 +731,6 @@ export default function ExamPage() {
                   <h2 className="text-xl font-bold text-gray-800">
                     Câu hỏi {currentQuestionIndex + 1}
                   </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-gray-500 hover:text-yellow-600"
-                  >
-                    <Flag className="w-4 h-4 mr-1" />
-                    Báo lỗi
-                  </Button>
                 </div>
 
                 <div className="prose max-w-none mb-8">
@@ -686,7 +857,7 @@ export default function ExamPage() {
                   setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))
                 }
                 disabled={currentQuestionIndex === 0}
-                className="w-32"
+                className="w-32 hover:cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Câu trước
@@ -708,7 +879,7 @@ export default function ExamPage() {
                   }
                 }}
                 variant="outline"
-                className="w-32"
+                className="w-32 hover:cursor-pointer"
                 disabled={currentQuestionIndex === questions.length - 1}
               >
                 Câu sau

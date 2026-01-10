@@ -5,7 +5,7 @@
 
 datasource db {
   provider = "postgresql"
-  url      = env("")
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -21,7 +21,6 @@ enum UserRole {
 
 /// Enum for exams.status
 enum ExamStatus {
-  PENDING
   ACTIVE
   INACTIVE
 }
@@ -104,7 +103,7 @@ model Exam {
   sample_size     Int?
   distribution    String?
   is_public       Boolean            @default(false)
-  status          ExamStatus         @default(PENDING)
+  status          ExamStatus         @default(ACTIVE)
   submissions     Submission[]
   questions       ExamQuestions[]
   registrations   ExamRegistration[]

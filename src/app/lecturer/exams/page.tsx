@@ -41,6 +41,7 @@ import {
   ChevronRight,
   UserPlus,
   Loader2,
+  BarChart3,
 } from "lucide-react";
 import {
   useDeleteExam,
@@ -50,6 +51,7 @@ import {
   useDeleteExamRegistration,
   useFindManyUser,
   useCreateExamRegistration,
+  useUpdateExam,
 } from "../../../../generated/hooks";
 import { toast } from "sonner";
 import {
@@ -64,6 +66,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAppSelector } from "@/store/hook";
 
 function StudentManagementDialog({ exam }: { exam: any }) {
@@ -172,7 +181,7 @@ function StudentManagementDialog({ exam }: { exam: any }) {
           <Button
             onClick={handleManualAdd}
             disabled={isAdding}
-            className="bg-[#0066cc] hover:bg-[#0052a3] text-white"
+            className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
           >
             {isAdding ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -228,7 +237,7 @@ function StudentManagementDialog({ exam }: { exam: any }) {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="text-green-600 border-green-200 hover:bg-green-50"
+                            className="text-green-600 border-green-200 hover:bg-green-50 hover:cursor-pointer"
                             onClick={() => handleApprove(reg.id)}
                           >
                             Duyệt
@@ -237,7 +246,7 @@ function StudentManagementDialog({ exam }: { exam: any }) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 hover:text-red-700 hover:cursor-pointer"
                           onClick={() => handleDelete(reg.id)}
                         >
                           Xóa
@@ -274,21 +283,28 @@ export default function LecturerExams() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
-  const { data: examsData } = useFindManyExam({
-    orderBy: { created_at: "desc" },
-    include: {
-      registrations: true,
+  const { data: examsData } = useFindManyExam(
+    {
+      orderBy: { created_at: "desc" },
+      include: {
+        registrations: true,
+      },
+      where: {
+        lecturer_id: user.id,
+      },
     },
-    where: {
-      lecturer_id: user.id,
-    },
-  });
+    {
+      enabled: !!user.id,
+    }
+  );
 
   const deleteExamMutation = useDeleteExam({
     onSuccess: () => {
       toast.success("Xóa bài thi thành công");
     },
   });
+
+  const updateExamMutation = useUpdateExam();
 
   const handleDeleteExam = async (examId: string) => {
     try {
@@ -368,7 +384,7 @@ export default function LecturerExams() {
                 <TableHead>Loại</TableHead>
                 <TableHead>Trạng thái</TableHead>
                 <TableHead>Sinh viên</TableHead>
-                <TableHead className="text-right">Thao tác</TableHead>
+                <TableHead className="text-center">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -390,17 +406,44 @@ export default function LecturerExams() {
                       {exam.practice ? "Luyện tập" : "Chính thức"}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        className={`px-2 py-0.5 text-[10px] text-white rounded-md ${
-                          exam.status === "INACTIVE"
-                            ? "bg-red-500"
-                            : exam.status === "ACTIVE"
-                            ? "bg-green-500"
-                            : "bg-blue-500"
-                        }`}
+                      <Select
+                        defaultValue={exam.status}
+                        onValueChange={async (value) => {
+                          try {
+                            await updateExamMutation.mutateAsync({
+                              where: { id: exam.id },
+                              data: { status: value as any },
+                            });
+                            toast.success("Cập nhật trạng thái thành công");
+                          } catch (error) {
+                            toast.error("Lỗi khi cập nhật trạng thái");
+                          }
+                        }}
                       >
-                        {exam.status}
-                      </Badge>
+                        <SelectTrigger
+                          className={`h-7 w-[100px] text-xs font-medium border-0 hover:cursor-pointer ${
+                            exam.status === "ACTIVE"
+                              ? "bg-green-100 text-green-700 hover:bg-green-200"
+                              : "bg-red-100 text-red-700 hover:bg-red-200"
+                          }`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border-gray-300">
+                          <SelectItem
+                            value="ACTIVE"
+                            className="text-green-700 hover:cursor-pointer"
+                          >
+                            ACTIVE
+                          </SelectItem>
+                          <SelectItem
+                            value="INACTIVE"
+                            className="text-red-700 hover:cursor-pointer"
+                          >
+                            INACTIVE
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>
                       <Dialog>
@@ -408,7 +451,7 @@ export default function LecturerExams() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-[#0066cc] hover:text-[#0066cc] font-medium"
+                            className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
                           >
                             <Users className="h-4 w-4 mr-1" />
                             {exam.registrations?.length || 0}
@@ -417,24 +460,36 @@ export default function LecturerExams() {
                         <StudentManagementDialog exam={exam} />
                       </Dialog>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
+                    <TableCell className="text-center">
+                      <div className="flex justify-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() =>
                             router.push(`/lecturer/exams/edit/${exam.id}`)
                           }
-                          className="h-8 w-8"
+                          className="h-8 w-8 hover:cursor-pointer"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            router.push(`/lecturer/exams/${exam.id}/report`)
+                          }
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:cursor-pointer"
+                          title="Xem báo cáo"
+                        >
+                          <BarChart3 className="h-4 w-4" />
+                        </Button>
+
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-red-600 hover:text-red-700"
+                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:cursor-pointer"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -509,6 +564,7 @@ export default function LecturerExams() {
                 variant="outline"
                 size="sm"
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -523,6 +579,7 @@ export default function LecturerExams() {
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
+                className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
                 disabled={currentPage === totalPages}
               >
                 Sau

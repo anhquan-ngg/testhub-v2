@@ -4,7 +4,7 @@ import type React from "react";
 
 import { FileText, HelpCircle, ChevronDown, User } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +20,7 @@ export default function LecturerLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { handleLogout } = useAuth();
 
   return (
@@ -44,7 +45,7 @@ export default function LecturerLayout({
           <Link href="/lecturer/exams">
             <button
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
-                pathname === "/lecturer/exams"
+                pathname.includes("/lecturer/exams")
                   ? "bg-blue-50 text-[#0066cc]"
                   : "text-gray-700 hover:bg-gray-50"
               }`}
@@ -102,10 +103,14 @@ export default function LecturerLayout({
               align="end"
               className="w-48 bg-white border-gray-300"
             >
-              <DropdownMenuItem>Thông tin cá nhân</DropdownMenuItem>
-              <DropdownMenuItem>Cài đặt</DropdownMenuItem>
               <DropdownMenuItem
-                className="text-red-600"
+                className="hover:cursor-pointer"
+                onClick={() => router.push("/lecturer/profile")}
+              >
+                Thông tin cá nhân
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600 hover:cursor-pointer"
                 onClick={() => handleLogout()}
               >
                 Đăng xuất

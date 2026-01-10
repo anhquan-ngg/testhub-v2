@@ -1,6 +1,6 @@
 datasource db {
     provider = 'postgresql'
-    url = env("")
+    url = env("DATABASE_URL")
 }
 
 generator client {
@@ -22,7 +22,6 @@ enum UserRole {
 
 /// Enum for exams.status
 enum ExamStatus {
-    PENDING
     ACTIVE
     INACTIVE
 }
@@ -120,7 +119,7 @@ model Exam extends Base {
     sample_size Int?
     distribution String?
     is_public Boolean @default(false)
-    status ExamStatus @default(PENDING)
+    status ExamStatus @default(ACTIVE)
     
 
     submissions Submission[]
@@ -139,7 +138,7 @@ model Exam extends Base {
     // @@allow('read', auth() != null)
 
     // temp rules
-    @@allow('read', true)
+    @@allow('read', status == 'ACTIVE' || auth().role == 'ADMIN' || (auth().role == 'LECTURER' && lecturer == auth()))
     @@allow('create', true)
     @@allow('update', true)
     @@allow('delete', true)
