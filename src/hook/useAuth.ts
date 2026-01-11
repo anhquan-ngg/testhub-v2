@@ -18,14 +18,10 @@ export const useAuth = () => {
 
   const handleLogin = async ({ email, password }: LoginCredentials) => {
     try {
-      console.log({ email, password });
       const res = await authServices.login({ email, password });
       if (res.status === 200) {
-        console.log("API Response:", res.data);
-
         // Lưu thông tin user vào Redux store
         const userData = res.data;
-        console.log("avatar_url from API:", userData.avatar_url);
 
         const userRole = userData.role || "STUDENT";
 
@@ -65,8 +61,6 @@ export const useAuth = () => {
     try {
       const res = await authServices.loginGoogle(data);
       if (res.status === 200 || res.status === 201) {
-        console.log("API Response:", res.data);
-
         const userData = res.data;
         // If the backend returns access_token in root or inside user object, handle it.
         // The snippet did: localStorage.setItem("access_token", res.data.access_token);
@@ -115,8 +109,6 @@ export const useAuth = () => {
     try {
       const res = await authServices.logout();
       if (res.status === 200) {
-        console.log(res.data);
-
         // Xóa thông tin user khỏi Redux store
         dispatch(logoutAction());
 

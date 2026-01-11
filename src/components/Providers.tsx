@@ -24,18 +24,18 @@ const backendFetch = async (
   const headers = new Headers(options?.headers);
 
   // Debug log
-  console.log("backendFetch Request:", {
-    url: absoluteUrl,
-    method: options?.method || "GET",
-    hasBody: !!options?.body,
-    bodyType: typeof options?.body,
-    bodyPreview: options?.body
-      ? typeof options?.body === "string"
-        ? options.body.substring(0, 200)
-        : String(options.body).substring(0, 200)
-      : undefined,
-    headers: Object.fromEntries(headers.entries()),
-  });
+  // console.log("backendFetch Request:", {
+  //   url: absoluteUrl,
+  //   method: options?.method || "GET",
+  //   hasBody: !!options?.body,
+  //   bodyType: typeof options?.body,
+  //   bodyPreview: options?.body
+  //     ? typeof options?.body === "string"
+  //       ? options.body.substring(0, 200)
+  //       : String(options.body).substring(0, 200)
+  //     : undefined,
+  //   headers: Object.fromEntries(headers.entries()),
+  // });
 
   return fetch(absoluteUrl, {
     method: options?.method || "GET",

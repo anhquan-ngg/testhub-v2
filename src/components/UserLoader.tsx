@@ -64,19 +64,19 @@ export default function UserLoader({
 
     // Nếu user đã có trong store và đã logged in, không cần load lại
     if (user.isLoggedIn && user.id) {
-      console.log("User đã có trong store, không cần load lại:", user);
+      // console.log("User đã có trong store, không cần load lại:", user);
       return;
     }
 
     // Tránh load nhiều lần trong cùng một session
     if (hasLoadedRef.current) {
-      console.log("Đã load user rồi, bỏ qua");
+      // console.log("Đã load user rồi, bỏ qua");
       return;
     }
 
     const loadUser = async () => {
       try {
-        console.log("UserLoader: Bắt đầu load user từ /auth/me...");
+        // console.log("UserLoader: Bắt đầu load user từ /auth/me...");
 
         // Phương án A: Ưu tiên gọi /api/auth/me (an toàn với HttpOnly cookies)
         const API_BASE_URL =
@@ -88,7 +88,7 @@ export default function UserLoader({
 
         if (meResponse.ok) {
           const userData = await meResponse.json();
-          console.log("API /me response:", userData);
+          // console.log("API /me response:", userData);
 
           if (userData && (userData.id || userData.userId)) {
             const userId = userData.id || userData.userId || "";
@@ -98,13 +98,13 @@ export default function UserLoader({
             const role =
               (userData.role as "ADMIN" | "STUDENT" | "LECTURER") || "STUDENT";
 
-            console.log("Dispatching login action từ /api/auth/me:", {
-              id: userId,
-              full_name: fullName,
-              email,
-              avatar_url: userData.avatar_url,
-              role,
-            });
+            // console.log("Dispatching login action từ /api/auth/me:", {
+            //   id: userId,
+            //   full_name: fullName,
+            //   email,
+            //   avatar_url: userData.avatar_url,
+            //   role,
+            // });
 
             dispatch(
               loginAction({
@@ -117,9 +117,9 @@ export default function UserLoader({
             );
 
             hasLoadedRef.current = true;
-            console.log(
-              "User đã được load vào store thành công (từ /api/auth/me)"
-            );
+            // console.log(
+            //   "User đã được load vào store thành công (từ /api/auth/me)"
+            // );
             return;
           }
         } else if (meResponse.status === 401) {
@@ -149,13 +149,13 @@ export default function UserLoader({
             const role =
               (payload.role as "ADMIN" | "STUDENT" | "LECTURER") || "STUDENT";
 
-            console.log("Dispatching login action từ JWT decode:", {
-              id: userId,
-              full_name: fullName,
-              email,
-              avatar_url: null,
-              role,
-            });
+            // console.log("Dispatching login action từ JWT decode:", {
+            //   id: userId,
+            //   full_name: fullName,
+            //   email,
+            //   avatar_url: null,
+            //   role,
+            // });
 
             dispatch(
               loginAction({

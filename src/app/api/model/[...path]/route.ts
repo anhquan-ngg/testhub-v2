@@ -50,13 +50,13 @@ async function handler(
     const { path } = await context.params;
 
     // Debug: Log request info
-    console.log("API Route - Request:", {
-      method: req.method,
-      url: req.url,
-      pathname: new URL(req.url).pathname,
-      path: path,
-      hasBody: req.body !== null,
-    });
+    // console.log("API Route - Request:", {
+    //   method: req.method,
+    //   url: req.url,
+    //   pathname: new URL(req.url).pathname,
+    //   path: path,
+    //   hasBody: req.body !== null,
+    // });
 
     const enhancedPrisma = await getPrisma(req);
     // Use 'as any' here because the ZenStack v2 types for Next.js can sometimes

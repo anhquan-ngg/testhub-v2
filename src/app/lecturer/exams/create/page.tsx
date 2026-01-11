@@ -71,7 +71,6 @@ export default function CreateExamPage() {
       status: ExamStatus.ACTIVE,
     } as const;
 
-    console.log("New exam:", newExam);
     await createExamMutation.mutateAsync({
       data: newExam,
     });

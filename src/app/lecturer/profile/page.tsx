@@ -73,9 +73,7 @@ export default function LecturerProfile() {
       reader.readAsDataURL(file);
 
       // 2. Upload file lên MinIO
-      console.log("Uploading file to MinIO:", file.name);
       await uploadFile(file);
-      console.log("File uploaded to MinIO successfully");
 
       // 3. Cập nhật avatar_url trong Redux store (chỉ lưu file.name)
       dispatch(

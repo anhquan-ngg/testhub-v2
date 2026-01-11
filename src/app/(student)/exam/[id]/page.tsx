@@ -20,6 +20,7 @@ import {
   Flag,
   Menu,
   Printer,
+  FileDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -33,7 +34,6 @@ import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
 import axiosClient from "@/lib/axios";
 import { ExamData } from "@/types/exam";
-import { useReactToPrint } from "react-to-print";
 
 interface Question {
   id: string;
@@ -66,12 +66,31 @@ export default function ExamPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
-  const printRef = useRef<HTMLDivElement>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const handlePrint = async () => {
+    if (!examId) return;
+    try {
+      setIsPrinting(true);
+      const response = await axiosClient.get(`/submission/exam/${examId}/pdf`, {
+        responseType: "blob",
+      });
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    documentTitle: exam?.title || "Exam",
-  });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Dethi_${exam?.title?.replace(/\s+/g, "_") || examId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Tải đề thi thành công");
+    } catch (err) {
+      console.error("Print error:", err);
+      toast.error("Có lỗi xảy ra khi tạo bản in. Vui lòng thử lại sau.");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
 
   const [printableQuestions, setPrintableQuestions] = useState<any[]>([]);
 
@@ -128,7 +147,6 @@ export default function ExamPage() {
       });
 
       if (response.status === 200) {
-        console.log(response.data);
         setExam(response.data.data);
       }
     } catch (error) {
@@ -515,10 +533,15 @@ export default function ExamPage() {
                       variant="outline"
                       size="lg"
                       className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:cursor-pointer"
-                      onClick={() => handlePrint()}
+                      onClick={handlePrint}
+                      disabled={isPrinting}
                     >
-                      <Printer className="w-5 h-5" />
-                      In đề thi
+                      {isPrinting ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700"></div>
+                      ) : (
+                        <Printer className="w-5 h-5" />
+                      )}
+                      {isPrinting ? "Đang tạo bản in..." : "In đề thi"}
                     </Button>
                   )}
                   <Button variant="outline" size="lg" className="px-8" asChild>
@@ -537,74 +560,7 @@ export default function ExamPage() {
           </main>
         </div>
 
-        {/* Hidden Printable Content */}
-        <div style={{ display: "none" }}>
-          <div ref={printRef} className="p-8 bg-white text-black">
-            <style type="text/css" media="print">
-              {`
-                @page { size: auto; margin: 20mm; }
-                body { -webkit-print-color-adjust: exact; }
-              `}
-            </style>
-            <div className="text-center mb-8 border-b pb-4">
-              <h1 className="text-2xl font-bold mb-2">{exam.title}</h1>
-              <div className="flex justify-center gap-6 text-sm text-gray-600">
-                <p>Chủ đề: {exam.topic}</p>
-                <p>Thời gian: {exam.duration} phút</p>
-                <p>Số câu: {printableQuestions.length}</p>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              {printableQuestions.map((q, i) => (
-                <div key={q.id} className="break-inside-avoid mb-6">
-                  <div className="flex gap-2">
-                    <span className="font-bold whitespace-nowrap">
-                      Câu {i + 1}:
-                    </span>
-                    <div className="flex-1">
-                      <div className="mb-2 font-medium">
-                        <MathRenderer content={q.question_text} />
-                      </div>
-
-                      {q.image_url && (
-                        <div className="my-2 max-w-[300px]">
-                          {/* Note: Images might need handling for auth/url if private, assuming public or handled */}
-                          <img
-                            src={
-                              q.image_url.startsWith("http") ? q.image_url : ""
-                            }
-                            alt="Question Image"
-                            className="max-h-48 object-contain"
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-2 ml-2">
-                        {q.options.map((opt: any, optIndex: number) => (
-                          <div
-                            key={optIndex}
-                            className="flex gap-2 items-start"
-                          >
-                            <div className="w-4 h-4 rounded-full border border-black mt-1 flex-shrink-0" />
-                            <span className="text-sm">
-                              <MathRenderer content={opt.text} />
-                            </span>
-                          </div>
-                        ))}
-                        {q.question_type === "ESSAY" && (
-                          <div className="h-24 border border-gray-300 rounded p-2 text-sm text-gray-400 mt-2">
-                            (Phần trả lời tự luận)
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        {/* Hidden Printable Content Removed (Now using Backend) */}
       </div>
     );
   }
