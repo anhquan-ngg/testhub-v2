@@ -388,6 +388,11 @@ export default function ResultDetailPage({ params }: PageProps) {
                                   </Badge>
                                 )}
                               </div>
+                              <div className="text-gray-800 leading-relaxed">
+                                <MathRenderer
+                                  content={sq.question.question_text}
+                                />
+                              </div>
                               {sq.question.image_url && (
                                 <div className="mt-4 flex justify-center w-full">
                                   <div className="bg-white rounded-xl border border-gray-100 p-2 shadow-sm max-w-fit flex justify-center">
