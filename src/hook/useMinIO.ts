@@ -1,7 +1,5 @@
-"use client";
-
 import axiosClient from "@/lib/axios";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 
 export const useMinIO = (bucket: string) => {
@@ -104,20 +102,23 @@ export const useMinIO = (bucket: string) => {
   };
 
   // Hàm lấy URL xem file (ảnh)
-  const getViewUrl = async (objectName: string) => {
-    try {
-      const res = await axiosClient.get(
-        `/minio/view-file?objectName=${bucket}/${objectName}`
-      );
-      if (res.status === 200) {
-        return res.data.url;
+  const getViewUrl = useCallback(
+    async (objectName: string) => {
+      try {
+        const res = await axiosClient.get(
+          `/minio/view-file?objectName=${bucket}/${objectName}`
+        );
+        if (res.status === 200) {
+          return res.data.url;
+        }
+        return null;
+      } catch (error) {
+        console.error("Error getting view URL:", error);
+        return null;
       }
-      return null;
-    } catch (error) {
-      console.error("Error getting view URL:", error);
-      return null;
-    }
-  };
+    },
+    [bucket]
+  );
 
   return {
     list,

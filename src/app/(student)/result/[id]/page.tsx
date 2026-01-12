@@ -1,9 +1,9 @@
 "use client";
 
 import axiosClient from "@/lib/axios";
-
 import { useRouter } from "next/navigation";
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
+import { useMinIO } from "@/hook/useMinIO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +61,10 @@ export default function ResultDetailPage({ params }: PageProps) {
   const user = useAppSelector((state) => state.user);
   const userId = user.id;
   const userRole = user.role;
+  const { getViewUrl } = useMinIO("questions-images");
+  const [resolvedImages, setResolvedImages] = useState<Record<string, string>>(
+    {}
+  );
 
   const {
     data: submission,
@@ -95,6 +99,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                 question_type: true,
                 options: true,
                 correct_answer: true,
+                image_url: true,
               },
             },
           },
@@ -111,7 +116,35 @@ export default function ResultDetailPage({ params }: PageProps) {
     }
   );
 
-  // ... existing code ...
+  useEffect(() => {
+    const resolveImages = async () => {
+      if (!submission?.questions) return;
+
+      const newResolvedImages: Record<string, string> = {};
+      await Promise.all(
+        submission.questions.map(async (sq: any) => {
+          const imageUrl = sq.question.image_url;
+          if (imageUrl) {
+            if (imageUrl.startsWith("http")) {
+              newResolvedImages[sq.question.id] = imageUrl;
+            } else {
+              try {
+                const url = await getViewUrl(imageUrl);
+                if (url) newResolvedImages[sq.question.id] = url;
+              } catch (e) {
+                console.error("Error resolving image:", e);
+              }
+            }
+          }
+        })
+      );
+      setResolvedImages(newResolvedImages);
+    };
+
+    if (submission) {
+      resolveImages();
+    }
+  }, [submission, getViewUrl]);
 
   const handlePrint = async () => {
     try {
@@ -355,11 +388,20 @@ export default function ResultDetailPage({ params }: PageProps) {
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-gray-800 leading-relaxed">
-                                <MathRenderer
-                                  content={sq.question.question_text}
-                                />
-                              </div>
+                              {sq.question.image_url && (
+                                <div className="mt-4 flex justify-center w-full">
+                                  <div className="bg-white rounded-xl border border-gray-100 p-2 shadow-sm max-w-fit flex justify-center">
+                                    <img
+                                      src={
+                                        resolvedImages[sq.question.id] ||
+                                        sq.question.image_url
+                                      }
+                                      alt="Question Illustration"
+                                      className="max-w-full max-h-[300px] object-contain rounded-lg"
+                                    />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                             <Badge
                               variant="outline"

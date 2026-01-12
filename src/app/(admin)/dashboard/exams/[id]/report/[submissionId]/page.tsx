@@ -2,9 +2,10 @@
 
 import axiosClient from "@/lib/axios";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { use } from "react";
+import { useMinIO } from "@/hook/useMinIO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +55,10 @@ export default function AdminResultDetailPage() {
   const router = useRouter();
 
   const [isPrinting, setIsPrinting] = useState(false);
+  const { getViewUrl } = useMinIO("questions-images");
+  const [resolvedImages, setResolvedImages] = useState<Record<string, string>>(
+    {}
+  );
 
   const {
     data: submission,
@@ -88,6 +93,7 @@ export default function AdminResultDetailPage() {
                 question_type: true,
                 options: true,
                 correct_answer: true,
+                image_url: true,
               },
             },
           },
@@ -105,7 +111,35 @@ export default function AdminResultDetailPage() {
     }
   );
 
-  // ... existing code ...
+  useEffect(() => {
+    const resolveImages = async () => {
+      if (!submission?.questions) return;
+
+      const newResolvedImages: Record<string, string> = {};
+      await Promise.all(
+        submission.questions.map(async (sq: any) => {
+          const imageUrl = sq.question.image_url;
+          if (imageUrl) {
+            if (imageUrl.startsWith("http")) {
+              newResolvedImages[sq.question.id] = imageUrl;
+            } else {
+              try {
+                const url = await getViewUrl(imageUrl);
+                if (url) newResolvedImages[sq.question.id] = url;
+              } catch (e) {
+                console.error("Error resolving image:", e);
+              }
+            }
+          }
+        })
+      );
+      setResolvedImages(newResolvedImages);
+    };
+
+    if (submission) {
+      resolveImages();
+    }
+  }, [submission, getViewUrl]);
 
   const handlePrint = async () => {
     try {
@@ -347,6 +381,20 @@ export default function AdminResultDetailPage() {
                 <div className="text-gray-800 leading-relaxed font-medium mb-4 text-lg">
                   <MathRenderer content={sq.question.question_text} />
                 </div>
+                {sq.question.image_url && (
+                  <div className="mb-6 flex justify-center w-full">
+                    <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm max-w-fit flex justify-center">
+                      <img
+                        src={
+                          resolvedImages[sq.question.id] ||
+                          sq.question.image_url
+                        }
+                        alt="Question Illustration"
+                        className="max-w-full max-h-[350px] object-contain rounded-xl"
+                      />
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="pt-0">
                 {sq.question.question_type === "ESSAY" ? (
