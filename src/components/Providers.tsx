@@ -6,11 +6,12 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ReduxProvider } from "@/store";
 import { Provider as ZenStackHooksProvider } from "../../generated/hooks";
 import UserLoader from "@/components/UserLoader";
+import SocketProvider from "@/components/SocketProvider";
 
 // Custom fetch function to call backend with credentials
 const backendFetch = async (
   url: string,
-  options?: RequestInit
+  options?: RequestInit,
 ): Promise<Response> => {
   const API_BASE_URL =
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -60,7 +61,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         }}
       >
         <ReduxProvider>
-          <UserLoader>{children}</UserLoader>
+          <UserLoader>
+            <SocketProvider>{children}</SocketProvider>
+          </UserLoader>
         </ReduxProvider>
         {process.env.NODE_ENV === "development" && <ReactQueryDevtools />}
       </ZenStackHooksProvider>

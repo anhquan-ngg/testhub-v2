@@ -6,9 +6,8 @@ import { BookOpen, Award, Clock, Calendar, Loader2, User } from "lucide-react";
 import Link from "next/link";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
-  useCreateExamRegistration,
   useFindManyExam,
   useFindManyExamRegistration,
   useFindManySubmission,
@@ -22,11 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSocket } from "@/components/SocketProvider";
 
 export default function StudentDashboard() {
   const [tests, setTests] = useState([] as any[]);
   const [selectedTopic, setSelectedTopic] = useState("all");
+  const [isRegistering, setIsRegistering] = useState(false);
   const user = useAppSelector((state) => state.user);
+  const { socket } = useSocket();
 
   const { data: testsData } = useFindManyExam({
     include: {
@@ -53,7 +55,7 @@ export default function StudentDashboard() {
       },
       {
         enabled: !!user.id,
-      }
+      },
     );
 
   const { data: submissions } = useFindManySubmission(
@@ -68,27 +70,54 @@ export default function StudentDashboard() {
     },
     {
       enabled: !!user.id,
-    }
+    },
   );
 
-  const createRegistrationMutation = useCreateExamRegistration();
-
   const handleRegister = async (examId: string) => {
+    setIsRegistering(true);
     try {
-      await createRegistrationMutation.mutateAsync({
-        data: {
-          exam: { connect: { id: examId } },
-          student: { connect: { id: user.id } },
-          status: "PENDING",
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const res = await fetch(
+        `${API_URL}/notification/exam/request-registration`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ examId }),
         },
-      });
+      );
+      if (!res.ok) throw new Error("Registration failed");
       toast.success("Gửi yêu cầu đăng ký thành công!");
       refetchRegistrations();
     } catch (error) {
       toast.error("Có lỗi xảy ra khi gửi yêu cầu đăng ký.");
       console.error(error);
+    } finally {
+      setIsRegistering(false);
     }
   };
+
+  // Listen for real-time exam events
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRegistrationApproved = () => {
+      refetchRegistrations();
+    };
+
+    const handleStudentAdded = () => {
+      refetchRegistrations();
+    };
+
+    socket.on("exam:registration_approved", handleRegistrationApproved);
+    socket.on("exam:student_added", handleStudentAdded);
+
+    return () => {
+      socket.off("exam:registration_approved", handleRegistrationApproved);
+      socket.off("exam:student_added", handleStudentAdded);
+    };
+  }, [socket, refetchRegistrations]);
 
   useEffect(() => {
     if (testsData) {
@@ -99,7 +128,7 @@ export default function StudentDashboard() {
   const filteredExams =
     testsData?.filter((exam) => {
       const isRegistered = registrationsData?.some(
-        (r) => r.exam_id === exam.id
+        (r) => r.exam_id === exam.id,
       );
       // @ts-ignore
       const isPublic = exam.is_public;
@@ -116,14 +145,14 @@ export default function StudentDashboard() {
       testsData
         ?.filter((exam) => {
           const isRegistered = registrationsData?.some(
-            (r) => r.exam_id === exam.id
+            (r) => r.exam_id === exam.id,
           );
           // @ts-ignore
           const isPublic = exam.is_public;
           return isPublic || isRegistered;
         })
-        .map((e) => e.topic)
-    )
+        .map((e) => e.topic),
+    ),
   ).filter(Boolean);
 
   return (
@@ -171,7 +200,7 @@ export default function StudentDashboard() {
                 const Icon = isPractice ? BookOpen : Award;
 
                 const registration = registrationsData?.find(
-                  (r) => r.exam_id === test.id
+                  (r) => r.exam_id === test.id,
                 );
 
                 return (
@@ -237,11 +266,11 @@ export default function StudentDashboard() {
                           </span>
                           <span className="text-sm font-semibold text-gray-900">
                             {new Date(test.exam_start_time).toLocaleDateString(
-                              "vi-VN"
+                              "vi-VN",
                             )}
                             {" - "}
                             {new Date(test.exam_end_time).toLocaleDateString(
-                              "vi-VN"
+                              "vi-VN",
                             )}
                           </span>
                         </div>
@@ -254,7 +283,7 @@ export default function StudentDashboard() {
                           const endTime = new Date(test.exam_end_time);
 
                           const isCompleted = submissions?.some(
-                            (s) => s.exam_id === test.id
+                            (s) => s.exam_id === test.id,
                           );
 
                           // Logic for official exams
@@ -274,9 +303,9 @@ export default function StudentDashboard() {
                               <Button
                                 className="w-full bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer font-semibold shadow-md"
                                 onClick={() => handleRegister(test.id)}
-                                disabled={createRegistrationMutation.isPending}
+                                disabled={isRegistering}
                               >
-                                {createRegistrationMutation.isPending ? (
+                                {isRegistering ? (
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
                                   "Đăng ký tham gia"

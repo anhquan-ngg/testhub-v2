@@ -231,23 +231,31 @@ export default function LecturerQuestions() {
     // lưu snapshot để rollback nếu lỗi
     const previous = questions;
 
-    const image_url = questions.find(
-      (q: any) => q.id === questionId
-    )?.image_url;
+    const questionToDelete = questions.find((q: any) => q.id === questionId);
+    const image_url = questionToDelete?.image_url;
+
     try {
-      // gọi API delete
-      await Promise.all([
-        deleteQuestionMutation.mutateAsync({
-          where: { id: questionId },
-        }),
-        removeFile(image_url),
-      ]);
-      // thành công => toast handled in onSuccess
+      // 1. Thực hiện xoá câu hỏi trong database trước
+      await deleteQuestionMutation.mutateAsync({
+        where: { id: questionId },
+      });
+
+      // 2. Nếu có ảnh, thực hiện xoá file ảnh
+      if (image_url) {
+        try {
+          await removeFile(image_url);
+        } catch (fileError) {
+          // Log lỗi xoá file nhưng không chặn quy trình thành công của việc xoá câu hỏi
+          console.error("Lỗi khi xoá file ảnh từ storage:", fileError);
+        }
+      }
+
+      // thành công => cập nhật UI
       setQuestions((q: any[]) =>
-        q.filter((item: any) => item.id !== questionId)
+        q.filter((item: any) => item.id !== questionId),
       );
     } catch (err) {
-      // rollback UI
+      // rollback UI nếu xoá câu hỏi thất bại
       setQuestions(previous);
       toast.error("Không thể xoá câu hỏi. Vui lòng thử lại.");
       console.error(err);
@@ -255,7 +263,7 @@ export default function LecturerQuestions() {
   };
 
   const correctOptionIndex = questionForm.options.findIndex(
-    (option) => option.isCorrect
+    (option) => option.isCorrect,
   );
 
   const selectedValue =
@@ -268,7 +276,7 @@ export default function LecturerQuestions() {
       (option: any, index: number) => ({
         ...option,
         isCorrect: index === newSelectedIndex,
-      })
+      }),
     );
 
     setQuestionForm({
@@ -288,7 +296,7 @@ export default function LecturerQuestions() {
           };
         }
         return option;
-      }
+      },
     );
 
     setQuestionForm({
@@ -299,13 +307,13 @@ export default function LecturerQuestions() {
 
   const filteredQuestions =
     questions?.filter((q: any) =>
-      q.question_text.toLowerCase().includes(searchTerm.toLowerCase())
+      q.question_text.toLowerCase().includes(searchTerm.toLowerCase()),
     ) || [];
 
   const totalPages = Math.ceil(filteredQuestions.length / ITEMS_PER_PAGE);
   const paginatedQuestions = filteredQuestions.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
   return (
@@ -603,8 +611,8 @@ export default function LecturerQuestions() {
                             question.question_type === "SINGLE_CHOICE"
                               ? "text-red-500 bg-red-100"
                               : question.question_type === "MULTIPLE_CHOICE"
-                              ? "text-green-500 bg-green-100"
-                              : "text-blue-500 bg-blue-100"
+                                ? "text-green-500 bg-green-100"
+                                : "text-blue-500 bg-blue-100"
                           }`}
                         >
                           {QuestionTypeMap[question.question_type]}
@@ -616,10 +624,10 @@ export default function LecturerQuestions() {
                             question.question_format === "ADVANCED"
                               ? "text-red-500 bg-red-100"
                               : question.question_format === "APPLYING"
-                              ? "text-orange-500 bg-orange-100"
-                              : question.question_format === "UNDERSTANDING"
-                              ? "text-green-500 bg-green-100"
-                              : "text-blue-500 bg-blue-100"
+                                ? "text-orange-500 bg-orange-100"
+                                : question.question_format === "UNDERSTANDING"
+                                  ? "text-green-500 bg-green-100"
+                                  : "text-blue-500 bg-blue-100"
                           }`}
                         >
                           {QuestionFormatMap[question.question_format]}
@@ -634,10 +642,10 @@ export default function LecturerQuestions() {
                           ) : question.options ? (
                             <MathRenderer
                               content={JSON.parse(
-                                question.options as unknown as string
+                                question.options as unknown as string,
                               )
                                 .filter(
-                                  (option: QuestionOption) => option.isCorrect
+                                  (option: QuestionOption) => option.isCorrect,
                                 )
                                 .map((option: QuestionOption) => option.text)
                                 .join(", ")}
@@ -667,7 +675,7 @@ export default function LecturerQuestions() {
                                   setEditingId(question.id);
                                   const parsedOptions = question.options
                                     ? JSON.parse(
-                                        question.options as unknown as string
+                                        question.options as unknown as string,
                                       )
                                     : getInitialFormState().options;
                                   setQuestionForm({
@@ -855,8 +863,8 @@ export default function LecturerQuestions() {
                                       <RadioGroup
                                         value={String(
                                           questionForm.options.findIndex(
-                                            (opt) => opt.isCorrect
-                                          )
+                                            (opt) => opt.isCorrect,
+                                          ),
                                         )}
                                         onValueChange={(val) => {
                                           const idx = parseInt(val);
@@ -865,7 +873,7 @@ export default function LecturerQuestions() {
                                               (opt, i) => ({
                                                 ...opt,
                                                 isCorrect: i === idx,
-                                              })
+                                              }),
                                             );
                                           setQuestionForm({
                                             ...questionForm,
@@ -903,7 +911,7 @@ export default function LecturerQuestions() {
                                                 className="bg-white border-gray-300"
                                               />
                                             </div>
-                                          )
+                                          ),
                                         )}
                                       </RadioGroup>
                                     </div>

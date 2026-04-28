@@ -74,6 +74,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppSelector } from "@/store/hook";
+import { useSocket } from "@/components/SocketProvider";
 
 function StudentManagementDialog({ exam }: { exam: any }) {
   const [studentEmail, setStudentEmail] = useState("");
@@ -97,10 +98,18 @@ function StudentManagementDialog({ exam }: { exam: any }) {
 
   const handleApprove = async (regId: string) => {
     try {
-      await updateRegistrationMutation.mutateAsync({
-        where: { id: regId },
-        data: { status: "APPROVED" },
-      });
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const res = await fetch(
+        `${API_URL}/notification/exam/approve-registration`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ registrationId: regId }),
+        },
+      );
+      if (!res.ok) throw new Error("Approve failed");
       toast.success("Đã chấp nhận sinh viên.");
       refetch();
     } catch (e) {
@@ -124,28 +133,21 @@ function StudentManagementDialog({ exam }: { exam: any }) {
     if (!studentEmail) return;
     setIsAdding(true);
     try {
-      const { data: users } = await findUser();
-      if (!users || users.length === 0) {
-        toast.error("Không tìm thấy sinh viên với email này.");
-        return;
-      }
-      const student = users[0];
-
-      // Check if already registered
-      const existing = registrations?.find((r) => r.student_id === student.id);
-      if (existing) {
-        toast.error("Sinh viên này đã có trong danh sách.");
-        return;
-      }
-
-      await createRegistrationMutation.mutateAsync({
-        data: {
-          exam: { connect: { id: exam.id } },
-          student: { connect: { id: student.id } },
-          status: "APPROVED",
-        },
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const res = await fetch(`${API_URL}/notification/exam/add-student`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ examId: exam.id, studentEmail }),
       });
-      toast.success(`Đã thêm sinh viên ${student.full_name} vào bài thi.`);
+      if (!res.ok) throw new Error("Add student failed");
+      const data = await res.json();
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+      toast.success(`Đã thêm sinh viên vào bài thi.`);
       setStudentEmail("");
       refetch();
     } catch (e) {
@@ -220,15 +222,15 @@ function StudentManagementDialog({ exam }: { exam: any }) {
                           reg.status === "PENDING"
                             ? "bg-yellow-500 hover:bg-yellow-600"
                             : reg.status === "APPROVED"
-                            ? "bg-green-500 hover:bg-green-600"
-                            : "bg-red-500 hover:bg-red-600"
+                              ? "bg-green-500 hover:bg-green-600"
+                              : "bg-red-500 hover:bg-red-600"
                         }`}
                       >
                         {reg.status === "PENDING"
                           ? "Đang chờ"
                           : reg.status === "APPROVED"
-                          ? "Đã duyệt"
-                          : "Từ chối"}
+                            ? "Đã duyệt"
+                            : "Từ chối"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -283,7 +285,7 @@ export default function LecturerExams() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
-  const { data: examsData } = useFindManyExam(
+  const { data: examsData, refetch: refetchExams } = useFindManyExam(
     {
       orderBy: { created_at: "desc" },
       include: {
@@ -295,7 +297,7 @@ export default function LecturerExams() {
     },
     {
       enabled: !!user.id,
-    }
+    },
   );
 
   const deleteExamMutation = useDeleteExam({
@@ -318,6 +320,22 @@ export default function LecturerExams() {
     }
   };
 
+  // Listen for real-time registration requests
+  const { socket } = useSocket();
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleRegistrationRequested = () => {
+      refetchExams();
+    };
+
+    socket.on("exam:registration_requested", handleRegistrationRequested);
+
+    return () => {
+      socket.off("exam:registration_requested", handleRegistrationRequested);
+    };
+  }, [socket, refetchExams]);
+
   useEffect(() => {
     if (examsData) {
       setExams(examsData);
@@ -326,13 +344,13 @@ export default function LecturerExams() {
 
   const filteredExams =
     exams?.filter((exam: any) =>
-      exam.title.toLowerCase().includes(searchTerm.toLowerCase())
+      exam.title.toLowerCase().includes(searchTerm.toLowerCase()),
     ) || [];
 
   const totalPages = Math.ceil(filteredExams.length / ITEMS_PER_PAGE);
   const paginatedExams = filteredExams.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    currentPage * ITEMS_PER_PAGE,
   );
 
   return (

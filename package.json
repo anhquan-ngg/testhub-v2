@@ -56,6 +56,7 @@
     "react-redux": "^9.2.0",
     "react-to-print": "^3.2.0",
     "recharts": "^3.2.1",
+    "socket.io-client": "^4.8.3",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.13",
@@ -65,6 +66,7 @@
   },
   "devDependencies": {
     "@zenstackhq/trpc": "^2.21.0",
+    "baseline-browser-mapping": "^2.10.0",
     "cross-env": "^10.1.0"
   }
 }

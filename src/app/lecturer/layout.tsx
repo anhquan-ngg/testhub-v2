@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hook/useAuth";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function LecturerLayout({
   children,
@@ -85,7 +86,8 @@ export default function LecturerLayout({
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-transparent p-6 flex justify-end">
+        <header className="bg-transparent p-6 flex justify-end items-center gap-3">
+          <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button

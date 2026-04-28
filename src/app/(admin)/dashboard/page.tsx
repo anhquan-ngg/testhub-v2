@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, FileText, HelpCircle, BarChart3 } from "lucide-react";
 import {
@@ -23,8 +24,45 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { SubmissionStatus } from "@prisma/client";
+import { useSocket } from "@/components/SocketProvider";
 
 export default function AdminDashboard() {
+  const { socket } = useSocket();
+  const queryClient = useQueryClient();
+
+  // Listen for real-time dashboard updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleDashboardUpdate = (metrics?: any) => {
+      console.log("Real-time dashboard update received:", metrics);
+
+      // Invalidate dashboard-related queries to trigger refetch
+      queryClient.invalidateQueries({
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          // ZenStack v2 TanStack Query keys are typically like ['zenstack', model, operation, args]
+          return (
+            Array.isArray(queryKey) &&
+            queryKey[0] === "zenstack" &&
+            (queryKey[1] === "Exam" ||
+              queryKey[1] === "Question" ||
+              queryKey[1] === "User" ||
+              queryKey[1] === "Submission")
+          );
+        },
+      });
+
+      toast.info("Dữ liệu dashboard đã được cập nhật tự động.");
+    };
+
+    socket.on("dashboard:update", handleDashboardUpdate);
+
+    return () => {
+      socket.off("dashboard:update", handleDashboardUpdate);
+    };
+  }, [socket, queryClient]);
+
   const {
     data: usersCount,
     isLoading: isLoadingUsers,
@@ -123,7 +161,7 @@ export default function AdminDashboard() {
     allSubmissionsError
   ) {
     toast.error(
-      "Có lỗi xảy ra khi tải dữ liệu thống kê. Vui lòng thử lại sau."
+      "Có lỗi xảy ra khi tải dữ liệu thống kê. Vui lòng thử lại sau.",
     );
   }
 
