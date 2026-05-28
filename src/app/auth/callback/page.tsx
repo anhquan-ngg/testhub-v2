@@ -1,18 +1,15 @@
 "use client";
 
-import { useAuth } from "@/hook/useAuth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 
 function GoogleCallbackContent() {
   const searchParams = useSearchParams();
-  const { handleGoogleLogin } = useAuth();
   const router = useRouter();
   const processedRef = useRef(false);
 
   useEffect(() => {
-    const code = searchParams.get("code");
     const error = searchParams.get("error");
 
     if (processedRef.current) return;
@@ -23,14 +20,8 @@ function GoogleCallbackContent() {
       return;
     }
 
-    if (code) {
-      handleGoogleLogin({ code }).catch(() => {
-        router.push("/login?error=google_auth_failed");
-      });
-    } else {
-      router.push("/login");
-    }
-  }, [searchParams, handleGoogleLogin, router]);
+    router.replace("/");
+  }, [searchParams, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useFindUniqueExam } from "../../../../../generated/hooks";
+import { useFindUniqueExam } from "@/hooks/useModel";
 import { QuestionType } from "@prisma/client";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useSelector, useDispatch } from "react-redux";
@@ -32,7 +32,7 @@ import { RootState } from "@/store";
 import { startTest, endTest } from "@/store/slices/examSlice";
 import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
 import { ExamData } from "@/types/exam";
 
 interface Question {
@@ -43,7 +43,7 @@ interface Question {
   question_type: QuestionType;
 }
 
-import { useMinIO } from "@/hook/useMinIO";
+import { useS3 } from "@/hooks/useS3";
 
 export default function ExamPage() {
   const params = useParams();
@@ -51,7 +51,7 @@ export default function ExamPage() {
   const dispatch = useDispatch();
   const userId = useAppSelector((state) => state.user.id);
   const examId = params.id as string;
-  const { getViewUrl } = useMinIO("questions-images");
+  const { getViewUrl } = useS3("questions-images");
 
   const testStarted = useSelector((state: RootState) => state.exam.testStarted);
   const [exam, setExam] = useState<ExamData | null>(null);
@@ -71,7 +71,7 @@ export default function ExamPage() {
     if (!examId) return;
     try {
       setIsPrinting(true);
-      const response = await axiosClient.get(`/submission/exam/${examId}/pdf`, {
+      const response = await apiClient.get(`/submission/exam/${examId}/pdf`, {
         responseType: "blob",
       });
 
@@ -122,7 +122,7 @@ export default function ExamPage() {
             options: Array.isArray(opts) ? opts : [],
             image_url: imageUrl,
           };
-        })
+        }),
       );
       setPrintableQuestions(processed);
     };
@@ -131,17 +131,10 @@ export default function ExamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exam]);
 
-  // ... (existing code, I need to be careful with context matching)
-  // I will insert useMinIO and state at top, and the effect later or merge?
-  // Since replace_file_content handles contiguous blocks, I have to be precise.
-  // The file is large. I will use multiple replace calls or one if possible.
-  // Wait, I can't insert hooks easily in the middle without replacing huge chunk.
-  // I'll start with imports and component start.
-
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const response = await axiosClient.post("/submission/start-exam", {
+      const response = await apiClient.post("/submission/start-exam", {
         examId: examId,
         studentId: userId,
       });
@@ -184,7 +177,7 @@ export default function ExamPage() {
                 (option: any, index: number) => ({
                   ...option,
                   id: index + 1,
-                })
+                }),
               );
             }
           } catch (error) {
@@ -195,7 +188,7 @@ export default function ExamPage() {
       });
 
       const randomizedQuestions = questionsWithParsedOptions.sort(
-        () => Math.random() - 0.5
+        () => Math.random() - 0.5,
       );
       setQuestions(randomizedQuestions as any[]);
       setTimeLeft(exam.duration * 60);
@@ -253,7 +246,7 @@ export default function ExamPage() {
   const handleAnswer = (
     questionId: string,
     value: string,
-    type: QuestionType = "SINGLE_CHOICE"
+    type: QuestionType = "SINGLE_CHOICE",
   ) => {
     setAnswers((prev) => {
       if (type === "MULTIPLE_CHOICE") {
@@ -308,7 +301,7 @@ export default function ExamPage() {
     }
 
     try {
-      await axiosClient.post("/submission/submit-by-question", payload);
+      await apiClient.post("/submission/submit-by-question", payload);
       toast.success(`Đã nộp câu ${index + 1}`);
     } catch (error) {
       toast.error("Gửi câu trả lời thất bại");
@@ -327,7 +320,7 @@ export default function ExamPage() {
     };
 
     try {
-      await axiosClient.post("/submission/submit-exam", payload);
+      await apiClient.post("/submission/submit-exam", payload);
       toast.success("Nộp bài thành công!");
       dispatch(endTest());
       setIsSubmitted(true);
@@ -471,7 +464,7 @@ export default function ExamPage() {
                       <p className="text-sm text-gray-500">Thời gian bắt đầu</p>
                       <p className="font-semibold text-gray-900">
                         {new Date(exam.exam_start_time).toLocaleDateString(
-                          "vi-VN"
+                          "vi-VN",
                         )}
                       </p>
                     </div>
@@ -749,7 +742,7 @@ export default function ExamPage() {
                         key={option.id}
                         className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
                           (answers[currentQuestion.id] as string[])?.includes(
-                            option.id
+                            option.id,
                           )
                             ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
                             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
@@ -758,7 +751,7 @@ export default function ExamPage() {
                           handleAnswer(
                             currentQuestion.id,
                             option.id,
-                            "MULTIPLE_CHOICE"
+                            "MULTIPLE_CHOICE",
                           )
                         }
                       >
@@ -770,7 +763,7 @@ export default function ExamPage() {
                             handleAnswer(
                               currentQuestion.id,
                               option.id,
-                              "MULTIPLE_CHOICE"
+                              "MULTIPLE_CHOICE",
                             )
                           }
                           id={option.id}
@@ -796,7 +789,7 @@ export default function ExamPage() {
                         handleAnswer(
                           currentQuestion.id,
                           e.target.value,
-                          "ESSAY"
+                          "ESSAY",
                         )
                       }
                       className="min-h-[200px] p-4 bg-white border-gray-300 text-base"

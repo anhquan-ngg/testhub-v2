@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hook/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import NotificationBell from "@/components/NotificationBell";
 
 export default function AdminLayout({

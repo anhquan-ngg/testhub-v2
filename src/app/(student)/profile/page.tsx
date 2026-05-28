@@ -9,7 +9,7 @@ import {
   useUpdateUser,
   useFindManyExamRegistration,
   useFindManySubmission,
-} from "../../../../generated/hooks";
+} from "@/hooks/useModel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -35,17 +35,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
 import { toast } from "sonner";
 import { useAppSelector, useAppDispatch } from "@/store/hook";
-import { login as loginAction } from "@/store/slices/userSlice";
+import { setUser } from "@/store/slices/authSlice";
 
-import { useMinIO } from "@/hook/useMinIO";
+import { useS3 } from "@/hooks/useS3";
+import { useFiles } from "@/hooks/useFiles";
 
 export default function StudentProfile() {
   const student = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
-  const { uploadFile, getViewUrl } = useMinIO("avatars");
+  const { getViewUrl: getLegacyAvatarViewUrl } = useS3("avatars");
+  const { uploadAvatar, markFileDeletedByUrl } = useFiles();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,14 +60,16 @@ export default function StudentProfile() {
   useEffect(() => {
     const fetchAvatar = async () => {
       // Ưu tiên lấy từ userProfile mới fetch, hoặc fallback về redux student
-      const fname = userProfile?.avatar_url || student.avatar_url;
-      if (fname) {
-        const url = await getViewUrl(fname);
-        if (url) setAvatarUrl(url);
+      const avatar = userProfile?.avatar_url || student.avatar_url;
+      if (avatar?.startsWith("http")) {
+        setAvatarUrl(avatar);
+      } else if (avatar) {
+        const legacyUrl = await getLegacyAvatarViewUrl(avatar);
+        setAvatarUrl(legacyUrl ?? avatar);
       }
     };
     fetchAvatar();
-  }, [userProfile, student.avatar_url]);
+  }, [getLegacyAvatarViewUrl, userProfile, student.avatar_url]);
 
   const { data: submissionCount } = useCountSubmission({
     where: { student_id: student.id, status: "COMPLETED" },
@@ -83,7 +87,7 @@ export default function StudentProfile() {
     },
     {
       enabled: !!student.id,
-    }
+    },
   );
 
   //Filter for official (non-practice) exams
@@ -105,7 +109,7 @@ export default function StudentProfile() {
   const pendingExamsCount =
     officialExamIds.length - (completedSubmissions?.length || 0);
 
-  const { mutate: updateUser } = useUpdateUser();
+  const { mutate: updateUser, mutateAsync: updateUserAsync } = useUpdateUser();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -172,11 +176,11 @@ export default function StudentProfile() {
         onSuccess: () => {
           toast.success("Cập nhật thông tin thành công!");
         },
-        onError: (error) => {
+        onError: (error: any) => {
           console.error("Update failed:", error);
           toast.error("Cập nhật thất bại. Vui lòng thử lại.");
         },
-      }
+      },
     );
   };
 
@@ -188,7 +192,7 @@ export default function StudentProfile() {
     }
 
     try {
-      const response = await axiosClient.post("/auth/change-password", {
+      const response = await apiClient.post("/auth/change-password", {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
@@ -209,56 +213,37 @@ export default function StudentProfile() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !student.id) return;
 
     try {
       setIsUploading(true);
+      const oldAvatarUrl = userProfile?.avatar_url || student.avatar_url;
 
-      // 1. Hiển thị preview ảnh
       const reader = new FileReader();
       reader.onload = (event) => {
         setAvatarUrl(event.target?.result as string);
       };
       reader.readAsDataURL(file);
 
-      // 2. Upload file lên MinIO
-      await uploadFile(file);
+      const uploadedFile = await uploadAvatar(file, student.id);
+      await markFileDeletedByUrl(oldAvatarUrl);
+      setAvatarUrl(uploadedFile.url);
 
-      // 3. Cập nhật avatar_url trong Redux store (chỉ lưu file.name)
       dispatch(
-        loginAction({
+        setUser({
           id: student.id,
           full_name: student.full_name,
           email: student.email,
-          avatar_url: file.name,
+          avatar_url: uploadedFile.url,
           role: student.role!,
-        })
+        }),
       );
-
-      // 4. Cập nhật avatar_url trên backend (chỉ lưu file.name)
-      updateUser(
-        {
-          where: { id: student.id },
-          data: {
-            avatar_url: file.name,
-          },
-        },
-        {
-          onSuccess: () => {
-            toast.success("Cập nhật ảnh đại diện thành công!");
-          },
-          onError: (error) => {
-            console.error("Update failed:", error);
-            toast.error("Cập nhật thất bại. Vui lòng thử lại.");
-          },
-        }
-      );
+      toast.success("Cập nhật ảnh đại diện thành công!");
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error("Lỗi khi tải ảnh lên. Vui lòng thử lại.");
     } finally {
       setIsUploading(false);
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -278,7 +263,6 @@ export default function StudentProfile() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <StudentMenu />
-
         <main className="flex-1 px-8 pb-8">
           <div className="space-y-6">
             {/* Stats Cards */}

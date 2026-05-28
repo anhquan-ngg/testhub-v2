@@ -45,12 +45,12 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import {
+import { 
   useCreateUser,
   useDeleteUser,
   useFindManyUser,
   useUpdateUser,
-} from "../../../../../generated/hooks";
+ } from '@/hooks/useModel';
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";

@@ -1,12 +1,12 @@
 "use client";
 
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
+import { 
   useFindManySubmission,
   useFindUniqueExam,
-} from "../../../../../../../generated/hooks";
+ } from '@/hooks/useModel';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -78,7 +78,7 @@ export default function AdminExamReportPage() {
   const handlePrintReport = async () => {
     try {
       setIsPrinting(true);
-      const response = await axiosClient.get(
+      const response = await apiClient.get(
         `/submission/exam/${examId}/report-pdf`,
         {
           responseType: "blob",

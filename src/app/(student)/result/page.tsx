@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import { useFindManySubmission } from "../../../../generated/hooks";
+import {  useFindManySubmission  } from '@/hooks/useModel';
 import { useAppSelector } from "@/store/hook";
 
 interface SubmissionWithDetails {

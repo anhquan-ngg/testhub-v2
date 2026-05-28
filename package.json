@@ -25,16 +25,11 @@
     "@react-oauth/google": "^0.13.4",
     "@reduxjs/toolkit": "^2.9.0",
     "@tailwindcss/postcss": "^4",
-    "@tanstack/react-query": "^5.90.6",
-    "@tanstack/react-query-devtools": "^5.90.2",
     "@types/katex": "^0.16.7",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-katex": "^3.0.4",
-    "@zenstackhq/runtime": "^2.21.0",
-    "@zenstackhq/server": "^2.21.0",
-    "@zenstackhq/tanstack-query": "^2.21.0",
     "autoprefixer": "^10.4.21",
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
@@ -43,6 +38,7 @@
     "eslint": "^9",
     "eslint-config-next": "15.5.4",
     "jose": "^6.1.0",
+    "js-cookie": "^3.0.5",
     "katex": "^0.16.25",
     "lucide-react": "^0.544.0",
     "next": "^16.1.1",
@@ -61,11 +57,10 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss": "^4.1.13",
     "typescript": "^5",
-    "zenstack": "^2.21.0",
     "zod": "^4.3.5"
   },
   "devDependencies": {
-    "@zenstackhq/trpc": "^2.21.0",
+    "@types/js-cookie": "^3.0.6",
     "baseline-browser-mapping": "^2.10.0",
     "cross-env": "^10.1.0"
   }

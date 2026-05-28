@@ -11,7 +11,7 @@ import {
   useFindManyExam,
   useFindManyExamRegistration,
   useFindManySubmission,
-} from "../../../../generated/hooks";
+} from "@/hooks/useModel";
 import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
 import {
@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSocket } from "@/components/SocketProvider";
+import { useSocket } from "@/components/providers/SocketProvider";
+import apiClient from "@/lib/api-client";
 
 export default function StudentDashboard() {
   const [tests, setTests] = useState([] as any[]);
@@ -76,18 +77,9 @@ export default function StudentDashboard() {
   const handleRegister = async (examId: string) => {
     setIsRegistering(true);
     try {
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-      const res = await fetch(
-        `${API_URL}/notification/exam/request-registration`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ examId }),
-        },
-      );
-      if (!res.ok) throw new Error("Registration failed");
+      await apiClient.post("/notification/exam/request-registration", {
+        examId,
+      });
       toast.success("Gửi yêu cầu đăng ký thành công!");
       refetchRegistrations();
     } catch (error) {
@@ -126,11 +118,10 @@ export default function StudentDashboard() {
   }, [testsData]);
 
   const filteredExams =
-    testsData?.filter((exam) => {
+    testsData?.filter((exam: any) => {
       const isRegistered = registrationsData?.some(
-        (r) => r.exam_id === exam.id,
+        (r: any) => r.exam_id === exam.id,
       );
-      // @ts-ignore
       const isPublic = exam.is_public;
 
       if (!isPublic && !isRegistered) return false;
@@ -143,15 +134,15 @@ export default function StudentDashboard() {
   const availableTopics = Array.from(
     new Set(
       testsData
-        ?.filter((exam) => {
+        ?.filter((exam: any) => {
           const isRegistered = registrationsData?.some(
-            (r) => r.exam_id === exam.id,
+            (r: any) => r.exam_id === exam.id,
           );
           // @ts-ignore
           const isPublic = exam.is_public;
           return isPublic || isRegistered;
         })
-        .map((e) => e.topic),
+        .map((e: any) => e.topic),
     ),
   ).filter(Boolean);
 
@@ -189,7 +180,7 @@ export default function StudentDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredExams.map((test) => {
+              {filteredExams.map((test: any) => {
                 const isPractice = test.practice;
                 const bgGradient = isPractice
                   ? "bg-gradient-to-r from-purple-50 to-white"
@@ -200,7 +191,7 @@ export default function StudentDashboard() {
                 const Icon = isPractice ? BookOpen : Award;
 
                 const registration = registrationsData?.find(
-                  (r) => r.exam_id === test.id,
+                  (r: any) => r.exam_id === test.id,
                 );
 
                 return (
@@ -283,7 +274,7 @@ export default function StudentDashboard() {
                           const endTime = new Date(test.exam_end_time);
 
                           const isCompleted = submissions?.some(
-                            (s) => s.exam_id === test.id,
+                            (s: any) => s.exam_id === test.id,
                           );
 
                           // Logic for official exams

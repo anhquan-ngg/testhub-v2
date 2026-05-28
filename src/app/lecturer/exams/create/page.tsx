@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useCreateExam } from "../../../../../generated/hooks";
+import {  useCreateExam  } from '@/hooks/useModel';
 import { ExamStatus } from "@prisma/client";
 import { toast } from "sonner";
 import { useAppSelector } from "@/store/hook";
@@ -43,7 +43,7 @@ export default function CreateExamPage() {
       toast.success("Tạo bài thi thành công!");
       router.push("/lecturer/exams");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Tạo bài thi thất bại. Vui lòng thử lại.");
       console.log(error);
     },

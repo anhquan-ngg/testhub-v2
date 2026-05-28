@@ -34,7 +34,7 @@ import {
   ChevronRight,
   BarChart3,
 } from "lucide-react";
-import { useFindManyExam } from "../../../../../generated/hooks";
+import {  useFindManyExam  } from '@/hooks/useModel';
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";

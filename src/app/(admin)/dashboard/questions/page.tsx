@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
-import { useFindManyQuestion } from "../../../../../generated/hooks";
+import {  useFindManyQuestion  } from '@/hooks/useModel';
 import { Badge } from "@/components/ui/badge";
 import { IQuestion, QuestionOption } from "@/types/question";
 import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";

@@ -11,8 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/hook/useAuth";
-import authServices from "@/services/authServices";
+import { useAuth } from "@/hooks/useAuth";
 
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import Link from "next/link";
@@ -154,17 +153,7 @@ export default function LoginPage() {
               <Button
                 variant="outline"
                 className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
-                onClick={() => {
-                  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-                  const redirectUri =
-                    process.env.NEXT_PUBLIC_GOOGLE_CALLBACK_URL ||
-                    "http://localhost:3000/auth/callback";
-                  const scope = "email profile openid";
-                  const responseType = "code";
-                  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&access_type=offline&prompt=consent`;
-
-                  window.location.href = authUrl;
-                }}
+                onClick={() => handleGoogleLogin()}
               >
                 <GoogleLogo />
                 Đăng nhập bằng Gmail

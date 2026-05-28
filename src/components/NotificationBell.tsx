@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Bell, Check, CheckCheck, ExternalLink } from "lucide-react";
-import { useSocket } from "@/components/SocketProvider";
+import { useSocket } from "@/components/providers/SocketProvider";
 import { useRouter } from "next/navigation";
 
 export default function NotificationBell() {

@@ -7,17 +7,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Camera, Eye, EyeOff, Loader2 } from "lucide-react";
-import { useAppDispatch, useAppSelector, useUser } from "@/store/hook";
-import { useMinIO } from "@/hook/useMinIO";
+import { useAppDispatch, useAppSelector } from "@/store/hook";
+import { useS3 } from "@/hooks/useS3";
+import { useFiles } from "@/hooks/useFiles";
 import { toast } from "sonner";
-import { login as loginAction } from "@/store/slices/userSlice";
-import { useUpdateUser } from "../../../../generated/hooks";
-import axiosClient from "@/lib/axios";
+import { setUser } from "@/store/slices/authSlice";
+import { useUpdateUser } from "@/hooks/useModel";
+import apiClient from "@/lib/api-client";
 
 export default function LecturerProfile() {
   const user = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
-  const { uploadFile, getViewUrl } = useMinIO("avatars");
+  const { getViewUrl: getLegacyAvatarViewUrl } = useS3("avatars");
+  const { uploadAvatar, markFileDeletedByUrl } = useFiles();
 
   const [formData, setFormData] = useState({
     email: "lecturer@email.com",
@@ -61,9 +63,11 @@ export default function LecturerProfile() {
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!user.id) return;
 
     try {
       setIsUploading(true);
+      const oldAvatarUrl = user.avatar_url;
 
       // 1. Hiển thị preview ảnh
       const reader = new FileReader();
@@ -72,28 +76,21 @@ export default function LecturerProfile() {
       };
       reader.readAsDataURL(file);
 
-      // 2. Upload file lên MinIO
-      await uploadFile(file);
+      // 2. Upload file lên S3
+      const uploadedFile = await uploadAvatar(file, user.id);
+      await markFileDeletedByUrl(oldAvatarUrl);
+      setProfileImage(uploadedFile.url);
 
       // 3. Cập nhật avatar_url trong Redux store (chỉ lưu file.name)
       dispatch(
-        loginAction({
+        setUser({
           id: user.id,
           full_name: user.full_name,
           email: user.email,
-          avatar_url: file.name,
+          avatar_url: uploadedFile.url,
           role: user.role!,
-        })
+        }),
       );
-
-      // 4. Cập nhật avatar_url trên backend (chỉ lưu file.name)
-      await updateUserMutation.mutateAsync({
-        where: { id: user.id },
-        data: {
-          avatar_url: file.name,
-        },
-      });
-
       toast.success("Cập nhật ảnh đại diện thành công!");
     } catch (error) {
       console.error("Error uploading image:", error);
@@ -136,7 +133,7 @@ export default function LecturerProfile() {
     }
 
     try {
-      const response = await axiosClient.post("/auth/change-password", {
+      const response = await apiClient.post("/auth/change-password", {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
@@ -162,21 +159,23 @@ export default function LecturerProfile() {
         return;
       }
 
-      if (user.avatar_url) {
-        try {
-          const avatarUrl = await getViewUrl(user.avatar_url);
-          setProfileImage(avatarUrl);
-        } catch (error) {
-          console.warn("Could not load avatar URL:", error);
-          setProfileImage(user.avatar_url);
-        }
+      if (user.avatar_url?.startsWith("http")) {
+        setProfileImage(user.avatar_url);
+      } else if (user.avatar_url) {
+        const legacyAvatarUrl = await getLegacyAvatarViewUrl(user.avatar_url);
+        setProfileImage(legacyAvatarUrl ?? user.avatar_url);
       } else {
         console.log("User has no avatar_url (null/empty)");
       }
     };
 
     loadAvatarUrl();
-  }, [user.avatar_url]);
+  }, [
+    getLegacyAvatarViewUrl,
+    user.avatar_url,
+    user.id,
+    user.isLoggedIn,
+  ]);
 
   useEffect(() => {
     if (user) {

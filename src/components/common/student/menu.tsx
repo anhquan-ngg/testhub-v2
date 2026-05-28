@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hook/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { useAppSelector } from "@/store/hook";
 import { ChevronDown, User } from "lucide-react";
 import { useRouter } from "next/navigation";

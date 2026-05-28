@@ -1,12 +1,12 @@
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 
-export const useMinIO = (bucket: string) => {
+export const useS3 = (bucket: string) => {
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Upload file lên MinIO
+  // Upload file lên S3
   const uploadFile = async (file: File) => {
     if (!file) {
       throw new Error("Chưa chọn file");
@@ -14,15 +14,15 @@ export const useMinIO = (bucket: string) => {
     setLoading(true);
     try {
       // Lấy presigned URL từ Nest
-      const res = await axiosClient.post("/minio/create-upload-url", {
+      const res = await apiClient.post("/s3/create-upload-url", {
         path: `${bucket}/${file.name}`,
       });
       if (res.status !== 201) {
         throw new Error("Tạo upload URL thất bại");
       }
       const url = res.data.url;
-      // Upload file lên MinIO qua presigned URL
-      const uploadRes = await axiosClient.put(url, file, {
+      // Upload file lên S3 qua presigned URL
+      const uploadRes = await apiClient.put(url, file, {
         headers: {
           "Content-Type": file.type,
         },
@@ -34,6 +34,9 @@ export const useMinIO = (bucket: string) => {
 
       await fetchList(); // reload danh sách
       return true;
+    } catch (error) {
+      toast.error("Upload file thất bại");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -45,7 +48,7 @@ export const useMinIO = (bucket: string) => {
     }
     setLoading(true);
     try {
-      const res = await axiosClient.post("/minio/check-file", {
+      const res = await apiClient.post("/s3/check-file", {
         filePath: `${bucket}/${file.name}`,
       });
 
@@ -57,18 +60,20 @@ export const useMinIO = (bucket: string) => {
         return;
       }
       const url = res.data.uploadUrl;
-      const uploadRes = await axiosClient.put(url, file, {
+      const uploadRes = await apiClient.put(url, file, {
         headers: {
           "Content-Type": file.type,
         },
       });
       if (uploadRes.status !== 200 && uploadRes.status !== 201) {
-        toast.error("Upload file thất bại");
         throw new Error("Upload file thất bại");
       }
 
       await fetchList(); // reload danh sách
       return true;
+    } catch (error) {
+      toast.error("Upload file thất bại");
+      return false;
     } finally {
       setLoading(false);
     }
@@ -76,7 +81,7 @@ export const useMinIO = (bucket: string) => {
 
   // Lấy danh sách file
   const fetchList = async () => {
-    const res = await axiosClient.get(`/minio?path=${bucket}`);
+    const res = await apiClient.get(`/s3/list?path=${bucket}`);
     if (res.status !== 200) throw new Error("Không thể lấy danh sách file");
     const data = res.data;
     setList(data);
@@ -85,8 +90,8 @@ export const useMinIO = (bucket: string) => {
 
   // Lấy URL download ảnh
   const getDownloadUrl = async (objectName: string) => {
-    const res = await axiosClient.get(
-      `minio/create-download-url?objectName=${bucket}/${objectName}`
+    const res = await apiClient.get(
+      `s3/create-download-url?objectName=${bucket}/${objectName}`,
     );
     if (res.status !== 200) throw new Error("Không thể lấy download URL");
     const { url } = res.data;
@@ -94,8 +99,8 @@ export const useMinIO = (bucket: string) => {
   };
 
   const removeFile = async (objectName: string) => {
-    const res = await axiosClient.delete(
-      `minio/remove?objectName=${bucket}/${objectName}`
+    const res = await apiClient.delete(
+      `s3/remove?objectName=${bucket}/${objectName}`,
     );
     if (res.status !== 200) throw new Error("Xoá file thất bại");
     await fetchList(); // reload danh sách
@@ -105,8 +110,8 @@ export const useMinIO = (bucket: string) => {
   const getViewUrl = useCallback(
     async (objectName: string) => {
       try {
-        const res = await axiosClient.get(
-          `/minio/view-file?objectName=${bucket}/${objectName}`
+        const res = await apiClient.get(
+          `/s3/view-file?objectName=${bucket}/${objectName}`,
         );
         if (res.status === 200) {
           return res.data.url;
@@ -117,7 +122,7 @@ export const useMinIO = (bucket: string) => {
         return null;
       }
     },
-    [bucket]
+    [bucket],
   );
 
   return {

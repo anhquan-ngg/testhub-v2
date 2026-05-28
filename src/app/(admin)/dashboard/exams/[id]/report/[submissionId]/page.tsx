@@ -1,11 +1,11 @@
 "use client";
 
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { use } from "react";
-import { useMinIO } from "@/hook/useMinIO";
+import { useS3 } from "@/hooks/useS3";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ import {
   Mail,
   GraduationCap,
 } from "lucide-react";
-import { useFindUniqueSubmission } from "../../../../../../../../generated/hooks";
+import { useFindUniqueSubmission } from "@/hooks/useModel";
 import { MathRenderer } from "@/components/MathRenderer";
 import {
   calculateScorePerQuestion,
@@ -33,7 +33,7 @@ import { toast } from "sonner";
 // Helper function to calculate time taken
 function calculateTimeTaken(
   startTime: Date | null,
-  endTime: Date | null
+  endTime: Date | null,
 ): string {
   if (!startTime || !endTime) return "N/A";
   const start = new Date(startTime);
@@ -55,9 +55,9 @@ export default function AdminResultDetailPage() {
   const router = useRouter();
 
   const [isPrinting, setIsPrinting] = useState(false);
-  const { getViewUrl } = useMinIO("questions-images");
+  const { getViewUrl } = useS3("questions-images");
   const [resolvedImages, setResolvedImages] = useState<Record<string, string>>(
-    {}
+    {},
   );
 
   const {
@@ -108,7 +108,7 @@ export default function AdminResultDetailPage() {
     },
     {
       enabled: !!id,
-    }
+    },
   );
 
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function AdminResultDetailPage() {
               }
             }
           }
-        })
+        }),
       );
       setResolvedImages(newResolvedImages);
     };
@@ -144,7 +144,7 @@ export default function AdminResultDetailPage() {
   const handlePrint = async () => {
     try {
       setIsPrinting(true);
-      const response = await axiosClient.get(`/submission/${id}/pdf`, {
+      const response = await apiClient.get(`/submission/${id}/pdf`, {
         responseType: "blob",
       });
 
@@ -153,7 +153,7 @@ export default function AdminResultDetailPage() {
       a.href = url;
       a.download = `Ketqua_${submission?.student?.full_name?.replace(
         /\s+/g,
-        "_"
+        "_",
       )}_${id}.pdf`;
       document.body.appendChild(a);
       a.click();
@@ -189,7 +189,7 @@ export default function AdminResultDetailPage() {
   const isPractice = submission.exam.practice;
   const timeTaken = calculateTimeTaken(
     submission.start_time,
-    submission.end_time
+    submission.end_time,
   );
 
   const getRatingColor = (rating: string | null) => {
@@ -265,7 +265,7 @@ export default function AdminResultDetailPage() {
                     Xếp loại:{" "}
                     <Badge
                       className={`${getRatingColor(
-                        submission.rating
+                        submission.rating,
                       )} border-none text-white ml-1`}
                     >
                       {submission.rating || "N/A"}
@@ -423,7 +423,7 @@ export default function AdminResultDetailPage() {
                     {questionOptions.map((option: any, optIndex: number) => {
                       const isStudentChoice = studentOptions.some(
                         (so: any) =>
-                          so.text === option.text && so.isCorrect === true
+                          so.text === option.text && so.isCorrect === true,
                       );
                       const isCorrect = option.isCorrect === true;
 

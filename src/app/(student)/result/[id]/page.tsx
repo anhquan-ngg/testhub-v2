@@ -1,9 +1,9 @@
 "use client";
 
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
 import { useRouter } from "next/navigation";
 import { use, useState, useEffect } from "react";
-import { useMinIO } from "@/hook/useMinIO";
+import { useS3 } from "@/hooks/useS3";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import { useFindUniqueSubmission } from "../../../../../generated/hooks";
+import { useFindUniqueSubmission } from "@/hooks/useModel";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useAppSelector } from "@/store/hook";
 import {
@@ -37,7 +37,7 @@ interface PageProps {
 // Helper function to calculate time taken
 function calculateTimeTaken(
   startTime: Date | null,
-  endTime: Date | null
+  endTime: Date | null,
 ): string {
   if (!startTime || !endTime) return "N/A";
   const start = new Date(startTime);
@@ -61,9 +61,9 @@ export default function ResultDetailPage({ params }: PageProps) {
   const user = useAppSelector((state) => state.user);
   const userId = user.id;
   const userRole = user.role;
-  const { getViewUrl } = useMinIO("questions-images");
+  const { getViewUrl } = useS3("questions-images");
   const [resolvedImages, setResolvedImages] = useState<Record<string, string>>(
-    {}
+    {},
   );
 
   const {
@@ -113,7 +113,7 @@ export default function ResultDetailPage({ params }: PageProps) {
     },
     {
       enabled: !!id,
-    }
+    },
   );
 
   useEffect(() => {
@@ -136,7 +136,7 @@ export default function ResultDetailPage({ params }: PageProps) {
               }
             }
           }
-        })
+        }),
       );
       setResolvedImages(newResolvedImages);
     };
@@ -149,7 +149,7 @@ export default function ResultDetailPage({ params }: PageProps) {
   const handlePrint = async () => {
     try {
       setIsPrinting(true);
-      const response = await axiosClient.get(`/submission/${id}/pdf`, {
+      const response = await apiClient.get(`/submission/${id}/pdf`, {
         responseType: "blob",
       });
 
@@ -158,7 +158,7 @@ export default function ResultDetailPage({ params }: PageProps) {
       a.href = url;
       a.download = `Ketqua_${submission?.student?.full_name?.replace(
         /\s+/g,
-        "_"
+        "_",
       )}_${id}.pdf`;
       document.body.appendChild(a);
       a.click();
@@ -244,7 +244,7 @@ export default function ResultDetailPage({ params }: PageProps) {
   const isPractice = submission.exam.practice;
   const timeTaken = calculateTimeTaken(
     submission.start_time,
-    submission.end_time
+    submission.end_time,
   );
 
   return (
@@ -449,7 +449,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                                 (option: any, optIndex: number) => {
                                   const isStudentChoice = studentOptions.some(
                                     (so: any) =>
-                                      so.text === option.text && so.isCorrect
+                                      so.text === option.text && so.isCorrect,
                                   );
                                   const isCorrect = option.isCorrect === true;
 
@@ -500,7 +500,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                                       )}
                                     </div>
                                   );
-                                }
+                                },
                               )}
                             </div>
                           )}

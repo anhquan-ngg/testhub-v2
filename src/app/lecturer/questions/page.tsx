@@ -50,13 +50,13 @@ import {
   useDeleteQuestion,
   useFindManyQuestion,
   useUpdateQuestion,
-} from "../../../../generated/hooks";
+} from "@/hooks/useModel";
 import { toast } from "sonner";
 import { useAppSelector } from "@/store/hook";
 import { QuestionFormat, QuestionType } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { IQuestion, QuestionOption } from "@/types/question";
-import { useMinIO } from "@/hook/useMinIO";
+import { useS3 } from "@/hooks/useS3";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -92,7 +92,7 @@ const getInitialFormState = () => ({
 export default function LecturerQuestions() {
   const lecturerId = useAppSelector((state) => state.user.id);
   const { uploadFile, checkAndUpload, getViewUrl, removeFile } =
-    useMinIO("questions-images");
+    useS3("questions-images");
   const [image, setImage] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string>("");
   const [questions, setQuestions] = useState([] as any);
@@ -106,12 +106,17 @@ export default function LecturerQuestions() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
-  const { data: questionsData } = useFindManyQuestion({
-    where: {
-      lecturer_id: lecturerId,
+  const { data: questionsData } = useFindManyQuestion(
+    {
+      where: {
+        lecturer_id: lecturerId,
+      },
+      orderBy: { created_at: "desc" },
     },
-    orderBy: { created_at: "desc" },
-  });
+    {
+      enabled: !!lecturerId,
+    },
+  );
 
   useEffect(() => {
     setQuestions(questionsData);
@@ -140,17 +145,13 @@ export default function LecturerQuestions() {
       }
     };
     loadPreviewUrl();
-    // getDownloadUrl comes from a custom hook and may not be stable across renders;
-    // including it in deps can cause this effect to run repeatedly and trigger an
-    // infinite update loop. We intentionally omit it here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionForm.image_url, image, editingId]);
 
   const createQuestionMutation = useCreateQuestion({
     onSuccess: () => {
       toast.success("Tạo câu hỏi thành công!");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Lỗi khi tạo câu hỏi!");
       console.log(error);
     },
@@ -160,7 +161,7 @@ export default function LecturerQuestions() {
     onSuccess: () => {
       toast.success("Cập nhật câu hỏi thành công!");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Lỗi khi cập nhật câu hỏi!");
       console.log(error);
     },

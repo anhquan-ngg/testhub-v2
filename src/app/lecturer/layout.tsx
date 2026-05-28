@@ -12,8 +12,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hook/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import NotificationBell from "@/components/NotificationBell";
+import { useAppSelector } from "@/store/hook";
 
 export default function LecturerLayout({
   children,
@@ -22,6 +23,7 @@ export default function LecturerLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const full_name = useAppSelector((state) => state.user.full_name);
   const { handleLogout } = useAuth();
 
   return (
@@ -97,7 +99,7 @@ export default function LecturerLayout({
                 <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
                   <User className="h-5 w-5 text-gray-600" />
                 </div>
-                <span className="font-medium">Lecturer</span>
+                <span className="font-medium">{full_name}</span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

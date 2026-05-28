@@ -21,14 +21,14 @@ import {
 } from "@/components/ui/select";
 import { ExamStatus, QuestionFormat, QuestionType } from "@prisma/client";
 import { toast } from "sonner";
-import {
+import { 
   useFindManyQuestion,
   useFindUniqueExam,
   useUpdateExam,
   useUpsertExamQuestions,
   useDeleteManyExamQuestions,
   useFindManyExamQuestions,
-} from "../../../../../../generated/hooks";
+ } from '@/hooks/useModel';
 // ... (skip lines)
 import {
   Dialog,
@@ -158,7 +158,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       toast.success("Cập nhật bài thi thành công!");
       router.push("/lecturer/exams");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Cập nhật bài thi thất bại. Vui lòng thử lại.");
       console.log(error);
     },
@@ -179,7 +179,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     onSuccess: () => {
       toast.success("Thêm câu hỏi vào bài thi thành công!");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast.error("Thêm câu hỏi vào bài thi thất bại. Vui lòng thử lại.");
       console.log(error);
     },
@@ -189,7 +189,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     onSuccess: () => {
       console.log("Đã xóa các câu hỏi không được chọn");
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Lỗi khi xóa câu hỏi:", error);
     },
   });
@@ -301,7 +301,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
 
   useEffect(() => {
     if (examQuestionsData) {
-      setSelectedQuestions(examQuestionsData.map((q) => q.question_id));
+      setSelectedQuestions(examQuestionsData.map((q: any) => q.question_id));
     }
   }, [examQuestionsData]);
 

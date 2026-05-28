@@ -52,7 +52,7 @@ import {
   useFindManyUser,
   useCreateExamRegistration,
   useUpdateExam,
-} from "../../../../generated/hooks";
+} from "@/hooks/useModel";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -74,7 +74,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAppSelector } from "@/store/hook";
-import { useSocket } from "@/components/SocketProvider";
+import { useSocket } from "@/components/providers/SocketProvider";
+import apiClient from "@/lib/api-client";
 
 function StudentManagementDialog({ exam }: { exam: any }) {
   const [studentEmail, setStudentEmail] = useState("");
@@ -98,18 +99,9 @@ function StudentManagementDialog({ exam }: { exam: any }) {
 
   const handleApprove = async (regId: string) => {
     try {
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-      const res = await fetch(
-        `${API_URL}/notification/exam/approve-registration`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ registrationId: regId }),
-        },
-      );
-      if (!res.ok) throw new Error("Approve failed");
+      await apiClient.post("/notification/exam/approve-registration", {
+        registrationId: regId,
+      });
       toast.success("Đã chấp nhận sinh viên.");
       refetch();
     } catch (e) {
@@ -133,16 +125,11 @@ function StudentManagementDialog({ exam }: { exam: any }) {
     if (!studentEmail) return;
     setIsAdding(true);
     try {
-      const API_URL =
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-      const res = await fetch(`${API_URL}/notification/exam/add-student`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ examId: exam.id, studentEmail }),
+      const res = await apiClient.post("/notification/exam/add-student", {
+        examId: exam.id,
+        studentEmail,
       });
-      if (!res.ok) throw new Error("Add student failed");
-      const data = await res.json();
+      const data = res.data;
       if (data.error) {
         toast.error(data.error);
         return;
