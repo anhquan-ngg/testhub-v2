@@ -78,7 +78,7 @@ export default function LecturerProfile() {
 
       // 2. Upload file lên S3
       const uploadedFile = await uploadAvatar(file, user.id);
-      await markFileDeletedByUrl(oldAvatarUrl);
+      await markFileDeletedByUrl(oldAvatarUrl, user.id);
       setProfileImage(uploadedFile.url);
 
       // 3. Cập nhật avatar_url trong Redux store (chỉ lưu file.name)

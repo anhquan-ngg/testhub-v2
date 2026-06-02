@@ -1,5 +1,6 @@
 import axios from "axios";
 import { ROUTES } from "@/constants/routes";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 // Lấy API base URL từ biến môi trường
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -44,14 +45,14 @@ apiClient.interceptors.response.use(
 
     const requestUrl = original.url ?? "";
     const shouldSkipRefresh = [
-      "/auth/login",
-      "auth/login",
-      "/auth/signup",
-      "auth/signup",
-      "/auth/logout",
-      "auth/logout",
-      "/auth/refresh",
-      "auth/refresh",
+      ENDPOINTS.AUTH.LOGIN,
+      ENDPOINTS.AUTH.LOGIN.slice(1),
+      ENDPOINTS.AUTH.SIGNUP,
+      ENDPOINTS.AUTH.SIGNUP.slice(1),
+      ENDPOINTS.AUTH.LOGOUT,
+      ENDPOINTS.AUTH.LOGOUT.slice(1),
+      ENDPOINTS.AUTH.REFRESH,
+      ENDPOINTS.AUTH.REFRESH.slice(1),
     ].some((path) => requestUrl.includes(path));
 
     if (error.response?.status === 401 && sessionExpired && !shouldSkipRefresh) {
@@ -77,7 +78,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
       try {
         await axios.post(
-          `${API_BASE_URL}/auth/refresh`,
+          `${API_BASE_URL}${ENDPOINTS.AUTH.REFRESH}`,
           {},
           { withCredentials: true },
         );

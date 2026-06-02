@@ -1,6 +1,7 @@
 import axios from "axios";
 import apiClient from "@/lib/api-client";
 import { useCallback } from "react";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 type FileType = "AUDIO" | "IMAGE" | "VIDEO";
 
@@ -31,7 +32,7 @@ const isPublicUrl = (value?: string | null) =>
 
 export const useFiles = () => {
   const createUploadUrl = useCallback(async (args: CreateUploadArgs) => {
-    const res = await apiClient.post("/files/upload-url", args);
+    const res = await apiClient.post(ENDPOINTS.FILES.UPLOAD_URL, args);
     return res.data as { file: FileRecord; uploadUrl: string };
   }, []);
 
@@ -48,7 +49,7 @@ export const useFiles = () => {
   }, []);
 
   const confirmUploaded = useCallback(async (fileId: string) => {
-    const res = await apiClient.post(`/files/${fileId}/confirm`);
+    const res = await apiClient.post(ENDPOINTS.FILES.CONFIRM(fileId));
     return res.data as FileRecord;
   }, []);
 
@@ -65,13 +66,16 @@ export const useFiles = () => {
     return confirmUploaded(fileRecord.id);
   }, [confirmUploaded, createUploadUrl, uploadToS3]);
 
-  const markFileDeletedByUrl = useCallback(async (url?: string | null) => {
+  const markFileDeletedByUrl = useCallback(async (url?: string | null, userId?: string | null) => {
     if (!isPublicUrl(url)) return null;
+    if (!userId) return null;
 
-    const res = await apiClient.post("/model/File/updateMany", {
+    const res = await apiClient.post(ENDPOINTS.MODEL.ACTION("File", "updateMany"), {
       args: {
         where: {
           url,
+          entity_type: "users",
+          entity_id: userId,
           status: { not: "DELETED" },
         },
         data: {
@@ -84,7 +88,7 @@ export const useFiles = () => {
   }, []);
 
   const getViewUrl = useCallback(async (fileId: string) => {
-    const res = await apiClient.get(`/files/${fileId}/view-url`);
+    const res = await apiClient.get(ENDPOINTS.FILES.VIEW_URL(fileId));
     return res.data.url as string;
   }, []);
 
