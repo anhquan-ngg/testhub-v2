@@ -1,64 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import axios from "axios";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  Search,
-  AlertCircle,
-  FileQuestion,
+  ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  CheckCircle,
+  Copy,
+  Eye,
+  ExternalLink,
+  FileAudio,
+  FileImage,
+  FileQuestion,
+  FileVideo,
+  Loader2,
+  Pencil,
+  PenTool,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
 } from "lucide-react";
-import {
-  useCreateQuestion,
-  useDeleteQuestion,
-  useFindManyQuestion,
-  useUpdateQuestion,
-} from "@/hooks/useModel";
 import { toast } from "sonner";
-import { useAppSelector } from "@/store/hook";
-import { QuestionFormat, QuestionType } from "@prisma/client";
-import { Badge } from "@/components/ui/badge";
-import { IQuestion, QuestionOption } from "@/types/question";
-import { useS3 } from "@/hooks/useS3";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,1049 +35,2011 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { MathInput } from "@/components/MathInput";
 import { MathRenderer } from "@/components/MathRenderer";
+import { ENDPOINTS } from "@/constants/endpoints";
+import apiClient from "@/lib/api-client";
 
-const getInitialFormState = () => ({
+type ViewMode = "topics" | "chapters" | "questions";
+type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "ESSAY";
+type QuestionFormat = "KNOWLEDGE" | "UNDERSTANDING" | "APPLYING" | "ADVANCED";
+type FileType = "AUDIO" | "IMAGE" | "VIDEO";
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+type Topic = {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type Chapter = {
+  id: string;
+  topic_id: string;
+  parent_id?: string | null;
+  name: string;
+  order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type FileRecord = {
+  id: string;
+  name: string;
+  url: string;
+  s3_key: string;
+  type: FileType;
+  size?: number;
+  entity_type?: string | null;
+  entity_id?: string | null;
+  status: "PENDING" | "ACTIVE" | "DELETED";
+};
+
+type QuestionFile = {
+  order: number;
+  file: FileRecord;
+};
+
+type Question = {
+  id: string;
+  chapter_id: string;
+  question_text: string;
+  options?: string | null;
+  correct_answer?: string | null;
+  question_type: QuestionType;
+  question_format: QuestionFormat;
+  created_at: string;
+  updated_at: string;
+  chapter?: Chapter;
+  files?: QuestionFile[];
+};
+
+type QuestionOption = {
+  text: string;
+  isCorrect: boolean;
+};
+
+type ParsedQuestionOption = {
+  label?: string;
+  text: string;
+  isCorrect?: boolean;
+};
+
+type QuestionForm = {
+  chapter_id: string;
+  question_text: string;
+  question_type: QuestionType;
+  question_format: QuestionFormat;
+  options: QuestionOption[];
+  correct_answer: string;
+};
+
+const optionLabels = ["A", "B", "C", "D", "E", "F"];
+const ITEMS_PER_PAGE = 5;
+
+const questionTypeConfig = {
+  SINGLE_CHOICE: {
+    label: "Trắc nghiệm một đáp án",
+    color: "text-emerald-700",
+    bgColor: "bg-emerald-100",
+    Icon: CheckCircle,
+  },
+  MULTIPLE_CHOICE: {
+    label: "Trắc nghiệm nhiều đáp án",
+    color: "text-blue-700",
+    bgColor: "bg-blue-100",
+    Icon: Copy,
+  },
+  ESSAY: {
+    label: "Tự luận",
+    color: "text-amber-700",
+    bgColor: "bg-amber-100",
+    Icon: PenTool,
+  },
+} satisfies Record<
+  QuestionType,
+  {
+    label: string;
+    color: string;
+    bgColor: string;
+    Icon: React.ComponentType<{ className?: string }>;
+  }
+>;
+
+const questionFormatConfig = {
+  KNOWLEDGE: {
+    label: "Nhận biết",
+    color: "text-cyan-700",
+    bgColor: "bg-cyan-100",
+    level: 1,
+  },
+  UNDERSTANDING: {
+    label: "Thông hiểu",
+    color: "text-sky-700",
+    bgColor: "bg-sky-100",
+    level: 2,
+  },
+  APPLYING: {
+    label: "Vận dụng",
+    color: "text-purple-700",
+    bgColor: "bg-purple-100",
+    level: 3,
+  },
+  ADVANCED: {
+    label: "Vận dụng cao",
+    color: "text-indigo-700",
+    bgColor: "bg-indigo-100",
+    level: 4,
+  },
+} satisfies Record<
+  QuestionFormat,
+  {
+    label: string;
+    color: string;
+    bgColor: string;
+    level: number;
+  }
+>;
+
+const emptyOptions = (): QuestionOption[] => [
+  { text: "", isCorrect: false },
+  { text: "", isCorrect: false },
+  { text: "", isCorrect: false },
+  { text: "", isCorrect: false },
+];
+
+const initialQuestionForm = (chapterId = ""): QuestionForm => ({
+  chapter_id: chapterId,
   question_text: "",
-  topic: "",
-  options: [
-    { text: "", isCorrect: false },
-    { text: "", isCorrect: false },
-    { text: "", isCorrect: false },
-    { text: "", isCorrect: false },
-  ],
+  question_type: "SINGLE_CHOICE",
+  question_format: "KNOWLEDGE",
+  options: emptyOptions(),
   correct_answer: "",
-  image_url: "",
-  question_type: "SINGLE_CHOICE" as any,
-  question_format: "KNOWLEDGE" as any,
 });
 
+const getFileType = (file: File): FileType | null => {
+  if (file.type.startsWith("image/")) return "IMAGE";
+  if (file.type.startsWith("audio/")) return "AUDIO";
+  if (file.type.startsWith("video/")) return "VIDEO";
+  return null;
+};
+
+const fileIcon = (type: FileType) => {
+  if (type === "IMAGE") return <FileImage className="h-4 w-4" />;
+  if (type === "AUDIO") return <FileAudio className="h-4 w-4" />;
+  return <FileVideo className="h-4 w-4" />;
+};
+
+const formatDate = (value: string) =>
+  new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+
+const formatFileSize = (size?: number) => {
+  if (!size) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 export default function LecturerQuestions() {
-  const lecturerId = useAppSelector((state) => state.user.id);
-  const { uploadFile, checkAndUpload, getViewUrl, removeFile } =
-    useS3("questions-images");
-  const [image, setImage] = useState<File | null>(null);
-  const [imageUrl, setImageUrl] = useState<string>("");
-  const [questions, setQuestions] = useState([] as any);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("topics");
+  const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
+  const [chapterStack, setChapterStack] = useState<Chapter[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [questionForm, setQuestionForm] = useState(getInitialFormState());
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [topicPage, setTopicPage] = useState(1);
+  const [chapterPage, setChapterPage] = useState(1);
+  const [questionPage, setQuestionPage] = useState(1);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [isTopicDialogOpen, setIsTopicDialogOpen] = useState(false);
+  const [isChapterDialogOpen, setIsChapterDialogOpen] = useState(false);
+  const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
+  const [detailQuestion, setDetailQuestion] = useState<Question | null>(null);
+  const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
+  const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(
+    null,
+  );
+  const [editingQuestionFiles, setEditingQuestionFiles] = useState<
+    QuestionFile[]
+  >([]);
+  const [replaceQuestionFiles, setReplaceQuestionFiles] = useState(false);
+  const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
+  const [topicName, setTopicName] = useState("");
+  const [chapterForm, setChapterForm] = useState({
+    topic_id: "",
+    parent_id: "",
+    name: "",
+    order: 0,
+  });
+  const [questionForm, setQuestionForm] =
+    useState<QuestionForm>(initialQuestionForm);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  const { data: questionsData } = useFindManyQuestion(
-    {
-      where: {
-        lecturer_id: lecturerId,
+  const currentChapter = chapterStack[chapterStack.length - 1] ?? null;
+
+  const fetchTopics = useCallback(async () => {
+    const res = await apiClient.get<PageResult<Topic>>(ENDPOINTS.TOPICS.BASE, {
+      params: { page: 1, limit: 100 },
+    });
+    setTopics(res.data.data);
+  }, []);
+
+  const fetchChapters = useCallback(async (topicId?: string) => {
+    const res = await apiClient.get<PageResult<Chapter>>(
+      ENDPOINTS.CHAPTERS.BASE,
+      {
+        params: { page: 1, limit: 100, ...(topicId && { topic_id: topicId }) },
       },
-      orderBy: { created_at: "desc" },
-    },
-    {
-      enabled: !!lecturerId,
-    },
+    );
+    setChapters(res.data.data);
+  }, []);
+
+  const fetchQuestions = useCallback(async (chapterId?: string) => {
+    const res = await apiClient.get<PageResult<Question>>(
+      ENDPOINTS.QUESTIONS.BASE,
+      {
+        params: {
+          page: 1,
+          limit: 100,
+          ...(chapterId && { chapter_id: chapterId }),
+        },
+      },
+    );
+    setQuestions(res.data.data);
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await Promise.all([
+        fetchTopics(),
+        fetchChapters(selectedTopic?.id),
+        fetchQuestions(currentChapter?.id),
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    currentChapter?.id,
+    fetchChapters,
+    fetchQuestions,
+    fetchTopics,
+    selectedTopic?.id,
+  ]);
+
+  useEffect(() => {
+    refreshAll().catch(() =>
+      toast.error("Không thể tải dữ liệu question bank"),
+    );
+  }, [refreshAll]);
+
+  const topicRows = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    if (!keyword) return topics;
+    return topics.filter((topic) => topic.name.toLowerCase().includes(keyword));
+  }, [searchTerm, topics]);
+
+  const chapterRows = useMemo(() => {
+    const parentId = currentChapter?.id ?? null;
+    return chapters
+      .filter((chapter) => chapter.parent_id === parentId)
+      .sort((a, b) => a.order - b.order);
+  }, [chapters, currentChapter?.id]);
+
+  const questionRows = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    return questions.filter((question) => {
+      const matchesChapter =
+        !currentChapter || question.chapter_id === currentChapter.id;
+      const matchesSearch =
+        !keyword || question.question_text.toLowerCase().includes(keyword);
+      return matchesChapter && matchesSearch;
+    });
+  }, [currentChapter, questions, searchTerm]);
+
+  const topicTotalPages = Math.ceil(topicRows.length / ITEMS_PER_PAGE);
+  const chapterTotalPages = Math.ceil(chapterRows.length / ITEMS_PER_PAGE);
+  const questionTotalPages = Math.ceil(questionRows.length / ITEMS_PER_PAGE);
+
+  const paginatedTopicRows = useMemo(
+    () =>
+      topicRows.slice(
+        (topicPage - 1) * ITEMS_PER_PAGE,
+        topicPage * ITEMS_PER_PAGE,
+      ),
+    [topicPage, topicRows],
+  );
+
+  const paginatedChapterRows = useMemo(
+    () =>
+      chapterRows.slice(
+        (chapterPage - 1) * ITEMS_PER_PAGE,
+        chapterPage * ITEMS_PER_PAGE,
+      ),
+    [chapterPage, chapterRows],
+  );
+
+  const paginatedQuestionRows = useMemo(
+    () =>
+      questionRows.slice(
+        (questionPage - 1) * ITEMS_PER_PAGE,
+        questionPage * ITEMS_PER_PAGE,
+      ),
+    [questionPage, questionRows],
   );
 
   useEffect(() => {
-    setQuestions(questionsData);
-  }, [questionsData]);
+    setTopicPage((prev) => Math.min(prev, Math.max(topicTotalPages, 1)));
+  }, [topicTotalPages]);
 
   useEffect(() => {
-    const loadPreviewUrl = async () => {
-      if (questionForm.image_url && image) {
-        const url = URL.createObjectURL(image);
-        setPreviewUrl(url);
-      } else if (questionForm.image_url && editingId) {
-        try {
-          // Check if it's already a full URL (just in case)
-          if (questionForm.image_url.startsWith("http")) {
-            setPreviewUrl(questionForm.image_url);
-          } else {
-            const url = await getViewUrl(questionForm.image_url);
-            setPreviewUrl(url);
-          }
-        } catch (error) {
-          console.error("Failed to load preview:", error);
-          setPreviewUrl("");
-        }
-      } else {
-        setPreviewUrl("");
-      }
-    };
-    loadPreviewUrl();
-  }, [questionForm.image_url, image, editingId]);
+    setChapterPage((prev) => Math.min(prev, Math.max(chapterTotalPages, 1)));
+  }, [chapterTotalPages]);
 
-  const createQuestionMutation = useCreateQuestion({
-    onSuccess: () => {
-      toast.success("Tạo câu hỏi thành công!");
-    },
-    onError: (error: any) => {
-      toast.error("Lỗi khi tạo câu hỏi!");
-      console.log(error);
-    },
-  });
+  useEffect(() => {
+    setQuestionPage((prev) => Math.min(prev, Math.max(questionTotalPages, 1)));
+  }, [questionTotalPages]);
 
-  const updateQuestionMutation = useUpdateQuestion({
-    onSuccess: () => {
-      toast.success("Cập nhật câu hỏi thành công!");
-    },
-    onError: (error: any) => {
-      toast.error("Lỗi khi cập nhật câu hỏi!");
-      console.log(error);
-    },
-  });
+  const getChildCount = (chapterId: string) =>
+    chapters.filter((chapter) => chapter.parent_id === chapterId).length;
 
-  const deleteQuestionMutation = useDeleteQuestion({
-    onSuccess: () => {
-      toast.success("Xoá câu hỏi thành công!");
-    },
-  });
+  const getDescendantChapterIds = (chapterId: string) => {
+    const ids = new Set<string>([chapterId]);
+    let parentIds = [chapterId];
 
-  const handleAddQuestion = async () => {
-    const newQuestion = {
-      lecturer_id: lecturerId,
-      question_text: questionForm.question_text,
-      topic: questionForm.topic,
-      options:
-        questionForm.question_type === QuestionType.ESSAY
-          ? null
-          : JSON.stringify(questionForm.options),
-      correct_answer:
-        questionForm.question_type === QuestionType.ESSAY
-          ? questionForm.correct_answer
-          : null,
-      image_url: questionForm.image_url ? questionForm.image_url : null,
-      question_type: questionForm.question_type,
-      question_format: questionForm.question_format,
-    };
-    await Promise.all([
-      createQuestionMutation.mutateAsync({
-        data: newQuestion,
-      }),
-      image && uploadFile(image),
-    ]);
-    setImage(null);
-    setQuestionForm(getInitialFormState());
-    setIsDialogOpen(false);
+    while (parentIds.length) {
+      const childIds = chapters
+        .filter((chapter) => parentIds.includes(chapter.parent_id ?? ""))
+        .map((chapter) => chapter.id)
+        .filter((id) => !ids.has(id));
+
+      childIds.forEach((id) => ids.add(id));
+      parentIds = childIds;
+    }
+
+    return ids;
   };
 
-  const handleUpdateQuestion = async (questionId: string) => {
-    await Promise.all([
-      updateQuestionMutation.mutateAsync({
-        where: { id: questionId },
-        data: {
-          question_text: questionForm.question_text,
-          topic: questionForm.topic,
-          options:
-            questionForm.question_type === QuestionType.ESSAY
-              ? null
-              : JSON.stringify(questionForm.options),
-          correct_answer:
-            questionForm.question_type === QuestionType.ESSAY
-              ? questionForm.correct_answer
-              : null,
-          image_url: questionForm.image_url ? questionForm.image_url : null,
-          question_type: questionForm.question_type,
-          question_format: questionForm.question_format,
-        },
-      }),
-      image && checkAndUpload(image),
-    ]);
-    setImage(null);
-    setEditingId(null);
-    setQuestionForm(getInitialFormState());
+  const openTopic = async (topic: Topic) => {
+    setSelectedTopic(topic);
+    setChapterStack([]);
+    setSearchTerm("");
+    setChapterPage(1);
+    setViewMode("chapters");
+    await fetchChapters(topic.id);
   };
 
-  const handleDeleteQuestion = async (questionId: string) => {
-    // lưu snapshot để rollback nếu lỗi
-    const previous = questions;
+  const openChapterChildren = (chapter: Chapter) => {
+    setChapterStack((prev) => [...prev, chapter]);
+    setSearchTerm("");
+    setChapterPage(1);
+    setViewMode("chapters");
+  };
 
-    const questionToDelete = questions.find((q: any) => q.id === questionId);
-    const image_url = questionToDelete?.image_url;
+  const openChapterQuestions = async (chapter: Chapter) => {
+    setChapterStack((prev) =>
+      prev.some((item) => item.id === chapter.id) ? prev : [...prev, chapter],
+    );
+    setSearchTerm("");
+    setQuestionPage(1);
+    setViewMode("questions");
+    await fetchQuestions(chapter.id);
+  };
 
-    try {
-      // 1. Thực hiện xoá câu hỏi trong database trước
-      await deleteQuestionMutation.mutateAsync({
-        where: { id: questionId },
+  const goBack = async () => {
+    if (viewMode === "questions") {
+      setChapterStack((prev) => prev.slice(0, -1));
+      setChapterPage(1);
+      setViewMode("chapters");
+      await fetchChapters(selectedTopic?.id);
+      return;
+    }
+
+    if (chapterStack.length > 0) {
+      setChapterStack((prev) => prev.slice(0, -1));
+      setChapterPage(1);
+      return;
+    }
+
+    setSelectedTopic(null);
+    setSearchTerm("");
+    setTopicPage(1);
+    setViewMode("topics");
+  };
+
+  const resetTopicDialog = () => {
+    setTopicName("");
+    setIsTopicDialogOpen(false);
+  };
+
+  const resetChapterDialog = () => {
+    setChapterForm({
+      topic_id: selectedTopic?.id ?? "",
+      parent_id: currentChapter?.id ?? "",
+      name: "",
+      order: chapterRows.length,
+    });
+    setEditingChapterId(null);
+    setIsChapterDialogOpen(false);
+  };
+
+  const resetQuestionDialog = () => {
+    setQuestionForm(initialQuestionForm(currentChapter?.id));
+    setSelectedFiles([]);
+    setEditingQuestionId(null);
+    setEditingQuestionFiles([]);
+    setReplaceQuestionFiles(false);
+    setIsQuestionDialogOpen(false);
+  };
+
+  const openCreateChapterDialog = () => {
+    setChapterForm({
+      topic_id: selectedTopic?.id ?? "",
+      parent_id: currentChapter?.id ?? "",
+      name: "",
+      order: chapterRows.length,
+    });
+    setEditingChapterId(null);
+    setIsChapterDialogOpen(true);
+  };
+
+  const openEditChapterDialog = (chapter: Chapter) => {
+    setChapterForm({
+      topic_id: chapter.topic_id,
+      parent_id: chapter.parent_id ?? "",
+      name: chapter.name,
+      order: chapter.order,
+    });
+    setEditingChapterId(chapter.id);
+    setIsChapterDialogOpen(true);
+  };
+
+  const openCreateQuestionDialog = () => {
+    setQuestionForm(initialQuestionForm(currentChapter?.id));
+    setSelectedFiles([]);
+    setEditingQuestionId(null);
+    setEditingQuestionFiles([]);
+    setReplaceQuestionFiles(false);
+    setIsQuestionDialogOpen(true);
+  };
+
+  const handleCreateTopic = async () => {
+    if (!topicName.trim()) {
+      toast.error("Vui lòng nhập tên topic");
+      return;
+    }
+
+    await apiClient.post<Topic>(ENDPOINTS.TOPICS.BASE, {
+      name: topicName.trim(),
+    });
+    toast.success("Đã tạo topic");
+    resetTopicDialog();
+    await fetchTopics();
+  };
+
+  const handleDeleteTopic = async (topicId: string) => {
+    const res = await apiClient.delete<{
+      chapters?: number;
+      questions?: number;
+    }>(ENDPOINTS.TOPICS.DETAIL(topicId));
+    toast.success(
+      `Đã xoá topic cùng ${res.data.chapters ?? 0} chapter và ${
+        res.data.questions ?? 0
+      } câu hỏi`,
+    );
+    if (selectedTopic?.id === topicId) {
+      setSelectedTopic(null);
+      setChapterStack([]);
+      setViewMode("topics");
+    }
+    await fetchTopics();
+  };
+
+  const handleSaveChapter = async () => {
+    if (!chapterForm.topic_id || !chapterForm.name.trim()) {
+      toast.error("Vui lòng nhập topic và tên chapter");
+      return;
+    }
+
+    const payload = {
+      topic_id: chapterForm.topic_id,
+      parent_id: chapterForm.parent_id || undefined,
+      name: chapterForm.name.trim(),
+      order: Number(chapterForm.order) || 0,
+    };
+
+    if (editingChapterId) {
+      await apiClient.patch(
+        ENDPOINTS.CHAPTERS.DETAIL(editingChapterId),
+        payload,
+      );
+      toast.success("Đã cập nhật chapter");
+    } else {
+      await apiClient.post(ENDPOINTS.CHAPTERS.BASE, payload);
+      toast.success("Đã tạo chapter");
+    }
+
+    resetChapterDialog();
+    await fetchChapters(selectedTopic?.id);
+  };
+
+  const handleDeleteChapter = async (chapterId: string) => {
+    const deletedChapterIds = getDescendantChapterIds(chapterId);
+    const res = await apiClient.delete<{
+      chapters?: number;
+      questions?: number;
+    }>(ENDPOINTS.CHAPTERS.DETAIL(chapterId));
+    toast.success(
+      `Đã xoá ${res.data.chapters ?? 0} chapter và ${
+        res.data.questions ?? 0
+      } câu hỏi`,
+    );
+    setChapterStack((prev) =>
+      prev.filter((chapter) => !deletedChapterIds.has(chapter.id)),
+    );
+    await fetchChapters(selectedTopic?.id);
+    await fetchQuestions(currentChapter?.id);
+  };
+
+  const uploadQuestionFiles = async () => {
+    const uploaded: { id: string; order: number }[] = [];
+
+    for (const [index, file] of selectedFiles.entries()) {
+      const type = getFileType(file);
+      if (!type)
+        throw new Error(`File ${file.name} không đúng định dạng media`);
+
+      const uploadRes = await apiClient.post<{
+        file: FileRecord;
+        uploadUrl: string;
+      }>(ENDPOINTS.FILES.UPLOAD_URL, {
+        name: file.name,
+        type,
+        size: file.size,
+        entity_type: "questions",
       });
 
-      // 2. Nếu có ảnh, thực hiện xoá file ảnh
-      if (image_url) {
-        try {
-          await removeFile(image_url);
-        } catch (fileError) {
-          // Log lỗi xoá file nhưng không chặn quy trình thành công của việc xoá câu hỏi
-          console.error("Lỗi khi xoá file ảnh từ storage:", fileError);
-        }
-      }
+      await axios.put(uploadRes.data.uploadUrl, file, {
+        headers: { "Content-Type": file.type },
+      });
 
-      // thành công => cập nhật UI
-      setQuestions((q: any[]) =>
-        q.filter((item: any) => item.id !== questionId),
+      const confirmRes = await apiClient.post<FileRecord>(
+        ENDPOINTS.FILES.CONFIRM(uploadRes.data.file.id),
       );
-    } catch (err) {
-      // rollback UI nếu xoá câu hỏi thất bại
-      setQuestions(previous);
-      toast.error("Không thể xoá câu hỏi. Vui lòng thử lại.");
-      console.error(err);
+      uploaded.push({ id: confirmRes.data.id, order: index + 1 });
+    }
+
+    return uploaded;
+  };
+
+  const buildQuestionPayload = async ({
+    includeFiles = true,
+  }: { includeFiles?: boolean } = {}) => {
+    const isEssay = questionForm.question_type === "ESSAY";
+    const activeOptions = questionForm.options
+      .map((option) => ({
+        text: option.text.trim(),
+        isCorrect: option.isCorrect,
+      }))
+      .filter((option) => option.text);
+
+    if (!isEssay && activeOptions.length < 2) {
+      throw new Error("Câu hỏi trắc nghiệm cần ít nhất 2 lựa chọn");
+    }
+
+    if (!isEssay && !activeOptions.some((option) => option.isCorrect)) {
+      throw new Error("Vui lòng chọn đáp án đúng");
+    }
+
+    if (isEssay && !questionForm.correct_answer.trim()) {
+      throw new Error("Vui lòng nhập đáp án đúng");
+    }
+
+    const file_ids = includeFiles ? await uploadQuestionFiles() : undefined;
+
+    return {
+      chapter_id: questionForm.chapter_id,
+      question_text: questionForm.question_text,
+      question_type: questionForm.question_type,
+      question_format: questionForm.question_format,
+      options: isEssay ? null : JSON.stringify(activeOptions),
+      correct_answer: isEssay ? questionForm.correct_answer.trim() : null,
+      ...(file_ids && { file_ids }),
+    };
+  };
+
+  const handleCreateQuestion = async () => {
+    if (!questionForm.chapter_id || !questionForm.question_text.trim()) {
+      toast.error("Vui lòng nhập đầy đủ chapter và nội dung câu hỏi");
+      return;
+    }
+
+    try {
+      const payload = await buildQuestionPayload();
+      await apiClient.post(ENDPOINTS.QUESTIONS.BASE, payload);
+      toast.success("Đã tạo câu hỏi");
+      resetQuestionDialog();
+      await fetchQuestions(currentChapter?.id);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể tạo câu hỏi",
+      );
     }
   };
 
-  const correctOptionIndex = questionForm.options.findIndex(
-    (option) => option.isCorrect,
-  );
+  const handleUpdateQuestion = async () => {
+    if (
+      !editingQuestionId ||
+      !questionForm.chapter_id ||
+      !questionForm.question_text.trim()
+    ) {
+      toast.error("Vui lòng nhập đầy đủ chapter và nội dung câu hỏi");
+      return;
+    }
 
-  const selectedValue =
-    correctOptionIndex !== -1 ? String(correctOptionIndex) : "";
-
-  const handleSelectionChange = (newIndexString: string) => {
-    const newSelectedIndex = Number(newIndexString);
-    if (!questionForm || !questionForm.options) return;
-    const newOptions = questionForm.options.map(
-      (option: any, index: number) => ({
-        ...option,
-        isCorrect: index === newSelectedIndex,
-      }),
-    );
-
-    setQuestionForm({
-      ...questionForm,
-      options: newOptions,
-    });
+    try {
+      const payload = await buildQuestionPayload({
+        includeFiles: replaceQuestionFiles,
+      });
+      await apiClient.patch(
+        ENDPOINTS.QUESTIONS.DETAIL(editingQuestionId),
+        payload,
+      );
+      toast.success("Đã cập nhật câu hỏi");
+      resetQuestionDialog();
+      await fetchQuestions(currentChapter?.id);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể cập nhật câu hỏi",
+      );
+    }
   };
 
-  const handleCorrectChange = (indexToToggle: number) => {
-    if (!questionForm.options) return;
-    const newOptions = questionForm.options.map(
-      (option: any, index: number) => {
-        if (index === indexToToggle) {
-          return {
-            ...option,
-            isCorrect: !option.isCorrect,
-          };
-        }
-        return option;
-      },
-    );
-
-    setQuestionForm({
-      ...questionForm,
-      options: newOptions,
-    });
+  const handleDeleteQuestion = async (questionId: string) => {
+    await apiClient.delete(ENDPOINTS.QUESTIONS.DETAIL(questionId));
+    toast.success("Đã xoá câu hỏi");
+    await fetchQuestions(currentChapter?.id);
   };
 
-  const filteredQuestions =
-    questions?.filter((q: any) =>
-      q.question_text.toLowerCase().includes(searchTerm.toLowerCase()),
-    ) || [];
+  const openQuestionDetail = async (questionId: string) => {
+    setLoadingDetailId(questionId);
+    try {
+      const res = await apiClient.get<Question>(
+        ENDPOINTS.QUESTIONS.DETAIL(questionId),
+      );
+      setDetailQuestion(res.data);
+    } catch {
+      toast.error("Không thể tải chi tiết câu hỏi");
+    } finally {
+      setLoadingDetailId(null);
+    }
+  };
 
-  const totalPages = Math.ceil(filteredQuestions.length / ITEMS_PER_PAGE);
-  const paginatedQuestions = filteredQuestions.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
+  const parseQuestionOptions = (question: Question) => {
+    if (!question.options) return [];
+    try {
+      return JSON.parse(question.options) as ParsedQuestionOption[];
+    } catch {
+      return [];
+    }
+  };
+
+  const getLegacyCorrectLabels = (question: Question) => {
+    const legacyAnswer = question.correct_answer?.trim();
+    if (!legacyAnswer) return new Set<string>();
+
+    try {
+      const labels = JSON.parse(legacyAnswer);
+      if (Array.isArray(labels)) {
+        return new Set(labels.map((label) => String(label)));
+      }
+    } catch {
+      // Old single-choice questions stored the correct answer as a plain label.
+    }
+
+    return new Set([legacyAnswer]);
+  };
+
+  const getQuestionFormFromQuestion = (question: Question): QuestionForm => {
+    const parsedOptions = parseQuestionOptions(question);
+    const hasCorrectFlag = parsedOptions.some(
+      (option) => typeof option.isCorrect === "boolean",
+    );
+    const legacyCorrectLabels = getLegacyCorrectLabels(question);
+    const normalizedOptions =
+      question.question_type === "ESSAY"
+        ? emptyOptions()
+        : parsedOptions.map((option, index) => ({
+            text: option.text ?? "",
+            isCorrect: hasCorrectFlag
+              ? Boolean(option.isCorrect)
+              : legacyCorrectLabels.has(option.label ?? optionLabels[index]),
+          }));
+
+    while (normalizedOptions.length < 4) {
+      normalizedOptions.push({ text: "", isCorrect: false });
+    }
+
+    return {
+      chapter_id: question.chapter_id,
+      question_text: question.question_text,
+      question_type: question.question_type,
+      question_format: question.question_format,
+      options: normalizedOptions.slice(0, optionLabels.length),
+      correct_answer:
+        question.question_type === "ESSAY"
+          ? (question.correct_answer ?? "")
+          : "",
+    };
+  };
+
+  const openEditQuestionDialog = async (questionId: string) => {
+    setLoadingEditId(questionId);
+    try {
+      const res = await apiClient.get<Question>(
+        ENDPOINTS.QUESTIONS.DETAIL(questionId),
+      );
+      setQuestionForm(getQuestionFormFromQuestion(res.data));
+      setEditingQuestionId(res.data.id);
+      setEditingQuestionFiles(res.data.files ?? []);
+      setSelectedFiles([]);
+      setReplaceQuestionFiles(false);
+      setIsQuestionDialogOpen(true);
+    } catch {
+      toast.error("Không thể tải câu hỏi để cập nhật");
+    } finally {
+      setLoadingEditId(null);
+    }
+  };
+
+  const getQuestionAnswerText = (question: Question) => {
+    if (question.question_type === "ESSAY") {
+      return question.correct_answer?.trim() || "-";
+    }
+
+    const options = parseQuestionOptions(question);
+    const correctOptions = options
+      .map((option, index) =>
+        option.isCorrect
+          ? `${option.label ?? optionLabels[index]}. ${option.text}`
+          : null,
+      )
+      .filter(Boolean);
+
+    if (correctOptions.length) return correctOptions.join(", ");
+
+    const legacyAnswer = question.correct_answer?.trim();
+    if (!legacyAnswer) return "-";
+
+    try {
+      const labels = JSON.parse(legacyAnswer);
+      if (Array.isArray(labels)) {
+        return labels
+          .map((label) => {
+            const optionIndex = optionLabels.indexOf(String(label));
+            const option = options[optionIndex];
+            return option ? `${label}. ${option.text}` : String(label);
+          })
+          .join(", ");
+      }
+    } catch {
+      // Old single-choice questions stored the correct answer as a plain label.
+    }
+
+    const optionIndex = optionLabels.indexOf(legacyAnswer);
+    const option = options[optionIndex];
+    return option ? `${legacyAnswer}. ${option.text}` : legacyAnswer;
+  };
+
+  const panelTitle =
+    viewMode === "topics"
+      ? "Quản lí topic"
+      : viewMode === "chapters"
+        ? "Quản lí Chapter"
+        : "Quản lí Câu hỏi";
 
   return (
-    <div className="space-y-6 w-full max-w-full overflow-hidden">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900">Ngân hàng câu hỏi</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer">
-              <Plus className="h-4 w-4 mr-2" />
-              Thêm câu hỏi
+    <div className="w-full max-w-full space-y-6 overflow-hidden">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-3">
+          <h2 className="text-3xl font-bold text-gray-900">
+            Ngân hàng câu hỏi
+          </h2>
+          {viewMode !== "topics" && (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                goBack().catch(() => toast.error("Không thể quay lại"))
+              }
+              className="h-8 gap-2 px-0 text-gray-700 hover:bg-transparent hover:text-[#0066cc] hover:cursor-pointer"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {viewMode === "questions"
+                ? "Quay lại Chapter"
+                : chapterStack.length > 0
+                  ? "Quay lại Chapter cha"
+                  : "Quay lại Topic"}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white border-gray-300">
-            <DialogHeader>
-              <DialogTitle>Thêm câu hỏi mới</DialogTitle>
-              <DialogDescription>
-                Nhập thông tin chi tiết câu hỏi
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="question-text">
-                  Nội dung câu hỏi <span className="text-red-500">*</span>
-                </Label>
-                <MathInput
-                  id="question-text"
-                  placeholder="Nhập câu hỏi (có thể sử dụng $công thức$ cho toán học)"
-                  value={questionForm.question_text}
-                  onChange={(value) =>
-                    setQuestionForm({
-                      ...questionForm,
-                      question_text: value,
-                    })
-                  }
-                  className="bg-white border-gray-300"
-                />
-              </div>
+          )}
+        </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="question-topic">
-                    Chủ đề <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="question-topic"
-                    placeholder="Nhập chủ đề"
-                    value={questionForm.topic}
-                    onChange={(e) =>
-                      setQuestionForm({
-                        ...questionForm,
-                        topic: e.target.value,
-                      })
-                    }
-                    className="bg-white border-gray-300"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="question-type">
-                    Loại câu hỏi <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={questionForm.question_type}
-                    onValueChange={(value) =>
-                      setQuestionForm({
-                        ...questionForm,
-                        question_type: value as QuestionType,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="bg-white border-gray-300">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-gray-300">
-                      <SelectItem value={`${QuestionType.SINGLE_CHOICE}`}>
-                        Trắc nghiệm một đáp án
-                      </SelectItem>
-                      <SelectItem value={`${QuestionType.MULTIPLE_CHOICE}`}>
-                        Trắc nghiệm nhiều đáp án
-                      </SelectItem>
-                      <SelectItem value={`${QuestionType.ESSAY}`}>
-                        Tự luận
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="question-format">
-                  Định dạng câu hỏi <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={questionForm.question_format}
-                  onValueChange={(value) =>
-                    setQuestionForm({
-                      ...questionForm,
-                      question_format: value as QuestionFormat,
-                    })
-                  }
-                >
-                  <SelectTrigger className="bg-white border-gray-300">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-gray-300">
-                    <SelectItem value="KNOWLEDGE">Nhận biết</SelectItem>
-                    <SelectItem value="UNDERSTANDING">Thông hiểu</SelectItem>
-                    <SelectItem value="APPLYING">Vận dụng</SelectItem>
-                    <SelectItem value="ADVANCED">Nâng cao</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="image-url">Hình ảnh (tùy chọn)</Label>
-                <Input
-                  id="image-file"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    if (!file) return;
-                    setImage(file);
-                    setQuestionForm({
-                      ...questionForm,
-                      image_url: file.name,
-                    });
-                  }}
-                  className="bg-white border-gray-300"
-                />
-                {questionForm.image_url && image && (
-                  <img src={URL.createObjectURL(image)} alt="Preview" />
-                )}
-              </div>
-
-              {questionForm.question_type === "SINGLE_CHOICE" && (
-                <>
-                  <div className="space-y-3">
-                    <Label>
-                      Các lựa chọn <span className="text-red-500">*</span>
-                    </Label>
-                    <RadioGroup
-                      value={selectedValue}
-                      onValueChange={handleSelectionChange}
-                    >
-                      {questionForm.options.map((option, index) => (
-                        <div className="flex items-center gap-2" key={index}>
-                          <div className="flex-1">
-                            <MathInput
-                              id={`option-${index}`}
-                              placeholder={`Lựa chọn ${index + 1}`}
-                              value={option.text}
-                              onChange={(value) => {
-                                const newOptions = [...questionForm.options];
-                                newOptions[index].text = value;
-                                setQuestionForm({
-                                  ...questionForm,
-                                  options: newOptions,
-                                });
-                              }}
-                              className="bg-white border-gray-300"
-                            />
-                          </div>
-                          <RadioGroupItem
-                            value={String(index)}
-                            id={`option-${index}`}
-                            className="bg-white border-gray-300"
-                          />
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </div>
-                </>
-              )}
-
-              {questionForm.question_type === "MULTIPLE_CHOICE" && (
-                <div className="space-y-3">
-                  <Label>
-                    Các lựa chọn <span className="text-red-500">*</span>
-                  </Label>
-                  {questionForm.options.map((option, index) => (
-                    <div className="flex items-center gap-2" key={index}>
-                      <div className="flex-1">
-                        <MathInput
-                          id={`multi-option-${index}`}
-                          placeholder={`Lựa chọn ${index + 1}`}
-                          value={option.text}
-                          onChange={(value) => {
-                            const newOptions = [...questionForm.options];
-                            newOptions[index].text = value;
-                            setQuestionForm({
-                              ...questionForm,
-                              options: newOptions,
-                            });
-                          }}
-                          className="bg-white border-gray-300"
-                        />
-                      </div>
-                      <Checkbox
-                        checked={option.isCorrect}
-                        onCheckedChange={() => handleCorrectChange(index)}
-                        value={String(index)}
-                        id={`option-${index}`}
-                        className="bg-white border-gray-300"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {questionForm.question_type === "ESSAY" && (
-                <div className="space-y-2">
-                  <Label htmlFor="correct-answer">
-                    Đáp án tham khảo <span className="text-red-500">*</span>
-                  </Label>
-                  <MathInput
-                    id="correct-answer"
-                    placeholder="Nhập đáp án tham khảo (có thể dùng công thức toán học)"
-                    value={questionForm.correct_answer}
-                    onChange={(value) =>
-                      setQuestionForm({
-                        ...questionForm,
-                        correct_answer: value,
-                      })
-                    }
-                    className="bg-white border-gray-300"
-                  />
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                onClick={() => handleAddQuestion()}
-                className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
-              >
-                Thêm câu hỏi
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      <Card className="bg-white border-gray-300">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        {selectedTopic && (
+          <div className="rounded-md border border-gray-300 bg-white/70 px-4 py-2 text-sm text-gray-700">
             <div>
-              <CardTitle>Ngân hàng câu hỏi của bạn</CardTitle>
-              <CardDescription>
-                Quản lý, chỉnh sửa và xóa câu hỏi
-              </CardDescription>
+              Topic: <span className="font-medium">{selectedTopic.name}</span>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Tìm kiếm câu hỏi..."
-                className="pl-10 bg-white border-gray-300"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="w-full">
-            <Table className="w-full table-fixed">
-              <TableHeader>
-                <TableRow className="border-gray-300">
-                  <TableHead className="w-[30%]">Câu hỏi</TableHead>
-                  <TableHead className="w-[10%]">Chủ đề</TableHead>
-                  <TableHead className="w-[15%]">Loại</TableHead>
-                  <TableHead className="w-[10%]">Định dạng</TableHead>
-                  <TableHead className="w-[25%]">Đáp án</TableHead>
-                  <TableHead className="text-right w-[10%]">Thao tác</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredQuestions.length > 0 ? (
-                  paginatedQuestions.map((question: IQuestion) => (
-                    <TableRow key={question.id} className="border-gray-300">
-                      <TableCell className="whitespace-normal">
-                        <div className="line-clamp-2 break-words overflow-hidden">
-                          <MathRenderer content={question.question_text} />
-                        </div>
-                      </TableCell>
-                      <TableCell>{question.topic}</TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`px-2 py-1 text-white rounded-lg ${
-                            question.question_type === "SINGLE_CHOICE"
-                              ? "text-red-500 bg-red-100"
-                              : question.question_type === "MULTIPLE_CHOICE"
-                                ? "text-green-500 bg-green-100"
-                                : "text-blue-500 bg-blue-100"
-                          }`}
-                        >
-                          {QuestionTypeMap[question.question_type]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={`px-2 py-1 text-white rounded-lg ${
-                            question.question_format === "ADVANCED"
-                              ? "text-red-500 bg-red-100"
-                              : question.question_format === "APPLYING"
-                                ? "text-orange-500 bg-orange-100"
-                                : question.question_format === "UNDERSTANDING"
-                                  ? "text-green-500 bg-green-100"
-                                  : "text-blue-500 bg-blue-100"
-                          }`}
-                        >
-                          {QuestionFormatMap[question.question_format]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-normal">
-                        <div className="line-clamp-2 break-words overflow-hidden">
-                          {question.question_type === "ESSAY" ? (
-                            <MathRenderer
-                              content={question.correct_answer || ""}
-                            />
-                          ) : question.options ? (
-                            <MathRenderer
-                              content={JSON.parse(
-                                question.options as unknown as string,
-                              )
-                                .filter(
-                                  (option: QuestionOption) => option.isCorrect,
-                                )
-                                .map((option: QuestionOption) => option.text)
-                                .join(", ")}
-                            />
-                          ) : (
-                            ""
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Dialog
-                            open={editingId === question.id}
-                            onOpenChange={(open) => {
-                              if (!open) {
-                                setEditingId(null);
-                                setQuestionForm(getInitialFormState());
-                                setImage(null);
-                              }
-                            }}
-                          >
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  setEditingId(question.id);
-                                  const parsedOptions = question.options
-                                    ? JSON.parse(
-                                        question.options as unknown as string,
-                                      )
-                                    : getInitialFormState().options;
-                                  setQuestionForm({
-                                    question_text: question.question_text,
-                                    topic: question.topic,
-                                    options: parsedOptions as any,
-                                    correct_answer:
-                                      question.correct_answer || "",
-                                    image_url: question.image_url || "",
-                                    question_type:
-                                      question.question_type as any,
-                                    question_format:
-                                      question.question_format as any,
-                                  });
-                                }}
-                                className="hover:cursor-pointer"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white border-gray-300">
-                              <DialogHeader>
-                                <DialogTitle>Chỉnh sửa câu hỏi</DialogTitle>
-                                <DialogDescription>
-                                  Cập nhật thông tin câu hỏi
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="space-y-4 py-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-question-text">
-                                    Nội dung câu hỏi{" "}
-                                    <span className="text-red-500">*</span>
-                                  </Label>
-                                  <MathInput
-                                    id="edit-question-text"
-                                    placeholder="Nhập câu hỏi"
-                                    value={questionForm.question_text}
-                                    onChange={(value) =>
-                                      setQuestionForm({
-                                        ...questionForm,
-                                        question_text: value,
-                                      })
-                                    }
-                                    className="bg-white border-gray-300"
-                                  />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-question-topic">
-                                      Chủ đề{" "}
-                                      <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Input
-                                      id="edit-question-topic"
-                                      placeholder="Nhập chủ đề"
-                                      value={questionForm.topic}
-                                      onChange={(e) =>
-                                        setQuestionForm({
-                                          ...questionForm,
-                                          topic: e.target.value,
-                                        })
-                                      }
-                                      className="bg-white border-gray-300"
-                                    />
-                                  </div>
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-question-type">
-                                      Loại câu hỏi{" "}
-                                      <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Select
-                                      value={questionForm.question_type}
-                                      onValueChange={(value) =>
-                                        setQuestionForm({
-                                          ...questionForm,
-                                          question_type: value as any,
-                                        })
-                                      }
-                                    >
-                                      <SelectTrigger className="bg-white border-gray-300">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent className="bg-white border-gray-300">
-                                        <SelectItem value="SINGLE_CHOICE">
-                                          Trắc nghiệm một đáp án
-                                        </SelectItem>
-                                        <SelectItem value="MULTIPLE_CHOICE">
-                                          Trắc nghiệm nhiều đáp án
-                                        </SelectItem>
-                                        <SelectItem value="ESSAY">
-                                          Tự luận
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-question-format">
-                                    Định dạng câu hỏi{" "}
-                                    <span className="text-red-500">*</span>
-                                  </Label>
-                                  <Select
-                                    value={questionForm.question_format}
-                                    onValueChange={(value) =>
-                                      setQuestionForm({
-                                        ...questionForm,
-                                        question_format: value as any,
-                                      })
-                                    }
-                                  >
-                                    <SelectTrigger className="bg-white border-gray-300">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white border-gray-300">
-                                      <SelectItem value="KNOWLEDGE">
-                                        Nhận biết
-                                      </SelectItem>
-                                      <SelectItem value="UNDERSTANDING">
-                                        Thông hiểu
-                                      </SelectItem>
-                                      <SelectItem value="APPLYING">
-                                        Vận dụng
-                                      </SelectItem>
-                                      <SelectItem value="ADVANCED">
-                                        Nâng cao
-                                      </SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label
-                                    htmlFor={`edit-image-file-${question.id}`}
-                                    className="cursor-pointer"
-                                  >
-                                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-[#0066cc] transition-colors">
-                                      {previewUrl ? (
-                                        <div className="relative group">
-                                          <img
-                                            src={previewUrl}
-                                            alt="Preview"
-                                            className="max-h-40 rounded-lg shadow-sm"
-                                          />
-                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
-                                            <Plus className="h-6 w-6 text-white" />
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <>
-                                          <Plus className="h-8 w-8 text-gray-400 mb-2" />
-                                          <span className="text-sm text-gray-500">
-                                            Nhấp để tải ảnh lên
-                                          </span>
-                                        </>
-                                      )}
-                                    </div>
-                                  </Label>
-                                  <Input
-                                    id={`edit-image-file-${question.id}`}
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0] || null;
-                                      if (!file) return;
-                                      setImage(file);
-                                      setQuestionForm({
-                                        ...questionForm,
-                                        image_url: file.name,
-                                      });
-                                    }}
-                                  />
-                                </div>
-
-                                {questionForm.question_type ===
-                                  "SINGLE_CHOICE" && (
-                                  <>
-                                    <div className="space-y-3">
-                                      <Label>
-                                        Các lựa chọn{" "}
-                                        <span className="text-red-500">*</span>
-                                      </Label>
-                                      <RadioGroup
-                                        value={String(
-                                          questionForm.options.findIndex(
-                                            (opt) => opt.isCorrect,
-                                          ),
-                                        )}
-                                        onValueChange={(val) => {
-                                          const idx = parseInt(val);
-                                          const newOpts =
-                                            questionForm.options.map(
-                                              (opt, i) => ({
-                                                ...opt,
-                                                isCorrect: i === idx,
-                                              }),
-                                            );
-                                          setQuestionForm({
-                                            ...questionForm,
-                                            options: newOpts,
-                                          });
-                                        }}
-                                      >
-                                        {questionForm.options.map(
-                                          (option, idx) => (
-                                            <div
-                                              className="flex items-center gap-2"
-                                              key={idx}
-                                            >
-                                              <div className="flex-1">
-                                                <MathInput
-                                                  placeholder={`Lựa chọn ${
-                                                    idx + 1
-                                                  }`}
-                                                  value={option.text}
-                                                  onChange={(val) => {
-                                                    const newOpts = [
-                                                      ...questionForm.options,
-                                                    ];
-                                                    newOpts[idx].text = val;
-                                                    setQuestionForm({
-                                                      ...questionForm,
-                                                      options: newOpts,
-                                                    });
-                                                  }}
-                                                  className="bg-white border-gray-300"
-                                                />
-                                              </div>
-                                              <RadioGroupItem
-                                                value={String(idx)}
-                                                className="bg-white border-gray-300"
-                                              />
-                                            </div>
-                                          ),
-                                        )}
-                                      </RadioGroup>
-                                    </div>
-                                  </>
-                                )}
-
-                                {questionForm.question_type ===
-                                  "MULTIPLE_CHOICE" && (
-                                  <div className="space-y-3">
-                                    <Label>
-                                      Các lựa chọn{" "}
-                                      <span className="text-red-500">*</span>
-                                    </Label>
-                                    {questionForm.options.map((option, idx) => (
-                                      <div
-                                        className="flex items-center gap-2"
-                                        key={idx}
-                                      >
-                                        <div className="flex-1">
-                                          <MathInput
-                                            placeholder={`Lựa chọn ${idx + 1}`}
-                                            value={option.text}
-                                            onChange={(val) => {
-                                              const newOpts = [
-                                                ...questionForm.options,
-                                              ];
-                                              newOpts[idx].text = val;
-                                              setQuestionForm({
-                                                ...questionForm,
-                                                options: newOpts,
-                                              });
-                                            }}
-                                            className="bg-white border-gray-300"
-                                          />
-                                        </div>
-                                        <Checkbox
-                                          checked={option.isCorrect}
-                                          onCheckedChange={() => {
-                                            const newOpts = [
-                                              ...questionForm.options,
-                                            ];
-                                            newOpts[idx].isCorrect =
-                                              !newOpts[idx].isCorrect;
-                                            setQuestionForm({
-                                              ...questionForm,
-                                              options: newOpts,
-                                            });
-                                          }}
-                                          className="bg-white border-gray-300"
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {questionForm.question_type === "ESSAY" && (
-                                  <div className="space-y-2">
-                                    <Label htmlFor="edit-correct-answer">
-                                      Đáp án tham khảo{" "}
-                                      <span className="text-red-500">*</span>
-                                    </Label>
-                                    <MathInput
-                                      id="edit-correct-answer"
-                                      placeholder="Nhập đáp án tham khảo"
-                                      value={questionForm.correct_answer}
-                                      onChange={(value) =>
-                                        setQuestionForm({
-                                          ...questionForm,
-                                          correct_answer: value,
-                                        })
-                                      }
-                                      className="bg-white border-gray-300"
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                              <DialogFooter>
-                                <Button
-                                  onClick={() =>
-                                    handleUpdateQuestion(question.id)
-                                  }
-                                  className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
-                                >
-                                  Lưu thay đổi
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-600 hover:text-red-700 hover:cursor-pointer"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="bg-white border-gray-300">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Xác nhận xoá
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Bạn có chắc muốn xoá câu hỏi này? Hành động
-                                  không thể hoàn tác.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel className="hover:cursor-pointer">
-                                  Huỷ
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-red-600 hover:bg-red-700 text-white hover:cursor-pointer"
-                                  onClick={() =>
-                                    handleDeleteQuestion(question.id)
-                                  }
-                                >
-                                  Xoá
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-72 text-center">
-                      <div className="flex flex-col items-center justify-center space-y-3">
-                        <div className="p-4 bg-gray-50 rounded-full">
-                          {searchTerm ? (
-                            <AlertCircle className="h-10 w-10 text-gray-400" />
-                          ) : (
-                            <FileQuestion className="h-10 w-10 text-gray-400" />
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-lg font-medium text-gray-900">
-                            {searchTerm
-                              ? "Không tìm thấy câu hỏi nào"
-                              : "Chưa có câu hỏi nào"}
-                          </p>
-                          <p className="text-sm text-gray-500 max-w-xs mx-auto">
-                            {searchTerm
-                              ? `Không có câu hỏi nào khớp với từ khóa "${searchTerm}". Vui lòng thử lại với từ khóa khác.`
-                              : "Ngân hàng câu hỏi của bạn đang trống. Hãy thêm câu hỏi đầu tiên để bắt đầu tạo các bài thi."}
-                          </p>
-                        </div>
-                        {!searchTerm && (
-                          <Button
-                            onClick={() => setIsDialogOpen(true)}
-                            className="bg-[#0066cc] hover:bg-[#0052a3] text-white mt-2"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Thêm câu hỏi ngay
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-
-            {totalPages > 0 && (
-              <div className="flex items-center justify-end space-x-2 py-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.max(prev - 1, 1))
-                  }
-                  className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
-                  disabled={currentPage === 1}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Trước
-                </Button>
-                <div className="text-sm font-medium">
-                  Trang {currentPage} / {totalPages}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                  }
-                  className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
-                  disabled={currentPage === totalPages}
-                >
-                  Sau
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+            {currentChapter && (
+              <div>
+                Chapter:{" "}
+                <span className="font-medium">{currentChapter.name}</span>
               </div>
             )}
           </div>
+        )}
+      </div>
+
+      <Card className="bg-white border-gray-300 space-y-4">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle>{panelTitle}</CardTitle>
+          {viewMode === "topics" && (
+            <div className="flex w-full gap-2 sm:w-auto">
+              <div className="relative min-w-0 flex-1 sm:w-[520px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    setTopicPage(1);
+                  }}
+                  placeholder="Tìm kiếm topic"
+                  className="pl-10 bg-white border-gray-300"
+                />
+              </div>
+              <Button
+                onClick={() => setIsTopicDialogOpen(true)}
+                className="shrink-0 bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Tạo Topic
+              </Button>
+            </div>
+          )}
+
+          {viewMode === "chapters" && (
+            <Button
+              onClick={openCreateChapterDialog}
+              className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Tạo Chapter
+            </Button>
+          )}
+
+          {viewMode === "questions" && (
+            <Button
+              onClick={openCreateQuestionDialog}
+              className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Tạo Câu hỏi
+            </Button>
+          )}
+        </CardHeader>
+
+        <CardContent>
+          {viewMode === "topics" && (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-300">
+                    <TableHead>Tên Topic</TableHead>
+                    <TableHead>Ngày tạo</TableHead>
+                    <TableHead className="text-center">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {topicRows.length > 0 ? (
+                    paginatedTopicRows.map((topic) => (
+                      <TableRow key={topic.id} className="border-gray-300">
+                        <TableCell className="font-medium">
+                          {topic.name}
+                        </TableCell>
+                        <TableCell>{formatDate(topic.created_at)}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
+                              onClick={() =>
+                                openTopic(topic).catch(() =>
+                                  toast.error("Không thể mở chapter"),
+                                )
+                              }
+                            >
+                              Quản lý Chapter
+                            </Button>
+                            <DeleteButton
+                              title="Xoá topic?"
+                              description="Topic này cùng toàn bộ Chapter, Chapter con và Câu hỏi thuộc Topic sẽ bị xoá. Hành động này không thể hoàn tác."
+                              onConfirm={() => handleDeleteTopic(topic.id)}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <EmptyRow
+                      colSpan={3}
+                      text={isLoading ? "Đang tải dữ liệu..." : "Chưa có topic"}
+                    />
+                  )}
+                </TableBody>
+              </Table>
+
+              <PaginationControls
+                currentPage={topicPage}
+                totalPages={topicTotalPages}
+                setCurrentPage={setTopicPage}
+              />
+            </>
+          )}
+
+          {viewMode === "chapters" && (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-300">
+                    <TableHead>Chapter</TableHead>
+                    <TableHead>Chapter cha</TableHead>
+                    <TableHead>Thứ tự</TableHead>
+                    <TableHead>Ngày tạo</TableHead>
+                    <TableHead>Ngày cập nhật</TableHead>
+                    <TableHead className="text-center">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {chapterRows.length > 0 ? (
+                    paginatedChapterRows.map((chapter) => {
+                      const childCount = getChildCount(chapter.id);
+                      const parent = chapters.find(
+                        (item) => item.id === chapter.parent_id,
+                      );
+                      return (
+                        <TableRow key={chapter.id} className="border-gray-300">
+                          <TableCell className="font-medium">
+                            {chapter.name}
+                          </TableCell>
+                          <TableCell>{parent?.name ?? "Không có"}</TableCell>
+                          <TableCell>{chapter.order}</TableCell>
+                          <TableCell>
+                            {formatDate(chapter.created_at)}
+                          </TableCell>
+                          <TableCell>
+                            {formatDate(chapter.updated_at)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
+                                onClick={() =>
+                                  childCount > 0
+                                    ? openChapterChildren(chapter)
+                                    : openChapterQuestions(chapter).catch(() =>
+                                        toast.error("Không thể tải câu hỏi"),
+                                      )
+                                }
+                              >
+                                {childCount > 0
+                                  ? "Quản lý Chapter con"
+                                  : "Quản lý Câu hỏi"}
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 hover:cursor-pointer"
+                                onClick={() => openEditChapterDialog(chapter)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <DeleteButton
+                                title="Xoá chapter?"
+                                description="Chapter này cùng toàn bộ Chapter con và Câu hỏi thuộc các Chapter đó sẽ bị xoá. Hành động này không thể hoàn tác."
+                                onConfirm={() =>
+                                  handleDeleteChapter(chapter.id)
+                                }
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <EmptyRow
+                      colSpan={6}
+                      text={
+                        isLoading
+                          ? "Đang tải dữ liệu..."
+                          : "Chưa có chapter ở cấp này"
+                      }
+                    />
+                  )}
+                </TableBody>
+              </Table>
+
+              <PaginationControls
+                currentPage={chapterPage}
+                totalPages={chapterTotalPages}
+                setCurrentPage={setChapterPage}
+              />
+            </>
+          )}
+
+          {viewMode === "questions" && (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-gray-300">
+                    <TableHead>Câu hỏi</TableHead>
+                    <TableHead>Question type</TableHead>
+                    <TableHead>Question Format</TableHead>
+                    <TableHead>Answer</TableHead>
+                    <TableHead>Ngày tạo</TableHead>
+                    <TableHead>Ngày cập nhật</TableHead>
+                    <TableHead className="text-center">Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {questionRows.length > 0 ? (
+                    paginatedQuestionRows.map((question) => (
+                      <TableRow key={question.id} className="border-gray-300">
+                        <TableCell className="max-w-md">
+                          <MathRenderer content={question.question_text} />
+                        </TableCell>
+                        <TableCell>
+                          <QuestionTypeBadge type={question.question_type} />
+                        </TableCell>
+                        <TableCell>
+                          <QuestionFormatBadge
+                            format={question.question_format}
+                          />
+                        </TableCell>
+                        <TableCell className="max-w-[180px] truncate">
+                          {getQuestionAnswerText(question)}
+                        </TableCell>
+                        <TableCell>{formatDate(question.created_at)}</TableCell>
+                        <TableCell>{formatDate(question.updated_at)}</TableCell>
+                        <TableCell className="text-center">
+                          <div className="flex justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
+                              disabled={loadingDetailId === question.id}
+                              onClick={() => openQuestionDetail(question.id)}
+                            >
+                              {loadingDetailId === question.id ? (
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                              ) : (
+                                <Eye className="mr-1 h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 hover:cursor-pointer"
+                              disabled={loadingEditId === question.id}
+                              title="Cập nhật câu hỏi"
+                              onClick={() =>
+                                openEditQuestionDialog(question.id)
+                              }
+                            >
+                              {loadingEditId === question.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Pencil className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <DeleteButton
+                              title="Xoá câu hỏi?"
+                              description="Câu hỏi sẽ bị xoá khỏi ngân hàng câu hỏi."
+                              onConfirm={() =>
+                                handleDeleteQuestion(question.id)
+                              }
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <EmptyRow
+                      colSpan={7}
+                      text={
+                        isLoading ? "Đang tải dữ liệu..." : "Chưa có câu hỏi"
+                      }
+                    />
+                  )}
+                </TableBody>
+              </Table>
+
+              <PaginationControls
+                currentPage={questionPage}
+                totalPages={questionTotalPages}
+                setCurrentPage={setQuestionPage}
+              />
+            </>
+          )}
         </CardContent>
       </Card>
+
+      <Dialog open={isTopicDialogOpen} onOpenChange={setIsTopicDialogOpen}>
+        <DialogContent className="bg-white border-gray-300">
+          <DialogHeader>
+            <DialogTitle>Tạo Topic</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Tên topic</Label>
+            <Input
+              value={topicName}
+              onChange={(event) => setTopicName(event.target.value)}
+              className="bg-white border-gray-300"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={resetTopicDialog}
+              className="hover:cursor-pointer"
+            >
+              Huỷ
+            </Button>
+            <Button
+              onClick={() =>
+                handleCreateTopic().catch(() =>
+                  toast.error("Không thể tạo topic"),
+                )
+              }
+              className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+            >
+              Tạo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isChapterDialogOpen} onOpenChange={setIsChapterDialogOpen}>
+        <DialogContent className="bg-white border-gray-300">
+          <DialogHeader>
+            <DialogTitle>
+              {editingChapterId ? "Cập nhật Chapter" : "Tạo Chapter"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Tên chapter</Label>
+              <Input
+                value={chapterForm.name}
+                onChange={(event) =>
+                  setChapterForm((prev) => ({
+                    ...prev,
+                    name: event.target.value,
+                  }))
+                }
+                className="bg-white border-gray-300"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Parent</Label>
+              <Select
+                value={chapterForm.parent_id || "none"}
+                onValueChange={(value) =>
+                  setChapterForm((prev) => ({
+                    ...prev,
+                    parent_id: value === "none" ? "" : value,
+                  }))
+                }
+              >
+                <SelectTrigger className="bg-white border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="none">Không có</SelectItem>
+                  {chapters
+                    .filter(
+                      (chapter) =>
+                        chapter.topic_id === selectedTopic?.id &&
+                        chapter.id !== editingChapterId,
+                    )
+                    .map((chapter) => (
+                      <SelectItem key={chapter.id} value={chapter.id}>
+                        {chapter.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Order</Label>
+              <Input
+                type="number"
+                min={0}
+                value={chapterForm.order}
+                onChange={(event) =>
+                  setChapterForm((prev) => ({
+                    ...prev,
+                    order: Number(event.target.value),
+                  }))
+                }
+                className="bg-white border-gray-300"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={resetChapterDialog}
+              className="hover:cursor-pointer"
+            >
+              Huỷ
+            </Button>
+            <Button
+              onClick={() =>
+                handleSaveChapter().catch(() =>
+                  toast.error("Không thể lưu chapter"),
+                )
+              }
+              className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+            >
+              Lưu
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <QuestionDialog
+        open={isQuestionDialogOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            setIsQuestionDialogOpen(true);
+            return;
+          }
+          resetQuestionDialog();
+        }}
+        mode={editingQuestionId ? "edit" : "create"}
+        questionForm={questionForm}
+        setQuestionForm={setQuestionForm}
+        selectedFiles={selectedFiles}
+        setSelectedFiles={setSelectedFiles}
+        existingFiles={editingQuestionFiles}
+        replaceFiles={replaceQuestionFiles}
+        setReplaceFiles={setReplaceQuestionFiles}
+        onCancel={resetQuestionDialog}
+        onSubmit={
+          editingQuestionId ? handleUpdateQuestion : handleCreateQuestion
+        }
+      />
+
+      <QuestionDetailDialog
+        question={detailQuestion}
+        onOpenChange={(open) => !open && setDetailQuestion(null)}
+        parseQuestionOptions={parseQuestionOptions}
+        getQuestionAnswerText={getQuestionAnswerText}
+      />
     </div>
+  );
+}
+
+function PaginationControls({
+  currentPage,
+  totalPages,
+  setCurrentPage,
+}: {
+  currentPage: number;
+  totalPages: number;
+  setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  if (totalPages <= 0) return null;
+
+  return (
+    <div className="flex items-center justify-end space-x-2 py-4">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+        className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
+        disabled={currentPage === 1}
+      >
+        <ChevronLeft className="h-4 w-4" />
+        Trước
+      </Button>
+      <div className="text-sm font-medium">
+        Trang {currentPage} / {totalPages}
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+        className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
+        disabled={currentPage === totalPages}
+      >
+        Sau
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+function QuestionTypeBadge({ type }: { type: QuestionType }) {
+  const config = questionTypeConfig[type];
+  const Icon = config.Icon;
+
+  return (
+    <div
+      className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full ${config.bgColor} px-3 py-1.5`}
+    >
+      <Icon className={`h-3.5 w-3.5 ${config.color}`} />
+      <span className={`text-xs font-semibold ${config.color}`}>
+        {config.label}
+      </span>
+    </div>
+  );
+}
+
+function QuestionFormatBadge({ format }: { format: QuestionFormat }) {
+  const config = questionFormatConfig[format];
+
+  return (
+    <div
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full ${config.bgColor} px-3 py-1.5`}
+    >
+      <div className="flex gap-0.5">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className={`h-2 w-2 rounded-full bg-current ${config.color} ${
+              index < config.level ? "" : "opacity-30"
+            }`}
+          />
+        ))}
+      </div>
+      <span className={`text-xs font-semibold ${config.color}`}>
+        {config.label}
+      </span>
+    </div>
+  );
+}
+
+function EmptyRow({ colSpan, text }: { colSpan: number; text: string }) {
+  return (
+    <TableRow className="border-gray-300">
+      <TableCell colSpan={colSpan} className="h-72 text-center">
+        <div className="flex flex-col items-center justify-center space-y-3">
+          <div className="p-4 bg-gray-50 rounded-full">
+            <FileQuestion className="h-10 w-10 text-gray-400" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-lg font-medium text-gray-900">{text}</p>
+          </div>
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+function DeleteButton({
+  title,
+  description,
+  onConfirm,
+}: {
+  title: string;
+  description: string;
+  onConfirm: () => Promise<void>;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 text-red-600 hover:text-red-700 hover:cursor-pointer"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent className="bg-white border-gray-300">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="hover:cursor-pointer">
+            Huỷ
+          </AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-red-600 hover:bg-red-700 text-white hover:cursor-pointer"
+            onClick={() =>
+              onConfirm().catch(() => toast.error("Không thể xoá dữ liệu"))
+            }
+          >
+            Xoá
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function QuestionFilesList({ files }: { files?: QuestionFile[] }) {
+  if (!files?.length) {
+    return (
+      <div className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
+        Không có file đính kèm
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid min-w-0 max-w-full gap-2">
+      {files.map((item) => {
+        const fileSize = formatFileSize(item.file.size);
+
+        return (
+          <div
+            key={item.file.id}
+            className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden rounded-md border border-gray-300 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-50 text-gray-600">
+                {fileIcon(item.file.type)}
+              </div>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <div
+                  className="block max-w-full truncate font-medium text-gray-900"
+                  title={item.file.name}
+                >
+                  {item.file.name}
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <Badge variant="outline" className="h-5 px-2">
+                    {item.file.type}
+                  </Badge>
+                  {fileSize && <span>{fileSize}</span>}
+                </div>
+              </div>
+            </div>
+
+            {item.file.url && (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="shrink-0 self-start border-gray-300 hover:cursor-pointer sm:self-center"
+              >
+                <a href={item.file.url} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                  Mở file
+                </a>
+              </Button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function SelectedFilesList({ files }: { files: File[] }) {
+  return (
+    <div className="grid gap-2 md:grid-cols-2">
+      {files.map((file, index) => {
+        const type = getFileType(file);
+        return (
+          <div
+            key={`${file.name}-${index}`}
+            className="flex min-w-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+          >
+            {type ? fileIcon(type) : <FileQuestion className="h-4 w-4" />}
+            <span className="min-w-0 flex-1 truncate" title={file.name}>
+              {file.name}
+            </span>
+            {type && <Badge variant="outline">{type}</Badge>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function QuestionDialog({
+  open,
+  onOpenChange,
+  mode,
+  questionForm,
+  setQuestionForm,
+  selectedFiles,
+  setSelectedFiles,
+  existingFiles,
+  replaceFiles,
+  setReplaceFiles,
+  onCancel,
+  onSubmit,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  mode: "create" | "edit";
+  questionForm: QuestionForm;
+  setQuestionForm: React.Dispatch<React.SetStateAction<QuestionForm>>;
+  selectedFiles: File[];
+  setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>;
+  existingFiles: QuestionFile[];
+  replaceFiles: boolean;
+  setReplaceFiles: React.Dispatch<React.SetStateAction<boolean>>;
+  onCancel: () => void;
+  onSubmit: () => Promise<void>;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto bg-white border-gray-300">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === "edit" ? "Cập nhật Câu hỏi" : "Tạo Câu hỏi"}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="space-y-2">
+            <Label>Nội dung câu hỏi</Label>
+            <MathInput
+              value={questionForm.question_text}
+              onChange={(value) =>
+                setQuestionForm((prev) => ({ ...prev, question_text: value }))
+              }
+              placeholder="Nhập nội dung câu hỏi"
+              className="bg-white border-gray-300"
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Question type</Label>
+              <Select
+                value={questionForm.question_type}
+                onValueChange={(value) =>
+                  setQuestionForm((prev) => ({
+                    ...prev,
+                    question_type: value as QuestionType,
+                    options: value === "ESSAY" ? emptyOptions() : prev.options,
+                  }))
+                }
+              >
+                <SelectTrigger className="bg-white border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="SINGLE_CHOICE">Một đáp án</SelectItem>
+                  <SelectItem value="MULTIPLE_CHOICE">Nhiều đáp án</SelectItem>
+                  <SelectItem value="ESSAY">Tự luận</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Question Format</Label>
+              <Select
+                value={questionForm.question_format}
+                onValueChange={(value) =>
+                  setQuestionForm((prev) => ({
+                    ...prev,
+                    question_format: value as QuestionFormat,
+                  }))
+                }
+              >
+                <SelectTrigger className="bg-white border-gray-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="KNOWLEDGE">Nhận biết</SelectItem>
+                  <SelectItem value="UNDERSTANDING">Thông hiểu</SelectItem>
+                  <SelectItem value="APPLYING">Vận dụng</SelectItem>
+                  <SelectItem value="ADVANCED">Nâng cao</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {questionForm.question_type === "ESSAY" ? (
+            <div className="space-y-2">
+              <Label>Answer</Label>
+              <MathInput
+                value={questionForm.correct_answer}
+                onChange={(value) =>
+                  setQuestionForm((prev) => ({
+                    ...prev,
+                    correct_answer: value,
+                  }))
+                }
+                placeholder="Nhập đáp án tham khảo"
+                className="bg-white border-gray-300"
+              />
+            </div>
+          ) : (
+            <QuestionOptionsEditor
+              questionForm={questionForm}
+              setQuestionForm={setQuestionForm}
+            />
+          )}
+
+          {mode === "edit" ? (
+            <div className="min-w-0 space-y-4">
+              <div className="min-w-0 space-y-2">
+                <Label>File đính kèm hiện tại</Label>
+                <QuestionFilesList
+                  files={replaceFiles ? undefined : existingFiles}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>File thay thế</Label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <label className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-600 hover:border-[#0066cc]">
+                    <Upload className="mb-2 h-5 w-5" />
+                    Chọn audio, video hoặc image
+                    <Input
+                      type="file"
+                      multiple
+                      accept="image/*,audio/*,video/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const files = Array.from(event.target.files ?? []);
+                        if (!files.length) return;
+                        const validFiles = files.filter((file) =>
+                          getFileType(file),
+                        );
+                        if (validFiles.length !== files.length) {
+                          toast.error("Chỉ hỗ trợ audio, video hoặc image");
+                        }
+                        if (validFiles.length) {
+                          setSelectedFiles(validFiles);
+                          setReplaceFiles(true);
+                        }
+                      }}
+                    />
+                  </label>
+
+                  <div className="flex gap-2 sm:flex-col">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-gray-300 hover:cursor-pointer"
+                      onClick={() => {
+                        setSelectedFiles([]);
+                        setReplaceFiles(false);
+                      }}
+                    >
+                      Giữ file hiện tại
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:cursor-pointer"
+                      onClick={() => {
+                        setSelectedFiles([]);
+                        setReplaceFiles(true);
+                      }}
+                    >
+                      Xoá file hiện tại
+                    </Button>
+                  </div>
+                </div>
+
+                {replaceFiles && selectedFiles.length > 0 && (
+                  <SelectedFilesList files={selectedFiles} />
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>File đính kèm</Label>
+              <label className="flex cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-600 hover:border-[#0066cc]">
+                <Upload className="mb-2 h-5 w-5" />
+                Chọn audio, video hoặc image
+                <Input
+                  type="file"
+                  multiple
+                  accept="image/*,audio/*,video/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    const validFiles = files.filter((file) =>
+                      getFileType(file),
+                    );
+                    if (validFiles.length !== files.length) {
+                      toast.error("Chỉ hỗ trợ audio, video hoặc image");
+                    }
+                    setSelectedFiles(validFiles);
+                  }}
+                />
+              </label>
+              {selectedFiles.length > 0 && (
+                <SelectedFilesList files={selectedFiles} />
+              )}
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            className="hover:cursor-pointer"
+          >
+            Huỷ
+          </Button>
+          <Button
+            onClick={() =>
+              onSubmit().catch(() =>
+                toast.error(
+                  mode === "edit"
+                    ? "Không thể cập nhật câu hỏi"
+                    : "Không thể tạo câu hỏi",
+                ),
+              )
+            }
+            className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+          >
+            {mode === "edit" ? "Lưu" : "Tạo"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function QuestionOptionsEditor({
+  questionForm,
+  setQuestionForm,
+}: {
+  questionForm: QuestionForm;
+  setQuestionForm: React.Dispatch<React.SetStateAction<QuestionForm>>;
+}) {
+  if (questionForm.question_type === "SINGLE_CHOICE") {
+    return (
+      <div className="space-y-3">
+        <Label>Answer</Label>
+        <RadioGroup
+          value={String(
+            questionForm.options.findIndex((option) => option.isCorrect),
+          )}
+          onValueChange={(value) => {
+            const selected = Number(value);
+            setQuestionForm((prev) => ({
+              ...prev,
+              options: prev.options.map((option, index) => ({
+                ...option,
+                isCorrect: index === selected,
+              })),
+            }));
+          }}
+        >
+          {questionForm.options.map((option, index) => (
+            <div key={index} className="flex items-center gap-2">
+              <span className="w-5 text-sm font-medium">
+                {optionLabels[index]}
+              </span>
+              <MathInput
+                value={option.text}
+                onChange={(value) => {
+                  const next = [...questionForm.options];
+                  next[index] = { ...next[index], text: value };
+                  setQuestionForm((prev) => ({ ...prev, options: next }));
+                }}
+                placeholder={`Lựa chọn ${optionLabels[index]}`}
+                className="bg-white border-gray-300"
+              />
+              <RadioGroupItem value={String(index)} />
+            </div>
+          ))}
+        </RadioGroup>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <Label>Answer</Label>
+      {questionForm.options.map((option, index) => (
+        <div key={index} className="flex items-center gap-2">
+          <span className="w-5 text-sm font-medium">{optionLabels[index]}</span>
+          <MathInput
+            value={option.text}
+            onChange={(value) => {
+              const next = [...questionForm.options];
+              next[index] = { ...next[index], text: value };
+              setQuestionForm((prev) => ({ ...prev, options: next }));
+            }}
+            placeholder={`Lựa chọn ${optionLabels[index]}`}
+            className="bg-white border-gray-300"
+          />
+          <Checkbox
+            checked={option.isCorrect}
+            onCheckedChange={(checked) => {
+              const next = [...questionForm.options];
+              next[index] = { ...next[index], isCorrect: Boolean(checked) };
+              setQuestionForm((prev) => ({ ...prev, options: next }));
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function QuestionDetailDialog({
+  question,
+  onOpenChange,
+  parseQuestionOptions,
+  getQuestionAnswerText,
+}: {
+  question: Question | null;
+  onOpenChange: (open: boolean) => void;
+  parseQuestionOptions: (question: Question) => ParsedQuestionOption[];
+  getQuestionAnswerText: (question: Question) => string;
+}) {
+  return (
+    <Dialog open={Boolean(question)} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto overflow-x-hidden bg-white border-gray-300">
+        <DialogHeader>
+          <DialogTitle>Chi tiết câu hỏi</DialogTitle>
+        </DialogHeader>
+        {question && (
+          <div className="min-w-0 space-y-4">
+            <div className="min-w-0 overflow-hidden rounded-md border border-gray-300 bg-white p-3">
+              <MathRenderer content={question.question_text} />
+            </div>
+            <div className="grid gap-3 grid-rows-3">
+              <div>
+                <Label>Question type</Label>
+                <div className="mt-1 text-sm">
+                  <QuestionTypeBadge type={question.question_type} />
+                </div>
+              </div>
+              <div>
+                <Label>Question Format</Label>
+                <div className="mt-1 text-sm">
+                  <QuestionFormatBadge format={question.question_format} />
+                </div>
+              </div>
+              <div>
+                <Label>Answer</Label>
+                <div className="mt-1 text-sm">
+                  {getQuestionAnswerText(question)}
+                </div>
+              </div>
+            </div>
+            {parseQuestionOptions(question).length > 0 && (
+              <div className="space-y-2">
+                <Label>Options</Label>
+                <div className="grid gap-2">
+                  {parseQuestionOptions(question).map((option, index) => (
+                    <div
+                      key={`${question.id}-${index}`}
+                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                    >
+                      {option.label ?? optionLabels[index]}. {option.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {question.files?.length ? (
+              <div className="min-w-0 space-y-2">
+                <Label>Files</Label>
+                <div className="grid min-w-0 max-w-full gap-2">
+                  {question.files.map((item) => {
+                    const fileSize = formatFileSize(item.file.size);
+
+                    return (
+                      <div
+                        key={item.file.id}
+                        className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden rounded-md border border-gray-300 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-50 text-gray-600">
+                            {fileIcon(item.file.type)}
+                          </div>
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <div
+                              className="block max-w-full truncate font-medium text-gray-900"
+                              title={item.file.name}
+                            >
+                              {item.file.name}
+                            </div>
+                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                              <Badge variant="outline" className="h-5 px-2">
+                                {item.file.type}
+                              </Badge>
+                              {fileSize && <span>{fileSize}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        {item.file.url && (
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="shrink-0 self-start border-gray-300 hover:cursor-pointer sm:self-center"
+                          >
+                            <a
+                              href={item.file.url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                              Mở file
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Files</Label>
+                <div className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
+                  Không có file đính kèm
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

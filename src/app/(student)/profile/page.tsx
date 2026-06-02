@@ -226,7 +226,7 @@ export default function StudentProfile() {
       reader.readAsDataURL(file);
 
       const uploadedFile = await uploadAvatar(file, student.id);
-      await markFileDeletedByUrl(oldAvatarUrl);
+      await markFileDeletedByUrl(oldAvatarUrl, student.id);
       setAvatarUrl(uploadedFile.url);
 
       dispatch(

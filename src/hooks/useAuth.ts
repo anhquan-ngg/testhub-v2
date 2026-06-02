@@ -52,9 +52,12 @@ export const useAuth = () => {
     }
   };
   const handleGoogleLogin = async () => {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const apiBaseUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
     window.location.href = `${apiBaseUrl}/auth/google`;
   };
+
+  const handleOutlookLogin = async () => {};
 
   const handleLogout = async () => {
     try {
@@ -74,5 +77,5 @@ export const useAuth = () => {
     }
   };
 
-  return { handleLogin, handleLogout, handleGoogleLogin };
+  return { handleLogin, handleLogout, handleGoogleLogin, handleOutlookLogin };
 };
