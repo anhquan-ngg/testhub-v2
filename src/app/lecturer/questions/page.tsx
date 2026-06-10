@@ -152,6 +152,7 @@ type QuestionForm = {
 
 const optionLabels = ["A", "B", "C", "D", "E", "F"];
 const ITEMS_PER_PAGE = 5;
+const QUESTION_PREVIEW_MAX_LENGTH = 80;
 
 const questionTypeConfig = {
   SINGLE_CHOICE: {
@@ -262,6 +263,49 @@ const formatFileSize = (size?: number) => {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const getQuestionPreviewText = (questionText: string) => {
+  const normalizedText = questionText.replace(/\s+/g, " ").trim();
+  if (normalizedText.length <= QUESTION_PREVIEW_MAX_LENGTH) {
+    return normalizedText;
+  }
+
+  let previewText = normalizedText.slice(0, QUESTION_PREVIEW_MAX_LENGTH).trimEnd();
+
+  const hasUnclosedLatex = (value: string) => {
+    const singleDollarCount = (value.match(/(^|[^\\])\$/g) || []).length;
+    const inlineOpenCount = (value.match(/\\\(/g) || []).length;
+    const inlineCloseCount = (value.match(/\\\)/g) || []).length;
+    const displayOpenCount = (value.match(/\\\[/g) || []).length;
+    const displayCloseCount = (value.match(/\\\]/g) || []).length;
+    const beginCount = (value.match(/\\begin\{/g) || []).length;
+    const endCount = (value.match(/\\end\{/g) || []).length;
+
+    return (
+      singleDollarCount % 2 === 1 ||
+      inlineOpenCount > inlineCloseCount ||
+      displayOpenCount > displayCloseCount ||
+      beginCount > endCount
+    );
+  };
+
+  while (previewText && hasUnclosedLatex(previewText)) {
+    const cutCandidates = [
+      previewText.lastIndexOf("$$"),
+      previewText.lastIndexOf("\\("),
+      previewText.lastIndexOf("\\["),
+      previewText.lastIndexOf("\\begin{"),
+      previewText.lastIndexOf("$"),
+      previewText.lastIndexOf(" "),
+    ].filter((index) => index >= 0);
+
+    const cutIndex =
+      cutCandidates.length > 0 ? Math.min(...cutCandidates) : previewText.length - 1;
+    previewText = previewText.slice(0, Math.max(0, cutIndex)).trimEnd();
+  }
+
+  return `${previewText}...`;
+};
+
 export default function LecturerQuestions() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -288,6 +332,7 @@ export default function LecturerQuestions() {
     QuestionFile[]
   >([]);
   const [replaceQuestionFiles, setReplaceQuestionFiles] = useState(false);
+  const [isQuestionSubmitting, setIsQuestionSubmitting] = useState(false);
   const [loadingEditId, setLoadingEditId] = useState<string | null>(null);
   const [topicName, setTopicName] = useState("");
   const [chapterForm, setChapterForm] = useState({
@@ -514,6 +559,7 @@ export default function LecturerQuestions() {
     setEditingQuestionId(null);
     setEditingQuestionFiles([]);
     setReplaceQuestionFiles(false);
+    setIsQuestionSubmitting(false);
     setIsQuestionDialogOpen(false);
   };
 
@@ -694,11 +740,14 @@ export default function LecturerQuestions() {
   };
 
   const handleCreateQuestion = async () => {
+    if (isQuestionSubmitting) return;
+
     if (!questionForm.chapter_id || !questionForm.question_text.trim()) {
       toast.error("Vui lòng nhập đầy đủ chapter và nội dung câu hỏi");
       return;
     }
 
+    setIsQuestionSubmitting(true);
     try {
       const payload = await buildQuestionPayload();
       await apiClient.post(ENDPOINTS.QUESTIONS.BASE, payload);
@@ -709,10 +758,14 @@ export default function LecturerQuestions() {
       toast.error(
         error instanceof Error ? error.message : "Không thể tạo câu hỏi",
       );
+    } finally {
+      setIsQuestionSubmitting(false);
     }
   };
 
   const handleUpdateQuestion = async () => {
+    if (isQuestionSubmitting) return;
+
     if (
       !editingQuestionId ||
       !questionForm.chapter_id ||
@@ -722,6 +775,7 @@ export default function LecturerQuestions() {
       return;
     }
 
+    setIsQuestionSubmitting(true);
     try {
       const payload = await buildQuestionPayload({
         includeFiles: replaceQuestionFiles,
@@ -737,6 +791,8 @@ export default function LecturerQuestions() {
       toast.error(
         error instanceof Error ? error.message : "Không thể cập nhật câu hỏi",
       );
+    } finally {
+      setIsQuestionSubmitting(false);
     }
   };
 
@@ -1127,7 +1183,7 @@ export default function LecturerQuestions() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-gray-300">
-                    <TableHead>Câu hỏi</TableHead>
+                    <TableHead className="w-[34%]">Câu hỏi</TableHead>
                     <TableHead>Question type</TableHead>
                     <TableHead>Question Format</TableHead>
                     <TableHead>Answer</TableHead>
@@ -1140,8 +1196,17 @@ export default function LecturerQuestions() {
                   {questionRows.length > 0 ? (
                     paginatedQuestionRows.map((question) => (
                       <TableRow key={question.id} className="border-gray-300">
-                        <TableCell className="max-w-md">
-                          <MathRenderer content={question.question_text} />
+                        <TableCell className="w-[34%] max-w-[420px]">
+                          <div
+                            className="line-clamp-2 max-w-[420px] overflow-hidden text-sm leading-5"
+                            title={question.question_text}
+                          >
+                            <MathRenderer
+                              content={getQuestionPreviewText(
+                                question.question_text,
+                              )}
+                            />
+                          </div>
                         </TableCell>
                         <TableCell>
                           <QuestionTypeBadge type={question.question_type} />
@@ -1350,6 +1415,7 @@ export default function LecturerQuestions() {
             setIsQuestionDialogOpen(true);
             return;
           }
+          if (isQuestionSubmitting) return;
           resetQuestionDialog();
         }}
         mode={editingQuestionId ? "edit" : "create"}
@@ -1360,6 +1426,7 @@ export default function LecturerQuestions() {
         existingFiles={editingQuestionFiles}
         replaceFiles={replaceQuestionFiles}
         setReplaceFiles={setReplaceQuestionFiles}
+        isSubmitting={isQuestionSubmitting}
         onCancel={resetQuestionDialog}
         onSubmit={
           editingQuestionId ? handleUpdateQuestion : handleCreateQuestion
@@ -1608,6 +1675,7 @@ function QuestionDialog({
   existingFiles,
   replaceFiles,
   setReplaceFiles,
+  isSubmitting,
   onCancel,
   onSubmit,
 }: {
@@ -1621,6 +1689,7 @@ function QuestionDialog({
   existingFiles: QuestionFile[];
   replaceFiles: boolean;
   setReplaceFiles: React.Dispatch<React.SetStateAction<boolean>>;
+  isSubmitting: boolean;
   onCancel: () => void;
   onSubmit: () => Promise<void>;
 }) {
@@ -1815,11 +1884,13 @@ function QuestionDialog({
           <Button
             variant="outline"
             onClick={onCancel}
+            disabled={isSubmitting}
             className="hover:cursor-pointer"
           >
             Huỷ
           </Button>
           <Button
+            disabled={isSubmitting}
             onClick={() =>
               onSubmit().catch(() =>
                 toast.error(
@@ -1831,7 +1902,16 @@ function QuestionDialog({
             }
             className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
           >
-            {mode === "edit" ? "Lưu" : "Tạo"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Đang xử lý...
+              </>
+            ) : mode === "edit" ? (
+              "Lưu"
+            ) : (
+              "Tạo"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

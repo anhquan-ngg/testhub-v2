@@ -1,15 +1,14 @@
 "use client";
 
 import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
 import { useRouter } from "next/navigation";
 import { use, useState, useEffect } from "react";
-import { useS3 } from "@/hooks/useS3";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
-  Award,
   Clock,
   CheckCircle,
   XCircle,
@@ -18,7 +17,6 @@ import {
 } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import { useFindUniqueSubmission } from "@/hooks/useModel";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useAppSelector } from "@/store/hook";
 import {
@@ -34,10 +32,59 @@ interface PageProps {
   }>;
 }
 
+type SubmissionQuestionOption = {
+  text: string;
+  isCorrect?: boolean;
+};
+
+type ResultSubmissionQuestion = {
+  id: string;
+  score: number | string | null;
+  is_correct: boolean;
+  options: string | null;
+  answer: string | null;
+  question: {
+    id: string;
+    question_text: string;
+    question_type: string;
+    options: string | null;
+    correct_answer: string | null;
+  };
+};
+
+type ResultSubmission = {
+  id: string;
+  student_id: string;
+  total_score: number | string | null;
+  rating: string | null;
+  start_time: string | Date | null;
+  end_time: string | Date | null;
+  status: string;
+  exam: {
+    id: string;
+    title: string;
+    topic?: {
+      id: string;
+      name: string;
+    } | null;
+    practice: boolean;
+    mode: string;
+    sample_size: number | null;
+    distribution: string | null;
+    _count: {
+      questions: number;
+    };
+  };
+  student?: {
+    full_name?: string | null;
+  } | null;
+  questions?: ResultSubmissionQuestion[];
+};
+
 // Helper function to calculate time taken
 function calculateTimeTaken(
-  startTime: Date | null,
-  endTime: Date | null,
+  startTime: string | Date | null,
+  endTime: string | Date | null,
 ): string {
   if (!startTime || !endTime) return "N/A";
   const start = new Date(startTime);
@@ -61,105 +108,47 @@ export default function ResultDetailPage({ params }: PageProps) {
   const user = useAppSelector((state) => state.user);
   const userId = user.id;
   const userRole = user.role;
-  const { getViewUrl } = useS3("questions-images");
-  const [resolvedImages, setResolvedImages] = useState<Record<string, string>>(
-    {},
-  );
-
-  const {
-    data: submission,
-    isLoading,
-    error,
-  } = useFindUniqueSubmission(
-    {
-      where: { id },
-      include: {
-        exam: {
-          select: {
-            id: true,
-            title: true,
-            topic: true,
-            practice: true,
-            mode: true,
-            sample_size: true,
-            distribution: true,
-            _count: {
-              select: {
-                questions: true,
-              },
-            },
-          },
-        },
-        questions: {
-          include: {
-            question: {
-              select: {
-                id: true,
-                question_text: true,
-                question_type: true,
-                options: true,
-                correct_answer: true,
-                image_url: true,
-              },
-            },
-          },
-        },
-        student: {
-          select: {
-            full_name: true,
-          },
-        },
-      },
-    },
-    {
-      enabled: !!id,
-    },
-  );
+  const [submission, setSubmission] = useState<ResultSubmission | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
-    const resolveImages = async () => {
-      if (!submission?.questions) return;
+    const fetchSubmission = async () => {
+      if (!id) return;
 
-      const newResolvedImages: Record<string, string> = {};
-      await Promise.all(
-        submission.questions.map(async (sq: any) => {
-          const imageUrl = sq.question.image_url;
-          if (imageUrl) {
-            if (imageUrl.startsWith("http")) {
-              newResolvedImages[sq.question.id] = imageUrl;
-            } else {
-              try {
-                const url = await getViewUrl(imageUrl);
-                if (url) newResolvedImages[sq.question.id] = url;
-              } catch (e) {
-                console.error("Error resolving image:", e);
-              }
-            }
-          }
-        }),
-      );
-      setResolvedImages(newResolvedImages);
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await apiClient.get<ResultSubmission>(
+          ENDPOINTS.SUBMISSIONS.DETAIL(id),
+        );
+        setSubmission(response.data);
+      } catch (err) {
+        console.error("Fetch submission error:", err);
+        setError(err);
+        setSubmission(null);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    if (submission) {
-      resolveImages();
-    }
-  }, [submission, getViewUrl]);
+    void fetchSubmission();
+  }, [id]);
 
   const handlePrint = async () => {
     try {
       setIsPrinting(true);
-      const response = await apiClient.get(`/submission/${id}/pdf`, {
+      const response = await apiClient.get(ENDPOINTS.SUBMISSIONS.PDF(id), {
         responseType: "blob",
       });
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Ketqua_${submission?.student?.full_name?.replace(
-        /\s+/g,
-        "_",
-      )}_${id}.pdf`;
+      const safeName = (submission?.student?.full_name ?? "Unknown").trim() ||
+        "Unknown";
+      const sanitizedName = safeName.replace(/\s+/g, "_");
+      a.download = `Ketqua_${sanitizedName}_${id}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -298,7 +287,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                       </Badge>
                     </div>
                     <p className="text-gray-600 ml-9">
-                      Chủ đề: {submission.exam.topic}
+                      Chủ đề: {submission.exam.topic?.name ?? "N/A"}
                     </p>
                   </div>
                   <div className="text-right">
@@ -327,9 +316,9 @@ export default function ResultDetailPage({ params }: PageProps) {
                     <div>
                       <p className="text-sm text-gray-600">Trạng thái</p>
                       <p className="font-semibold text-gray-900">
-                        {(submission as any).status === "COMPLETED"
+                        {submission.status === "COMPLETED"
                           ? "Hoàn thành"
-                          : (submission as any).status || "N/A"}
+                          : submission.status || "N/A"}
                       </p>
                     </div>
                   </div>
@@ -356,9 +345,13 @@ export default function ResultDetailPage({ params }: PageProps) {
                     Chi tiết câu trả lời
                   </h2>
 
-                  {submission.questions.map((sq: any, index: number) => {
-                    const questionOptions = parseOptions(sq.question.options);
-                    const studentOptions = parseOptions(sq.options);
+                  {submission.questions.map((sq, index) => {
+                    const questionOptions = parseOptions(
+                      sq.question.options,
+                    ) as SubmissionQuestionOption[];
+                    const studentOptions = parseOptions(
+                      sq.options,
+                    ) as SubmissionQuestionOption[];
 
                     return (
                       <Card
@@ -393,27 +386,14 @@ export default function ResultDetailPage({ params }: PageProps) {
                                   content={sq.question.question_text}
                                 />
                               </div>
-                              {sq.question.image_url && (
-                                <div className="mt-4 flex justify-center w-full">
-                                  <div className="bg-white rounded-xl border border-gray-100 p-2 shadow-sm max-w-fit flex justify-center">
-                                    <img
-                                      src={
-                                        resolvedImages[sq.question.id] ||
-                                        sq.question.image_url
-                                      }
-                                      alt="Question Illustration"
-                                      className="max-w-full max-h-[300px] object-contain rounded-lg"
-                                    />
-                                  </div>
-                                </div>
-                              )}
                             </div>
                             <Badge
                               variant="outline"
                               className="font-semibold border-gray-300 text-gray-900 bg-white"
                             >
                               {(
-                                calculateScorePerQuestion(submission) * sq.score
+                                calculateScorePerQuestion(submission) *
+                                Number(sq.score ?? 0)
                               ).toFixed(2)}{" "}
                               điểm
                             </Badge>
@@ -446,9 +426,12 @@ export default function ResultDetailPage({ params }: PageProps) {
                           ) : (
                             <div className="space-y-2">
                               {questionOptions.map(
-                                (option: any, optIndex: number) => {
+                                (
+                                  option: SubmissionQuestionOption,
+                                  optIndex: number,
+                                ) => {
                                   const isStudentChoice = studentOptions.some(
-                                    (so: any) =>
+                                    (so: SubmissionQuestionOption) =>
                                       so.text === option.text && so.isCorrect,
                                   );
                                   const isCorrect = option.isCorrect === true;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -43,16 +42,6 @@ import {
   Loader2,
   BarChart3,
 } from "lucide-react";
-import {
-  useDeleteExam,
-  useFindManyExam,
-  useFindManyExamRegistration,
-  useUpdateExamRegistration,
-  useDeleteExamRegistration,
-  useFindManyUser,
-  useCreateExamRegistration,
-  useUpdateExam,
-} from "@/hooks/useModel";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -76,47 +65,106 @@ import {
 import { useAppSelector } from "@/store/hook";
 import { useSocket } from "@/components/providers/SocketProvider";
 import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
 
-function StudentManagementDialog({ exam }: { exam: any }) {
+type ExamRegistrationWithStudent = {
+  id: string;
+  status: string;
+  student?: {
+    full_name?: string | null;
+    email?: string | null;
+  } | null;
+};
+
+type LecturerExamItem = {
+  id: string;
+  title: string;
+  topic?: string | { name?: string | null } | null;
+  exam_start_time: string | Date;
+  exam_end_time: string | Date;
+  duration: number;
+  practice: boolean;
+  status?: string;
+  _count?: {
+    registrations?: number;
+  };
+  registrations?: ExamRegistrationWithStudent[];
+};
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+const getTopicName = (topic: LecturerExamItem["topic"]) => {
+  if (!topic) return "";
+  if (typeof topic === "string") return topic;
+  return topic.name ?? "";
+};
+
+const getExamStatus = (exam: LecturerExamItem) => exam.status ?? "ACTIVE";
+
+function StudentManagementDialog({
+  exam,
+  onRegistrationsChanged,
+}: {
+  exam: LecturerExamItem;
+  onRegistrationsChanged: () => void;
+}) {
   const [studentEmail, setStudentEmail] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [registrations, setRegistrations] = useState<
+    ExamRegistrationWithStudent[]
+  >([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const {
-    data: registrations,
-    refetch,
-    isLoading,
-  } = useFindManyExamRegistration({
-    where: { exam_id: exam.id },
-    include: { student: true },
-  });
+  const refetchRegistrations = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await apiClient.get<
+        PageResult<ExamRegistrationWithStudent>
+      >(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
+        params: {
+          page: 1,
+          limit: 100,
+          exam_id: exam.id,
+        },
+      });
+      setRegistrations(response.data.data);
+    } catch (error) {
+      toast.error("Lỗi khi tải danh sách sinh viên.");
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [exam.id]);
 
-  const updateRegistrationMutation = useUpdateExamRegistration();
-  const deleteRegistrationMutation = useDeleteExamRegistration();
-  const createRegistrationMutation = useCreateExamRegistration();
-  const { data: userDataByEmail, refetch: findUser } = useFindManyUser({
-    where: { email: studentEmail, role: "STUDENT" },
-  });
+  useEffect(() => {
+    void refetchRegistrations();
+  }, [refetchRegistrations]);
 
   const handleApprove = async (regId: string) => {
     try {
-      await apiClient.post("/notification/exam/approve-registration", {
+      await apiClient.post(ENDPOINTS.EXAMS.REGISTRATIONS.APPROVE, {
         registrationId: regId,
       });
       toast.success("Đã chấp nhận sinh viên.");
-      refetch();
-    } catch (e) {
+      void refetchRegistrations();
+      onRegistrationsChanged();
+    } catch {
       toast.error("Lỗi khi chấp nhận sinh viên.");
     }
   };
 
   const handleDelete = async (regId: string) => {
     try {
-      await deleteRegistrationMutation.mutateAsync({
-        where: { id: regId },
-      });
+      await apiClient.delete(ENDPOINTS.EXAM_REGISTRATIONS.DETAIL(regId));
       toast.success("Đã xóa sinh viên khỏi danh sách.");
-      refetch();
-    } catch (e) {
+      void refetchRegistrations();
+      onRegistrationsChanged();
+    } catch {
       toast.error("Lỗi khi xóa sinh viên.");
     }
   };
@@ -125,9 +173,10 @@ function StudentManagementDialog({ exam }: { exam: any }) {
     if (!studentEmail) return;
     setIsAdding(true);
     try {
-      const res = await apiClient.post("/notification/exam/add-student", {
-        examId: exam.id,
-        studentEmail,
+      const res = await apiClient.post(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
+        exam_id: exam.id,
+        student_email: studentEmail,
+        status: "APPROVED",
       });
       const data = res.data;
       if (data.error) {
@@ -136,8 +185,9 @@ function StudentManagementDialog({ exam }: { exam: any }) {
       }
       toast.success(`Đã thêm sinh viên vào bài thi.`);
       setStudentEmail("");
-      refetch();
-    } catch (e) {
+      void refetchRegistrations();
+      onRegistrationsChanged();
+    } catch {
       toast.error("Lỗi khi thêm sinh viên.");
     } finally {
       setIsAdding(false);
@@ -199,7 +249,7 @@ function StudentManagementDialog({ exam }: { exam: any }) {
                   </TableCell>
                 </TableRow>
               ) : registrations && registrations.length > 0 ? (
-                registrations.map((reg: any) => (
+                registrations.map((reg: ExamRegistrationWithStudent) => (
                   <TableRow key={reg.id} className="border-gray-300">
                     <TableCell>{reg.student?.full_name}</TableCell>
                     <TableCell>{reg.student?.email}</TableCell>
@@ -264,7 +314,7 @@ function StudentManagementDialog({ exam }: { exam: any }) {
 
 export default function LecturerExams() {
   const router = useRouter();
-  const [exams, setExams] = useState([] as any);
+  const [exams, setExams] = useState<LecturerExamItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const user = useAppSelector((state) => state.user);
 
@@ -272,40 +322,44 @@ export default function LecturerExams() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
-  const { data: examsData, refetch: refetchExams } = useFindManyExam(
-    {
-      orderBy: { created_at: "desc" },
-      include: {
-        registrations: true,
-      },
-      where: {
-        lecturer_id: user.id,
-      },
-    },
-    {
-      enabled: !!user.id,
-    },
-  );
+  const refetchExams = useCallback(async () => {
+    if (!user.id) {
+      setExams([]);
+      return;
+    }
 
-  const deleteExamMutation = useDeleteExam({
-    onSuccess: () => {
-      toast.success("Xóa bài thi thành công");
-    },
-  });
-
-  const updateExamMutation = useUpdateExam();
+    try {
+      const response = await apiClient.get<PageResult<LecturerExamItem>>(
+        ENDPOINTS.EXAMS.BASE,
+        {
+          params: {
+            page: 1,
+            limit: 100,
+            lecturer_id: user.id,
+          },
+        },
+      );
+      setExams(response.data.data);
+    } catch (error) {
+      toast.error("Lỗi khi tải danh sách bài thi");
+      console.log(error);
+    }
+  }, [user.id]);
 
   const handleDeleteExam = async (examId: string) => {
     try {
-      await deleteExamMutation.mutateAsync({
-        where: { id: examId },
-      });
+      await apiClient.delete(ENDPOINTS.EXAMS.DETAIL(examId));
       toast.success("Đã xóa bài thi.");
+      void refetchExams();
     } catch (error) {
       toast.error("Xóa bài thi không thành công");
       console.log(error);
     }
   };
+
+  useEffect(() => {
+    void refetchExams();
+  }, [refetchExams]);
 
   // Listen for real-time registration requests
   const { socket } = useSocket();
@@ -313,7 +367,7 @@ export default function LecturerExams() {
     if (!socket) return;
 
     const handleRegistrationRequested = () => {
-      refetchExams();
+      void refetchExams();
     };
 
     socket.on("exam:registration_requested", handleRegistrationRequested);
@@ -323,14 +377,8 @@ export default function LecturerExams() {
     };
   }, [socket, refetchExams]);
 
-  useEffect(() => {
-    if (examsData) {
-      setExams(examsData);
-    }
-  }, [examsData]);
-
   const filteredExams =
-    exams?.filter((exam: any) =>
+    exams?.filter((exam) =>
       exam.title.toLowerCase().includes(searchTerm.toLowerCase()),
     ) || [];
 
@@ -394,12 +442,12 @@ export default function LecturerExams() {
             </TableHeader>
             <TableBody>
               {filteredExams.length > 0 ? (
-                paginatedExams.map((exam: any) => (
+                paginatedExams.map((exam) => (
                   <TableRow key={exam.id} className="border-gray-300">
                     <TableCell className="font-medium whitespace-nowrap">
                       {exam.title}
                     </TableCell>
-                    <TableCell>{exam.topic}</TableCell>
+                    <TableCell>{getTopicName(exam.topic)}</TableCell>
                     <TableCell className="text-xs">
                       {new Date(exam.exam_start_time).toLocaleString("vi-VN")}
                     </TableCell>
@@ -412,22 +460,32 @@ export default function LecturerExams() {
                     </TableCell>
                     <TableCell>
                       <Select
-                        defaultValue={exam.status}
+                        value={getExamStatus(exam)}
+                        disabled={!exam.status}
                         onValueChange={async (value) => {
                           try {
-                            await updateExamMutation.mutateAsync({
-                              where: { id: exam.id },
-                              data: { status: value as any },
-                            });
+                            await apiClient.patch(
+                              ENDPOINTS.EXAMS.DETAIL(exam.id),
+                              {
+                                status: value,
+                              },
+                            );
+                            setExams((prev) =>
+                              prev.map((item) =>
+                                item.id === exam.id
+                                  ? { ...item, status: value }
+                                  : item,
+                              ),
+                            );
                             toast.success("Cập nhật trạng thái thành công");
-                          } catch (error) {
+                          } catch {
                             toast.error("Lỗi khi cập nhật trạng thái");
                           }
                         }}
                       >
                         <SelectTrigger
                           className={`h-7 w-[100px] text-xs font-medium border-0 hover:cursor-pointer ${
-                            exam.status === "ACTIVE"
+                            getExamStatus(exam) === "ACTIVE"
                               ? "bg-green-100 text-green-700 hover:bg-green-200"
                               : "bg-red-100 text-red-700 hover:bg-red-200"
                           }`}
@@ -459,10 +517,17 @@ export default function LecturerExams() {
                             className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
                           >
                             <Users className="h-4 w-4 mr-1" />
-                            {exam.registrations?.length || 0}
+                            {exam._count?.registrations ??
+                              exam.registrations?.length ??
+                              0}
                           </Button>
                         </DialogTrigger>
-                        <StudentManagementDialog exam={exam} />
+                        <StudentManagementDialog
+                          exam={exam}
+                          onRegistrationsChanged={() => {
+                            void refetchExams();
+                          }}
+                        />
                       </Dialog>
                     </TableCell>
                     <TableCell className="text-center">

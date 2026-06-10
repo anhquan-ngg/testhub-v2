@@ -3,10 +3,6 @@
 import apiClient from "@/lib/api-client";
 import React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  useFindManySubmission,
-  useFindUniqueExam,
- } from '@/hooks/useModel';
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,42 +34,77 @@ import {
 } from "lucide-react";
 import { calculateTotalQuesions } from "@/lib/exam-utils";
 import { toast } from "sonner";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 export default function AdminExamReportPage() {
   const params = useParams();
   const router = useRouter();
   const examId = params.id as string;
   const [isPrinting, setIsPrinting] = React.useState(false);
+  const [exam, setExam] = React.useState<any>(null);
+  const [submissions, setSubmissions] = React.useState<any[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  const { data: exam, isLoading: isLoadingExam } = useFindUniqueExam({
-    where: { id: examId },
-  });
+  React.useEffect(() => {
+    const fetchReportData = async () => {
+      setIsLoading(true);
+      try {
+        const fetchAllSubmissions = async () => {
+          const limit = 100;
+          let page = 1;
+          const allSubmissions: any[] = [];
 
-  const { data: submissions, isLoading: isLoadingSubmissions } =
-    useFindManySubmission({
-      where: { exam_id: examId, status: "COMPLETED" },
-      include: {
-        student: true,
-        exam: {
-          select: {
-            mode: true,
-            sample_size: true,
-            distribution: true,
-            _count: {
-              select: {
-                questions: true,
+          while (true) {
+            const response = await apiClient.get<PageResult<any>>(
+              ENDPOINTS.SUBMISSIONS.BASE,
+              {
+                params: {
+                  page,
+                  limit,
+                  exam_id: examId,
+                  status: "COMPLETED",
+                },
               },
-            },
-          },
-        },
-        questions: {
-          select: {
-            is_correct: true,
-          },
-        },
-      },
-      orderBy: { created_at: "desc" },
-    });
+            );
+
+            const pageData = response.data.data ?? [];
+            allSubmissions.push(...pageData);
+
+            if (pageData.length < limit) {
+              break;
+            }
+
+            page += 1;
+          }
+
+          return allSubmissions;
+        };
+
+        const [examResponse, submissionsData] = await Promise.all([
+          apiClient.get(ENDPOINTS.EXAMS.DETAIL(examId)),
+          fetchAllSubmissions(),
+        ]);
+        setExam(examResponse.data);
+        setSubmissions(submissionsData);
+      } catch (error) {
+        toast.error("Có lỗi xảy ra khi tải dữ liệu báo cáo.");
+        console.log(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (examId) {
+      void fetchReportData();
+    }
+  }, [examId]);
 
   const handlePrintReport = async () => {
     try {
@@ -82,7 +113,7 @@ export default function AdminExamReportPage() {
         `/submission/exam/${examId}/report-pdf`,
         {
           responseType: "blob",
-        }
+        },
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -142,7 +173,7 @@ export default function AdminExamReportPage() {
     }
   };
 
-  if (isLoadingExam || isLoadingSubmissions) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -284,7 +315,7 @@ export default function AdminExamReportPage() {
                             className="h-8 w-8 text-blue-600 hover:cursor-pointer"
                             onClick={() =>
                               router.push(
-                                `/dashboard/exams/${examId}/report/${sub.id}`
+                                `/dashboard/exams/${examId}/report/${sub.id}`,
                               )
                             }
                             title="In chi tiết bài thi"
