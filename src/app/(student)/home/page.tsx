@@ -7,11 +7,6 @@ import Link from "next/link";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
 import { useEffect, useState, useCallback } from "react";
-import {
-  useFindManyExam,
-  useFindManyExamRegistration,
-  useFindManySubmission,
-} from "@/hooks/useModel";
 import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
 import {
@@ -23,65 +18,137 @@ import {
 } from "@/components/ui/select";
 import { useSocket } from "@/components/providers/SocketProvider";
 import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+type StudentExam = {
+  id: string;
+  title: string;
+  duration: number;
+  exam_start_time: string;
+  exam_end_time: string;
+  is_public: boolean;
+  practice: boolean;
+  topic?: {
+    id: string;
+    name: string;
+  } | null;
+  lecturer?: {
+    full_name?: string | null;
+  } | null;
+};
+
+type ExamRegistration = {
+  id: string;
+  exam_id: string;
+  student_id: string;
+  status: "PENDING" | "APPROVED" | "REJECTED";
+};
+
+type StudentSubmission = {
+  id: string;
+  exam_id: string;
+  status: string;
+};
 
 export default function StudentDashboard() {
-  const [tests, setTests] = useState([] as any[]);
+  const [testsData, setTestsData] = useState<StudentExam[]>([]);
+  const [registrationsData, setRegistrationsData] = useState<
+    ExamRegistration[]
+  >([]);
+  const [submissions, setSubmissions] = useState<StudentSubmission[]>([]);
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const user = useAppSelector((state) => state.user);
   const { socket } = useSocket();
 
-  const { data: testsData } = useFindManyExam({
-    include: {
-      lecturer: {
-        select: {
-          full_name: true,
-        },
-      },
-    },
-    where: {
-      status: "ACTIVE",
-    },
-    orderBy: {
-      created_at: "asc",
-    },
-  });
+  const fetchRegistrations = useCallback(async () => {
+    if (!user.id) return;
 
-  const { data: registrationsData, refetch: refetchRegistrations } =
-    useFindManyExamRegistration(
-      {
-        where: {
-          student_id: user.id,
+    try {
+      const response = await apiClient.get<PageResult<ExamRegistration>>(
+        ENDPOINTS.EXAM_REGISTRATIONS.BASE,
+        {
+          params: {
+            student_id: user.id,
+            limit: 100,
+          },
         },
-      },
-      {
-        enabled: !!user.id,
-      },
-    );
+      );
 
-  const { data: submissions } = useFindManySubmission(
-    {
-      where: {
-        student_id: user.id,
-      },
-      select: {
-        exam_id: true,
-        status: true,
-      },
-    },
-    {
-      enabled: !!user.id,
-    },
-  );
+      setRegistrationsData(response.data.data ?? []);
+    } catch (error) {
+      console.error("Fetch registrations error:", error);
+      setRegistrationsData([]);
+    }
+  }, [user.id]);
+
+  const fetchStudentData = useCallback(async () => {
+    if (!user.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const [examsResponse, registrationsResponse, submissionsResponse] =
+        await Promise.all([
+          apiClient.get<PageResult<StudentExam>>(ENDPOINTS.EXAMS.BASE, {
+            params: { limit: 100 },
+          }),
+          apiClient.get<PageResult<ExamRegistration>>(
+            ENDPOINTS.EXAM_REGISTRATIONS.BASE,
+            {
+              params: {
+                student_id: user.id,
+                limit: 100,
+              },
+            },
+          ),
+          apiClient.get<PageResult<StudentSubmission>>(
+            ENDPOINTS.SUBMISSIONS.BASE,
+            {
+              params: {
+                student_id: user.id,
+                limit: 100,
+              },
+            },
+          ),
+        ]);
+
+      setTestsData(examsResponse.data.data ?? []);
+      setRegistrationsData(registrationsResponse.data.data ?? []);
+      setSubmissions(submissionsResponse.data.data ?? []);
+    } catch (error) {
+      console.error("Fetch student dashboard error:", error);
+      toast.error("Có lỗi xảy ra khi tải danh sách bài thi.");
+      setTestsData([]);
+      setRegistrationsData([]);
+      setSubmissions([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user.id]);
+
+  useEffect(() => {
+    void fetchStudentData();
+  }, [fetchStudentData]);
 
   const handleRegister = async (examId: string) => {
     setIsRegistering(true);
     try {
-      await apiClient.post("/notification/exam/request-registration", {
+      await apiClient.post(ENDPOINTS.EXAMS.REGISTRATIONS.REQUEST, {
         examId,
       });
       toast.success("Gửi yêu cầu đăng ký thành công!");
-      refetchRegistrations();
+      await fetchRegistrations();
     } catch (error) {
       toast.error("Có lỗi xảy ra khi gửi yêu cầu đăng ký.");
       console.error(error);
@@ -95,11 +162,11 @@ export default function StudentDashboard() {
     if (!socket) return;
 
     const handleRegistrationApproved = () => {
-      refetchRegistrations();
+      void fetchRegistrations();
     };
 
     const handleStudentAdded = () => {
-      refetchRegistrations();
+      void fetchRegistrations();
     };
 
     socket.on("exam:registration_approved", handleRegistrationApproved);
@@ -109,40 +176,31 @@ export default function StudentDashboard() {
       socket.off("exam:registration_approved", handleRegistrationApproved);
       socket.off("exam:student_added", handleStudentAdded);
     };
-  }, [socket, refetchRegistrations]);
+  }, [socket, fetchRegistrations]);
 
-  useEffect(() => {
-    if (testsData) {
-      setTests(testsData);
-    }
-  }, [testsData]);
+  const filteredExams = testsData.filter((exam) => {
+    const isRegistered = registrationsData?.some((r) => r.exam_id === exam.id);
+    const isPublic = exam.is_public;
+    const topicName = exam.topic?.name;
 
-  const filteredExams =
-    testsData?.filter((exam: any) => {
-      const isRegistered = registrationsData?.some(
-        (r: any) => r.exam_id === exam.id,
-      );
-      const isPublic = exam.is_public;
+    if (!isPublic && !isRegistered) return false;
 
-      if (!isPublic && !isRegistered) return false;
+    if (selectedTopic !== "all" && topicName !== selectedTopic) return false;
 
-      if (selectedTopic !== "all" && exam.topic !== selectedTopic) return false;
-
-      return true;
-    }) || [];
+    return true;
+  });
 
   const availableTopics = Array.from(
     new Set(
       testsData
-        ?.filter((exam: any) => {
+        .filter((exam) => {
           const isRegistered = registrationsData?.some(
-            (r: any) => r.exam_id === exam.id,
+            (r) => r.exam_id === exam.id,
           );
-          // @ts-ignore
           const isPublic = exam.is_public;
           return isPublic || isRegistered;
         })
-        .map((e: any) => e.topic),
+        .map((e) => e.topic?.name),
     ),
   ).filter(Boolean);
 
@@ -179,190 +237,196 @@ export default function StudentDashboard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredExams.map((test: any) => {
-                const isPractice = test.practice;
-                const bgGradient = isPractice
-                  ? "bg-gradient-to-r from-purple-50 to-white"
-                  : "bg-gradient-to-r from-blue-50 to-white";
-                const badgeColor = isPractice
-                  ? "bg-purple-500 hover:bg-purple-600"
-                  : "bg-blue-600 hover:bg-blue-700";
-                const Icon = isPractice ? BookOpen : Award;
+            {isLoading ? (
+              <div className="flex min-h-[300px] items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-[#0066cc]" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredExams.map((test) => {
+                  const isPractice = test.practice;
+                  const bgGradient = isPractice
+                    ? "bg-gradient-to-r from-purple-50 to-white"
+                    : "bg-gradient-to-r from-blue-50 to-white";
+                  const badgeColor = isPractice
+                    ? "bg-purple-500 hover:bg-purple-600"
+                    : "bg-blue-600 hover:bg-blue-700";
+                  const Icon = isPractice ? BookOpen : Award;
 
-                const registration = registrationsData?.find(
-                  (r: any) => r.exam_id === test.id,
-                );
+                  const registration = registrationsData?.find(
+                    (r) => r.exam_id === test.id,
+                  );
 
-                return (
-                  <Card
-                    key={test.id}
-                    className={`shadow-lg hover:shadow-2xl transition-all duration-300 bg-white border border-gray-300 overflow-hidden hover:scale-[1.02]`}
-                  >
-                    <div
-                      className={`${bgGradient} px-6 pt-6 pb-4 border-b border-gray-100`}
+                  return (
+                    <Card
+                      key={test.id}
+                      className={`shadow-lg hover:shadow-2xl transition-all duration-300 bg-white border border-gray-300 overflow-hidden hover:scale-[1.02]`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <h3 className="text-xl font-bold text-gray-900 flex-1">
-                          {test.title}
-                        </h3>
-                        <Icon
-                          className={`w-6 h-6 ${
-                            isPractice ? "text-purple-600" : "text-blue-600"
-                          } flex-shrink-0`}
-                        />
-                      </div>
-                      <Badge
-                        className={`${badgeColor} text-white mt-3 font-medium`}
+                      <div
+                        className={`${bgGradient} px-6 pt-6 pb-4 border-b border-gray-100`}
                       >
-                        {isPractice ? "Luyện tập" : "Bài thi chính thức"}
-                      </Badge>
-                    </div>
-
-                    <CardContent className="px-6 py-2 space-y-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <span className="text-sm text-gray-500 min-w-[130px] font-medium">
-                            Chủ đề:
-                          </span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {test.topic}
-                          </span>
+                        <div className="flex items-start justify-between gap-3">
+                          <h3 className="text-xl font-bold text-gray-900 flex-1">
+                            {test.title}
+                          </h3>
+                          <Icon
+                            className={`w-6 h-6 ${
+                              isPractice ? "text-purple-600" : "text-blue-600"
+                            } flex-shrink-0`}
+                          />
                         </div>
-
-                        <div className="flex items-start gap-3">
-                          <User className="w-4 h-4 text-gray-400 mt-0.5" />
-                          <span className="text-sm text-gray-500 min-w-[110px] font-medium">
-                            Giảng viên:
-                          </span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {test.lecturer.full_name}
-                          </span>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                          <Clock className="w-4 h-4 text-gray-400 mt-0.5" />
-                          <span className="text-sm text-gray-500 min-w-[110px] font-medium">
-                            Thời lượng:
-                          </span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {test.duration} phút
-                          </span>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                          <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
-                          <span className="text-sm text-gray-500 min-w-[110px] font-medium">
-                            Thời gian thi:
-                          </span>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {new Date(test.exam_start_time).toLocaleDateString(
-                              "vi-VN",
-                            )}
-                            {" - "}
-                            {new Date(test.exam_end_time).toLocaleDateString(
-                              "vi-VN",
-                            )}
-                          </span>
-                        </div>
+                        <Badge
+                          className={`${badgeColor} text-white mt-3 font-medium`}
+                        >
+                          {isPractice ? "Luyện tập" : "Bài thi chính thức"}
+                        </Badge>
                       </div>
 
-                      <div className="pt-4 border-t border-gray-100">
-                        {(() => {
-                          const now = new Date();
-                          const startTime = new Date(test.exam_start_time);
-                          const endTime = new Date(test.exam_end_time);
+                      <CardContent className="px-6 py-2 space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <span className="text-sm text-gray-500 min-w-[130px] font-medium">
+                              Chủ đề:
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {test.topic?.name ?? "N/A"}
+                            </span>
+                          </div>
 
-                          const isCompleted = submissions?.some(
-                            (s: any) => s.exam_id === test.id,
-                          );
+                          <div className="flex items-start gap-3">
+                            <User className="w-4 h-4 text-gray-400 mt-0.5" />
+                            <span className="text-sm text-gray-500 min-w-[110px] font-medium">
+                              Giảng viên:
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {test.lecturer?.full_name ?? "N/A"}
+                            </span>
+                          </div>
 
-                          // Logic for official exams
-                          if (!test.practice && isCompleted) {
-                            return (
-                              <Button
-                                disabled
-                                className="w-full bg-green-100 text-green-700 cursor-not-allowed font-semibold border border-green-200"
-                              >
-                                Hoàn thành
-                              </Button>
-                            );
-                          }
+                          <div className="flex items-start gap-3">
+                            <Clock className="w-4 h-4 text-gray-400 mt-0.5" />
+                            <span className="text-sm text-gray-500 min-w-[110px] font-medium">
+                              Thời lượng:
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {test.duration} phút
+                            </span>
+                          </div>
 
-                          if (!registration) {
-                            return (
-                              <Button
-                                className="w-full bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer font-semibold shadow-md"
-                                onClick={() => handleRegister(test.id)}
-                                disabled={isRegistering}
-                              >
-                                {isRegistering ? (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                ) : (
-                                  "Đăng ký tham gia"
-                                )}
-                              </Button>
-                            );
-                          }
+                          <div className="flex items-start gap-3">
+                            <Calendar className="w-4 h-4 text-gray-400 mt-0.5" />
+                            <span className="text-sm text-gray-500 min-w-[110px] font-medium">
+                              Thời gian thi:
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {new Date(
+                                test.exam_start_time,
+                              ).toLocaleDateString("vi-VN")}
+                              {" - "}
+                              {new Date(test.exam_end_time).toLocaleDateString(
+                                "vi-VN",
+                              )}
+                            </span>
+                          </div>
+                        </div>
 
-                          if (registration.status === "PENDING") {
-                            return (
-                              <Button
-                                disabled
-                                className="w-full bg-yellow-100 text-yellow-700 cursor-not-allowed font-semibold border border-yellow-200"
-                              >
-                                Đang chờ duyệt
-                              </Button>
-                            );
-                          }
+                        <div className="pt-4 border-t border-gray-100">
+                          {(() => {
+                            const now = new Date();
+                            const startTime = new Date(test.exam_start_time);
+                            const endTime = new Date(test.exam_end_time);
 
-                          if (registration.status === "REJECTED") {
-                            return (
-                              <Button
-                                disabled
-                                className="w-full bg-red-100 text-red-700 cursor-not-allowed font-semibold border border-red-200"
-                              >
-                                Bị từ chối
-                              </Button>
+                            const isCompleted = submissions?.some(
+                              (s) => s.exam_id === test.id,
                             );
-                          }
 
-                          // APPROVED
-                          if (now < startTime) {
-                            return (
-                              <Button
-                                disabled
-                                className="w-full bg-blue-100 text-blue-700 cursor-not-allowed font-semibold border border-blue-200"
-                              >
-                                Đã duyệt - Chờ giờ thi
-                              </Button>
-                            );
-                          } else if (now >= startTime && now <= endTime) {
-                            return (
-                              <Button
-                                className={`w-full bg-green-500 hover:bg-green-600 text-white hover:cursor-pointer font-semibold shadow-md hover:shadow-lg transition-all`}
-                                asChild
-                              >
-                                <Link href={`/exam/${test.id}`}>Vào thi</Link>
-                              </Button>
-                            );
-                          } else {
-                            return (
-                              <Button
-                                disabled
-                                className="w-full bg-gray-200 text-gray-500 cursor-not-allowed font-semibold"
-                              >
-                                Đã qua thời gian thi
-                              </Button>
-                            );
-                          }
-                        })()}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+                            // Logic for official exams
+                            if (!test.practice && isCompleted) {
+                              return (
+                                <Button
+                                  disabled
+                                  className="w-full bg-green-100 text-green-700 cursor-not-allowed font-semibold border border-green-200"
+                                >
+                                  Hoàn thành
+                                </Button>
+                              );
+                            }
+
+                            if (!registration) {
+                              return (
+                                <Button
+                                  className="w-full bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer font-semibold shadow-md"
+                                  onClick={() => handleRegister(test.id)}
+                                  disabled={isRegistering}
+                                >
+                                  {isRegistering ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  ) : (
+                                    "Đăng ký tham gia"
+                                  )}
+                                </Button>
+                              );
+                            }
+
+                            if (registration.status === "PENDING") {
+                              return (
+                                <Button
+                                  disabled
+                                  className="w-full bg-yellow-100 text-yellow-700 cursor-not-allowed font-semibold border border-yellow-200"
+                                >
+                                  Đang chờ duyệt
+                                </Button>
+                              );
+                            }
+
+                            if (registration.status === "REJECTED") {
+                              return (
+                                <Button
+                                  disabled
+                                  className="w-full bg-red-100 text-red-700 cursor-not-allowed font-semibold border border-red-200"
+                                >
+                                  Bị từ chối
+                                </Button>
+                              );
+                            }
+
+                            // APPROVED
+                            if (now < startTime) {
+                              return (
+                                <Button
+                                  disabled
+                                  className="w-full bg-blue-100 text-blue-700 cursor-not-allowed font-semibold border border-blue-200"
+                                >
+                                  Đã duyệt - Chờ giờ thi
+                                </Button>
+                              );
+                            } else if (now >= startTime && now <= endTime) {
+                              return (
+                                <Button
+                                  className={`w-full bg-green-500 hover:bg-green-600 text-white hover:cursor-pointer font-semibold shadow-md hover:shadow-lg transition-all`}
+                                  asChild
+                                >
+                                  <Link href={`/exam/${test.id}`}>Vào thi</Link>
+                                </Button>
+                              );
+                            } else {
+                              return (
+                                <Button
+                                  disabled
+                                  className="w-full bg-gray-200 text-gray-500 cursor-not-allowed font-semibold"
+                                >
+                                  Đã qua thời gian thi
+                                </Button>
+                              );
+                            }
+                          })()}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </main>
       </div>

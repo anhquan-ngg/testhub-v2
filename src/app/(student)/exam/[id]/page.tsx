@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useFindUniqueExam } from "@/hooks/useModel";
 import { QuestionType } from "@prisma/client";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useSelector, useDispatch } from "react-redux";
@@ -66,6 +65,7 @@ export default function ExamPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
+  const questionsInitialized = useRef(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const handlePrint = async () => {
     if (!examId) return;
@@ -158,7 +158,9 @@ export default function ExamPage() {
   }, [examId, userId]);
 
   useEffect(() => {
-    if (exam && testStarted) {
+    if (exam && testStarted && !questionsInitialized.current) {
+      questionsInitialized.current = true;
+
       const questionsWithParsedOptions = exam.questions.map((question) => {
         const clonedQuestion: any = { ...question };
 
@@ -176,7 +178,7 @@ export default function ExamPage() {
               clonedQuestion.options = clonedQuestion.options.map(
                 (option: any, index: number) => ({
                   ...option,
-                  id: index + 1,
+                  id: String(index + 1),
                 }),
               );
             }
@@ -291,8 +293,8 @@ export default function ExamPage() {
         payload.options = question.options.map((opt: any) => ({
           text: opt.text,
           isCorrect: Array.isArray(answer)
-            ? answer.includes(opt.id)
-            : answer === opt.id,
+            ? answer.includes(String(opt.id))
+            : answer === String(opt.id),
         }));
         payload.options = JSON.stringify(payload.options);
       }
@@ -711,21 +713,21 @@ export default function ExamPage() {
                       <div
                         key={option.id}
                         className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                          answers[currentQuestion.id] === option.id
+                          answers[currentQuestion.id] === String(option.id)
                             ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
                             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                         }`}
                         onClick={() =>
-                          handleAnswer(currentQuestion.id, option.id)
+                          handleAnswer(currentQuestion.id, String(option.id))
                         }
                       >
                         <RadioGroupItem
-                          value={option.id}
-                          id={option.id}
+                          value={String(option.id)}
+                          id={String(option.id)}
                           className="text-blue-600"
                         />
                         <Label
-                          htmlFor={option.id}
+                          htmlFor={String(option.id)}
                           className="flex-1 cursor-pointer font-medium text-gray-700"
                         >
                           <MathRenderer content={option.text} />
@@ -742,7 +744,7 @@ export default function ExamPage() {
                         key={option.id}
                         className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
                           (answers[currentQuestion.id] as string[])?.includes(
-                            option.id,
+                            String(option.id),
                           )
                             ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
                             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
@@ -750,7 +752,7 @@ export default function ExamPage() {
                         onClick={() =>
                           handleAnswer(
                             currentQuestion.id,
-                            option.id,
+                            String(option.id),
                             "MULTIPLE_CHOICE",
                           )
                         }
@@ -758,19 +760,19 @@ export default function ExamPage() {
                         <Checkbox
                           checked={(
                             (answers[currentQuestion.id] as string[]) || []
-                          ).includes(option.id)}
+                          ).includes(String(option.id))}
                           onCheckedChange={() =>
                             handleAnswer(
                               currentQuestion.id,
-                              option.id,
+                              String(option.id),
                               "MULTIPLE_CHOICE",
                             )
                           }
-                          id={option.id}
+                          id={String(option.id)}
                           className="text-blue-600"
                         />
                         <Label
-                          htmlFor={option.id}
+                          htmlFor={String(option.id)}
                           className="flex-1 cursor-pointer font-medium text-gray-700"
                         >
                           <MathRenderer content={option.text} />

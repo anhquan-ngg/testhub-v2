@@ -5,41 +5,39 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  BookOpen,
-  Award,
-  Clock,
-  TrendingUp,
-  CheckCircle,
-  FileText,
-} from "lucide-react";
+import { Clock, CheckCircle, FileText } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import {  useFindManySubmission  } from '@/hooks/useModel';
 import { useAppSelector } from "@/store/hook";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+import { getDistributionQuestions } from "@/lib/exam-utils";
 
 interface SubmissionWithDetails {
   id: string;
-  total_score: number | null;
+  total_score: number | string | null;
   rating: string | null;
-  start_time: Date | null;
-  end_time: Date | null;
+  start_time: string | Date | null;
+  end_time: string | Date | null;
   status: string;
   exam: {
     id: string;
     title: string;
-    topic: string;
+    topic?: {
+      id: string;
+      name: string;
+    } | null;
     practice: boolean;
     mode: string;
-    sample_size: number;
-    distribution: any;
+    sample_size: number | null;
+    distribution: string | null;
     _count: {
       questions: number;
     };
   };
   questions?: Array<{
     id: string;
-    score: number | null;
+    score: number | string | null;
     is_correct: boolean;
     options: string | null;
     answer: string | null;
@@ -53,52 +51,54 @@ interface SubmissionWithDetails {
   }>;
 }
 
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
 export default function ResultPage() {
   const router = useRouter();
   const userId = useAppSelector((state) => state.user.id);
+  const [submissions, setSubmissions] = useState<SubmissionWithDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: submissionsData, isLoading } = useFindManySubmission(
-    {
-      where: {
-        student_id: userId,
-        status: "COMPLETED",
-        exam: {
-          status: "ACTIVE",
-        },
-      },
-      include: {
-        exam: {
-          select: {
-            id: true,
-            title: true,
-            topic: true,
-            practice: true,
-            mode: true,
-            sample_size: true,
-            distribution: true,
-            _count: {
-              select: {
-                questions: true,
-              },
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await apiClient.get<PageResult<SubmissionWithDetails>>(
+          ENDPOINTS.SUBMISSIONS.BASE,
+          {
+            params: {
+              student_id: userId,
+              status: "COMPLETED",
+              limit: 100,
             },
           },
-        },
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-    },
-    {
-      enabled: !!userId,
-    }
-  );
+        );
 
-  // Filter only completed submissions (already handled by the query)
-  const submissions = submissionsData;
+        setSubmissions(response.data.data ?? []);
+      } catch (error) {
+        console.error("Fetch submissions error:", error);
+        setSubmissions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchSubmissions();
+  }, [userId]);
 
   const calculateTimeTaken = (
-    startTime: Date | null,
-    endTime: Date | null
+    startTime: string | Date | null,
+    endTime: string | Date | null,
   ): string => {
     if (!startTime || !endTime) return "N/A";
 
@@ -138,24 +138,6 @@ export default function ResultPage() {
         return "Yếu";
       default:
         return "Chưa đánh giá";
-    }
-  };
-
-  const getDistributionQuestions = (distributions: any) => {
-    const parsedDistribution = JSON.parse(distributions);
-    let res = 0;
-    for (let i = 0; i < parsedDistribution.length; i++) {
-      res += parsedDistribution[i].quantity;
-    }
-    return res;
-  };
-
-  const parseOptions = (optionsStr: string | null): any[] => {
-    if (!optionsStr) return [];
-    try {
-      return JSON.parse(optionsStr);
-    } catch {
-      return [];
     }
   };
 
@@ -215,11 +197,11 @@ export default function ResultPage() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {submissions.map((submission: any) => {
+                {submissions.map((submission) => {
                   const isPractice = submission.exam.practice;
                   const timeTaken = calculateTimeTaken(
                     submission.start_time,
-                    submission.end_time
+                    submission.end_time,
                   );
 
                   return (
@@ -248,14 +230,14 @@ export default function ResultPage() {
                             </div>
                             <p className="text-gray-600 flex items-center gap-2">
                               <span className="font-medium">Chủ đề:</span>
-                              {submission.exam.topic}
+                              {submission.exam.topic?.name ?? "N/A"}
                             </p>
                           </div>
 
                           <div className="flex flex-col items-end gap-2">
                             <Badge
                               className={`${getRatingColor(
-                                submission.rating
+                                submission.rating,
                               )} text-white text-base px-4 py-1`}
                             >
                               {getRatingText(submission.rating)}
@@ -307,11 +289,12 @@ export default function ResultPage() {
                               <p className="font-semibold text-gray-900">
                                 {submission.exam.mode === "RANDOM_N"
                                   ? submission.exam.sample_size
-                                  : submission.exam.mode === "BY_TYPE"
-                                  ? getDistributionQuestions(
-                                      submission.exam.distribution
-                                    )
-                                  : submission.exam._count.questions || 0}
+                                  : submission.exam.mode === "BY_TYPE" ||
+                                      submission.exam.mode === "BY_CHAPTER"
+                                    ? getDistributionQuestions(
+                                        submission.exam.distribution,
+                                      )
+                                    : submission.exam._count.questions || 0}
                               </p>
                             </div>
                           </div>

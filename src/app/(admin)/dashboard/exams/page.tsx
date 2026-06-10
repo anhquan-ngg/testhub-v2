@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,41 +34,67 @@ import {
   ChevronRight,
   BarChart3,
 } from "lucide-react";
-import {  useFindManyExam  } from '@/hooks/useModel';
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 export default function ExamsPage() {
   const router = useRouter();
   const [exams, setExams] = useState([] as any);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+  const [totalCount, setTotalCount] = useState(0);
   // const [students] = useState(mockStudents);
   const [searchTerm, setSearchTerm] = useState("");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage] = useState(10);
 
-  const {
-    data: examsData,
-    isLoading,
-    error,
-  } = useFindManyExam({
-    include: {
-      lecturer: {
-        select: {
-          full_name: true,
-        },
-      },
+  const fetchExams = useCallback(
+    async (page = currentPage, limit = itemsPerPage, search = searchTerm) => {
+      setIsLoading(true);
+      try {
+        const response = await apiClient.get<PageResult<any>>(
+          ENDPOINTS.EXAMS.BASE,
+          {
+            params: {
+              page,
+              limit,
+              search: search || undefined,
+            },
+          },
+        );
+        setExams(response.data.data ?? []);
+        setTotalCount(response.data.total ?? 0);
+        setError(null);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
     },
-    orderBy: { created_at: "desc" },
-  });
+    [currentPage, itemsPerPage, searchTerm],
+  );
 
   useEffect(() => {
-    if (examsData) {
-      setExams(examsData);
+    void fetchExams();
+  }, [fetchExams]);
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.");
     }
-  }, [examsData]);
+  }, [error]);
 
   if (isLoading) {
     return (
@@ -78,20 +104,8 @@ export default function ExamsPage() {
     );
   }
 
-  if (error) {
-    toast.error("Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.");
-  }
-
-  const filteredExams =
-    exams?.filter((exam: any) =>
-      exam.title.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
-
-  const totalPages = Math.ceil(filteredExams.length / ITEMS_PER_PAGE);
-  const paginatedExams = filteredExams.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const paginatedExams = exams || [];
 
   return (
     <div className="space-y-6">
@@ -145,7 +159,7 @@ export default function ExamsPage() {
               {paginatedExams.map((exam: any) => (
                 <TableRow key={exam.id} className="border-gray-300">
                   <TableCell className="font-medium">{exam.title}</TableCell>
-                  <TableCell>{exam.lecturer.full_name}</TableCell>
+                  <TableCell>{exam.lecturer?.full_name ?? "—"}</TableCell>
                   <TableCell>{exam.topic}</TableCell>
                   <TableCell>
                     {new Date(exam.exam_start_time).toLocaleString("vi-VN")}
@@ -163,8 +177,8 @@ export default function ExamsPage() {
                         exam.status === "INACTIVE"
                           ? "text-red-500 bg-red-100"
                           : exam.status === "ACTIVE"
-                          ? "text-green-500 bg-green-100"
-                          : "text-blue-500 bg-blue-100"
+                            ? "text-green-500 bg-green-100"
+                            : "text-blue-500 bg-blue-100"
                       }`}
                     >
                       {exam.status}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,47 +19,61 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Search, ChevronLeft, ChevronRight } from "lucide-react";
-import {  useFindManyQuestion  } from '@/hooks/useModel';
 import { Badge } from "@/components/ui/badge";
 import { IQuestion, QuestionOption } from "@/types/question";
 import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
 import { MathRenderer } from "@/components/MathRenderer";
+import { toast } from "sonner";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 export default function QuestionsPage() {
   const [questions, setQuestions] = useState([] as any);
   const [searchTerm, setSearchTerm] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage] = useState(10);
 
-  const { data: questionsData } = useFindManyQuestion({
-    include: {
-      lecturer: {
-        select: {
-          full_name: true,
-        },
-      },
+  const fetchQuestions = useCallback(
+    async (page = currentPage, limit = itemsPerPage, search = searchTerm) => {
+      try {
+        const response = await apiClient.get<PageResult<any>>(
+          ENDPOINTS.QUESTIONS.BASE,
+          {
+            params: {
+              page,
+              limit,
+              search: search || undefined,
+            },
+          },
+        );
+        setQuestions(response.data.data ?? []);
+        setTotalCount(response.data.total ?? 0);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        toast.error(`Có lỗi xảy ra khi tải dữ liệu câu hỏi: ${message}`);
+        setQuestions([]);
+        setTotalCount(0);
+      }
     },
-    orderBy: { created_at: "desc" },
-  });
+    [currentPage, itemsPerPage, searchTerm],
+  );
 
   useEffect(() => {
-    if (questionsData) {
-      setQuestions(questionsData);
-    }
-  }, [questionsData]);
+    void fetchQuestions();
+  }, [fetchQuestions]);
 
-  const filteredQuestions =
-    questions?.filter((q: any) =>
-      q.question_text.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
-
-  const totalPages = Math.ceil(filteredQuestions.length / ITEMS_PER_PAGE);
-  const paginatedQuestions = filteredQuestions.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
+  const paginatedQuestions = questions || [];
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-hidden">
@@ -120,8 +134,8 @@ export default function QuestionsPage() {
                           question.question_type === "SINGLE_CHOICE"
                             ? "text-red-500 bg-red-100"
                             : question.question_type === "MULTIPLE_CHOICE"
-                            ? "text-green-500 bg-green-100"
-                            : "text-blue-500 bg-blue-100"
+                              ? "text-green-500 bg-green-100"
+                              : "text-blue-500 bg-blue-100"
                         }`}
                       >
                         {QuestionTypeMap[question.question_type]}
@@ -133,10 +147,10 @@ export default function QuestionsPage() {
                           question.question_format === "ADVANCED"
                             ? "text-red-500 bg-red-100"
                             : question.question_format === "APPLYING"
-                            ? "text-orange-500 bg-orange-100"
-                            : question.question_format === "UNDERSTANDING"
-                            ? "text-green-500 bg-green-100"
-                            : "text-blue-500 bg-blue-100"
+                              ? "text-orange-500 bg-orange-100"
+                              : question.question_format === "UNDERSTANDING"
+                                ? "text-green-500 bg-green-100"
+                                : "text-blue-500 bg-blue-100"
                         }`}
                       >
                         {QuestionFormatMap[question.question_format]}
@@ -151,10 +165,10 @@ export default function QuestionsPage() {
                         ) : question.options ? (
                           <MathRenderer
                             content={JSON.parse(
-                              question.options as unknown as string
+                              question.options as unknown as string,
                             )
                               .filter(
-                                (option: QuestionOption) => option.isCorrect
+                                (option: QuestionOption) => option.isCorrect,
                               )
                               .map((option: QuestionOption) => option.text)
                               .join(", ")}

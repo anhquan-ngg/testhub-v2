@@ -12,8 +12,8 @@ import { useS3 } from "@/hooks/useS3";
 import { useFiles } from "@/hooks/useFiles";
 import { toast } from "sonner";
 import { setUser } from "@/store/slices/authSlice";
-import { useUpdateUser } from "@/hooks/useModel";
 import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 export default function LecturerProfile() {
   const user = useAppSelector((state) => state.user);
@@ -58,8 +58,6 @@ export default function LecturerProfile() {
     });
   };
 
-  const updateUserMutation = useUpdateUser();
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -88,7 +86,7 @@ export default function LecturerProfile() {
           full_name: user.full_name,
           email: user.email,
           avatar_url: uploadedFile.url,
-          role: user.role!,
+          role: user.role ?? "LECTURER",
         }),
       );
       toast.success("Cập nhật ảnh đại diện thành công!");
@@ -109,16 +107,20 @@ export default function LecturerProfile() {
 
     if (!formData.username) {
       toast.error("Tên giảng viên không được để trống");
+      return;
     }
 
     try {
-      await updateUserMutation.mutateAsync({
-        where: { id: user.id },
-        data: {
-          full_name: formData.username,
-        },
+      await apiClient.patch(ENDPOINTS.USERS.DETAIL(user.id), {
+        full_name: formData.username,
       });
       toast.success("Cập nhật thông tin giảng viên thành công!");
+      dispatch(
+        setUser({
+          ...user,
+          full_name: formData.username,
+        }),
+      );
     } catch (error) {
       toast.error("Lỗi khi cập nhật thông tin giảng viên. Vui lòng thử lại.");
       console.log(error);
@@ -170,12 +172,7 @@ export default function LecturerProfile() {
     };
 
     loadAvatarUrl();
-  }, [
-    getLegacyAvatarViewUrl,
-    user.avatar_url,
-    user.id,
-    user.isLoggedIn,
-  ]);
+  }, [getLegacyAvatarViewUrl, user.avatar_url, user.id, user.isLoggedIn]);
 
   useEffect(() => {
     if (user) {

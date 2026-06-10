@@ -21,7 +21,6 @@ import {
   Mail,
   GraduationCap,
 } from "lucide-react";
-import { useFindUniqueSubmission } from "@/hooks/useModel";
 import { MathRenderer } from "@/components/MathRenderer";
 import {
   calculateScorePerQuestion,
@@ -29,6 +28,7 @@ import {
   parseOptions,
 } from "@/lib/exam-utils";
 import { toast } from "sonner";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 // Helper function to calculate time taken
 function calculateTimeTaken(
@@ -59,57 +59,29 @@ export default function AdminResultDetailPage() {
   const [resolvedImages, setResolvedImages] = useState<Record<string, string>>(
     {},
   );
+  const [submission, setSubmission] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
 
-  const {
-    data: submission,
-    isLoading,
-    error,
-  } = useFindUniqueSubmission(
-    {
-      where: { id },
-      include: {
-        exam: {
-          select: {
-            id: true,
-            title: true,
-            topic: true,
-            practice: true,
-            mode: true,
-            sample_size: true,
-            distribution: true,
-            _count: {
-              select: {
-                questions: true,
-              },
-            },
-          },
-        },
-        questions: {
-          include: {
-            question: {
-              select: {
-                id: true,
-                question_text: true,
-                question_type: true,
-                options: true,
-                correct_answer: true,
-                image_url: true,
-              },
-            },
-          },
-        },
-        student: {
-          select: {
-            full_name: true,
-            email: true,
-          },
-        },
-      },
-    },
-    {
-      enabled: !!id,
-    },
-  );
+  useEffect(() => {
+    const fetchSubmission = async () => {
+      setIsLoading(true);
+      try {
+        const response = await apiClient.get(ENDPOINTS.SUBMISSIONS.DETAIL(id));
+        setSubmission(response.data);
+        setError(null);
+      } catch (err) {
+        setError(err);
+        console.log(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) {
+      void fetchSubmission();
+    }
+  }, [id]);
 
   useEffect(() => {
     const resolveImages = async () => {

@@ -13,9 +13,38 @@ export const ENDPOINTS = {
     BASE: "/chapters",
     DETAIL: (id: string) => `/chapters/${id}`,
   },
+  USERS: {
+    BASE: "/users",
+    DETAIL: (id: string) => `/users/${id}`,
+  },
   QUESTIONS: {
     BASE: "/questions",
     DETAIL: (id: string) => `/questions/${id}`,
+  },
+  EXAMS: {
+    BASE: "/exams",
+    DETAIL: (id: string) => `/exams/${id}`,
+    QUESTIONS: {
+      BASE: (id: string) => `/exams/${id}/questions`,
+      DETAIL: (id: string, questionId: string) =>
+        `/exams/${id}/questions/${questionId}`,
+    },
+    REGISTRATIONS: {
+      REQUEST: "/notification/exam/request-registration",
+      APPROVE: "/notification/exam/approve-registration",
+      ADD_STUDENT: "/notification/exam/add-student",
+    },
+  },
+  EXAM_REGISTRATIONS: {
+    BASE: "/exam-registrations",
+    DETAIL: (id: string) => `/exam-registrations/${id}`,
+  },
+  SUBMISSIONS: {
+    BASE: "/submission",
+    DETAIL: (id: string) => `/submission/${id}`,
+    PDF: (id: string) => `/submission/${id}/pdf`,
+    EXAM_PDF: (id: string) => `/submission/exam/${id}/pdf`,
+    EXAM_REPORT_PDF: (id: string) => `/submission/exam/${id}/report-pdf`,
   },
   FILES: {
     BASE: "/files",

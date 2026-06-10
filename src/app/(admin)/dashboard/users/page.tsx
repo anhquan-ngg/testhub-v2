@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,12 +45,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { 
-  useCreateUser,
-  useDeleteUser,
-  useFindManyUser,
-  useUpdateUser,
- } from '@/hooks/useModel';
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -67,9 +61,21 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { UserRoleMap } from "@/lib/constansts";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 export default function UsersPage() {
   const [users, setUsers] = useState([] as any);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<unknown>(null);
+  const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [userForm, setUserForm] = useState<{
@@ -93,48 +99,47 @@ export default function UsersPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 10;
+  const [itemsPerPage] = useState(10);
 
-  const {
-    data: usersData,
-    isLoading,
-    error,
-  } = useFindManyUser({
-    orderBy: { created_at: "desc" },
-  });
-
-  const createUserMutation = useCreateUser({
-    onSuccess: () => {
-      toast.success("Thêm người dùng thành công");
+  const fetchUsers = useCallback(
+    async (page = currentPage, limit = itemsPerPage, search = searchTerm) => {
+      setIsLoading(true);
+      try {
+        const response = await apiClient.get<PageResult<any>>(
+          ENDPOINTS.USERS.BASE,
+          {
+            params: {
+              page,
+              limit,
+              search: search || undefined,
+              role: roleFilter === "ALL" ? undefined : roleFilter,
+            },
+          },
+        );
+        setUsers(response.data.data ?? []);
+        setTotalCount(response.data.total ?? 0);
+        setError(null);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
     },
-    onError: () => {
-      toast.error("Có lỗi xảy ra khi thêm người dùng");
-    },
-  });
-
-  const updateUserMutation = useUpdateUser({
-    onSuccess: () => {
-      toast.success("Cập nhật thành công");
-    },
-    onError: () => {
-      toast.error("Có lỗi xảy ra khi cập nhật");
-    },
-  });
-
-  const deleteUserMutation = useDeleteUser({
-    onSuccess: () => {
-      toast.success("Xóa người dùng thành công");
-    },
-    onError: () => {
-      toast.error("Có lỗi xảy ra khi xóa người dùng");
-    },
-  });
+    [currentPage, itemsPerPage, roleFilter, searchTerm],
+  );
 
   const handleAddUser = async () => {
     const newUser = {
       ...userForm,
     };
-    await createUserMutation.mutateAsync({ data: newUser });
+    try {
+      await apiClient.post(ENDPOINTS.USERS.BASE, newUser);
+      toast.success("Thêm người dùng thành công");
+      await fetchUsers();
+    } catch (err) {
+      toast.error("Có lỗi xảy ra khi thêm người dùng");
+      console.log(err);
+    }
     setUserForm({
       full_name: "",
       email: "",
@@ -145,23 +150,38 @@ export default function UsersPage() {
   };
 
   const handleUpdateRole = async (userId: string) => {
-    await updateUserMutation.mutateAsync({
-      where: { id: userId },
-      data: { role: selectedRole },
-    });
+    try {
+      await apiClient.patch(ENDPOINTS.USERS.DETAIL(userId), {
+        role: selectedRole,
+      });
+      toast.success("Cập nhật thành công");
+      await fetchUsers();
+    } catch (err) {
+      toast.error("Có lỗi xảy ra khi cập nhật");
+      console.log(err);
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    await deleteUserMutation.mutateAsync({
-      where: { id: userId },
-    });
+    try {
+      await apiClient.delete(ENDPOINTS.USERS.DETAIL(userId));
+      toast.success("Xóa người dùng thành công");
+      await fetchUsers();
+    } catch (err) {
+      toast.error("Có lỗi xảy ra khi xóa người dùng");
+      console.log(err);
+    }
   };
 
   useEffect(() => {
-    if (usersData) {
-      setUsers(usersData);
+    void fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    if (error) {
+      toast.error("Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.");
     }
-  }, [usersData]);
+  }, [error]);
 
   if (isLoading) {
     return (
@@ -171,16 +191,14 @@ export default function UsersPage() {
     );
   }
 
-  if (error) {
-    toast.error("Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.");
-  }
-
   const filteredUsers =
     users
       ?.filter((user: any) => {
         const matchesSearch =
-          user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          user.email.toLowerCase().includes(searchTerm.toLowerCase());
+          (user.full_name || "")
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          (user.email || "").toLowerCase().includes(searchTerm.toLowerCase());
         const matchesRole = roleFilter === "ALL" || user.role === roleFilter;
         return matchesSearch && matchesRole;
       })
@@ -190,10 +208,10 @@ export default function UsersPage() {
         return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
       }) || [];
 
-  const totalPages = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
   const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
   );
 
   return (
@@ -405,8 +423,8 @@ export default function UsersPage() {
                         user.role === "ADMIN"
                           ? "text-red-500 bg-red-100"
                           : user.role === "LECTURER"
-                          ? "text-green-500 bg-green-100"
-                          : "text-blue-500 bg-blue-100"
+                            ? "text-green-500 bg-green-100"
+                            : "text-blue-500 bg-blue-100"
                       }`}
                     >
                       {UserRoleMap[user.role as keyof typeof UserRoleMap]}

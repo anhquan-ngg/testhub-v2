@@ -1,23 +1,13 @@
 "use client";
 
 import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 import { useParams, useRouter } from "next/navigation";
-import { useState, useMemo } from "react";
-import { 
-  useFindManySubmission,
-  useFindUniqueExam,
-  useDeleteSubmission,
- } from '@/hooks/useModel';
+import { useCallback, useEffect, useState } from "react";
 import { useAppSelector } from "@/store/hook";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -32,7 +22,6 @@ import {
   ChevronLeft,
   Trash2,
   Printer,
-  FileText,
   CheckCircle2,
   XCircle,
   CircleDashed,
@@ -53,6 +42,35 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+type ReportExam = {
+  id: string;
+  title: string;
+};
+
+type ReportStudent = {
+  full_name?: string | null;
+  email?: string | null;
+};
+
+type ReportSubmissionQuestion = {
+  answer?: string | null;
+  is_correct?: boolean | null;
+};
+
+type ReportSubmission = {
+  id: string;
+  total_score?: number | string | null;
+  rating?: string | null;
+  start_time?: string | Date | null;
+  end_time?: string | Date | null;
+  student?: ReportStudent | null;
+  questions?: ReportSubmissionQuestion[];
+};
+
+type SubmissionListResponse = {
+  data?: Array<{ id: string }>;
+};
+
 export default function ExamReportPage() {
   const params = useParams();
   const router = useRouter();
@@ -61,46 +79,68 @@ export default function ExamReportPage() {
   const userRole = user.role;
   const isAdmin = userRole === "ADMIN";
   const [isPrinting, setIsPrinting] = useState(false);
+  const [exam, setExam] = useState<ReportExam | null>(null);
+  const [submissions, setSubmissions] = useState<ReportSubmission[]>([]);
+  const [isLoadingExam, setIsLoadingExam] = useState(true);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(true);
+  const [deletingSubmissionId, setDeletingSubmissionId] = useState<
+    string | null
+  >(null);
 
-  const { data: exam, isLoading: isLoadingExam } = useFindUniqueExam({
-    where: { id: examId },
-  });
+  const fetchReportData = useCallback(async () => {
+    if (!examId) return;
 
-  const {
-    data: submissions,
-    isLoading: isLoadingSubmissions,
-    refetch,
-  } = useFindManySubmission({
-    where: { exam_id: examId, status: "COMPLETED" },
-    include: {
-      student: true,
-      questions: {
-        include: {
-          question: true,
-        },
-      },
-    },
-    orderBy: { created_at: "desc" },
-  });
+    setIsLoadingExam(true);
+    setIsLoadingSubmissions(true);
 
-  const deleteSubmissionMutation = useDeleteSubmission({
-    onSuccess: () => {
-      toast.success("Đã xóa lịch sử thi.");
-      refetch();
-    },
-    onError: () => {
-      toast.error("Lỗi khi xóa lịch sử thi.");
-    },
-  });
+    try {
+      const [examResponse, submissionsResponse] = await Promise.all([
+        apiClient.get<ReportExam>(ENDPOINTS.EXAMS.DETAIL(examId)),
+        apiClient.get<SubmissionListResponse>(ENDPOINTS.SUBMISSIONS.BASE, {
+          params: {
+            exam_id: examId,
+            status: "COMPLETED",
+            limit: 100,
+          },
+        }),
+      ]);
+
+      setExam(examResponse.data);
+
+      const submissionList = submissionsResponse.data?.data ?? [];
+      const detailedSubmissions = await Promise.all(
+        submissionList.map(async (submission) => {
+          const response = await apiClient.get<ReportSubmission>(
+            ENDPOINTS.SUBMISSIONS.DETAIL(submission.id),
+          );
+          return response.data;
+        }),
+      );
+
+      setSubmissions(detailedSubmissions);
+    } catch (error) {
+      console.error("Fetch report data error:", error);
+      toast.error("Lỗi khi tải báo cáo bài thi.");
+      setExam(null);
+      setSubmissions([]);
+    } finally {
+      setIsLoadingExam(false);
+      setIsLoadingSubmissions(false);
+    }
+  }, [examId]);
+
+  useEffect(() => {
+    void fetchReportData();
+  }, [fetchReportData]);
 
   const handlePrintReport = async () => {
     try {
       setIsPrinting(true);
       const response = await apiClient.get(
-        `/submission/exam/${examId}/report-pdf`,
+        ENDPOINTS.SUBMISSIONS.EXAM_REPORT_PDF(examId),
         {
           responseType: "blob",
-        }
+        },
       );
 
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -119,12 +159,26 @@ export default function ExamReportPage() {
     }
   };
 
-  const calculateStats = (submission: any) => {
+  const handleDeleteSubmission = async (submissionId: string) => {
+    setDeletingSubmissionId(submissionId);
+    try {
+      await apiClient.delete(ENDPOINTS.SUBMISSIONS.DETAIL(submissionId));
+      toast.success("Đã xóa lịch sử thi.");
+      await fetchReportData();
+    } catch (error) {
+      console.error("Delete submission error:", error);
+      toast.error("Lỗi khi xóa lịch sử thi.");
+    } finally {
+      setDeletingSubmissionId(null);
+    }
+  };
+
+  const calculateStats = (submission: ReportSubmission) => {
     let correct = 0;
     let incorrect = 0;
     let skipped = 0;
 
-    submission.questions?.forEach((sq: any) => {
+    submission.questions?.forEach((sq) => {
       if (sq.is_correct) {
         correct++;
       } else if (!sq.answer || sq.answer.trim() === "") {
@@ -137,7 +191,10 @@ export default function ExamReportPage() {
     return { correct, incorrect, skipped };
   };
 
-  const calculateTimeTaken = (start: Date | null, end: Date | null) => {
+  const calculateTimeTaken = (
+    start: string | Date | null | undefined,
+    end: string | Date | null | undefined,
+  ) => {
     if (!start || !end) return "N/A";
     const diff = new Date(end).getTime() - new Date(start).getTime();
     const minutes = Math.floor(diff / 60000);
@@ -158,10 +215,6 @@ export default function ExamReportPage() {
       default:
         return "bg-gray-500";
     }
-  };
-
-  const handlePrint = () => {
-    window.print();
   };
 
   if (isLoadingExam || isLoadingSubmissions) {
@@ -254,7 +307,7 @@ export default function ExamReportPage() {
             </TableHeader>
             <TableBody>
               {submissions && submissions.length > 0 ? (
-                submissions.map((sub: any) => {
+                submissions.map((sub) => {
                   const stats = calculateStats(sub);
                   return (
                     <TableRow
@@ -283,7 +336,7 @@ export default function ExamReportPage() {
                       </TableCell>
                       <TableCell>
                         <Badge
-                          className={`${getRatingColor(sub.rating)} text-white`}
+                          className={`${getRatingColor(sub.rating ?? null)} text-white`}
                         >
                           {sub.rating || "N/A"}
                         </Badge>
@@ -336,12 +389,13 @@ export default function ExamReportPage() {
                                   <AlertDialogAction
                                     className="bg-red-600 text-white hover:bg-red-700 hover:cursor-pointer"
                                     onClick={() =>
-                                      deleteSubmissionMutation.mutate({
-                                        where: { id: sub.id },
-                                      })
+                                      void handleDeleteSubmission(sub.id)
                                     }
+                                    disabled={deletingSubmissionId === sub.id}
                                   >
-                                    Xóa
+                                    {deletingSubmissionId === sub.id
+                                      ? "Đang xóa..."
+                                      : "Xóa"}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
