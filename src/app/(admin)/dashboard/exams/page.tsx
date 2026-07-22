@@ -160,7 +160,11 @@ export default function ExamsPage() {
                 <TableRow key={exam.id} className="border-gray-300">
                   <TableCell className="font-medium">{exam.title}</TableCell>
                   <TableCell>{exam.lecturer?.full_name ?? "—"}</TableCell>
-                  <TableCell>{exam.topic}</TableCell>
+                  <TableCell>
+                    {typeof exam.topic === "string"
+                      ? exam.topic
+                      : exam.topic?.name ?? "N/A"}
+                  </TableCell>
                   <TableCell>
                     {new Date(exam.exam_start_time).toLocaleString("vi-VN")}
                   </TableCell>

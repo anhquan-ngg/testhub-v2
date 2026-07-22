@@ -28,4 +28,7 @@ export interface ExamData {
   status: "ACTIVE" | string; // Add other statuses if known
   questions: ExamQuestion[];
   submissionId: string;
+  entered_at?: string | null;
+  last_ping?: string | null;
+  time_limit_seconds?: number;
 }

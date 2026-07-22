@@ -6,7 +6,7 @@ import { BookOpen, Award, Clock, Calendar, Loader2, User } from "lucide-react";
 import Link from "next/link";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
 import {
@@ -57,6 +57,16 @@ type StudentSubmission = {
   status: string;
 };
 
+type ExamRuntimeStatus = {
+  examId: string;
+  serverTime: string;
+  isOpen: boolean;
+  canStart: boolean;
+  reason: string | null;
+  entryDeadline: string;
+  activeCount: number;
+};
+
 export default function StudentDashboard() {
   const [testsData, setTestsData] = useState<StudentExam[]>([]);
   const [registrationsData, setRegistrationsData] = useState<
@@ -66,6 +76,9 @@ export default function StudentDashboard() {
   const [selectedTopic, setSelectedTopic] = useState("all");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [examStatuses, setExamStatuses] = useState<
+    Record<string, ExamRuntimeStatus>
+  >({});
   const user = useAppSelector((state) => state.user);
   const { socket } = useSocket();
 
@@ -178,17 +191,176 @@ export default function StudentDashboard() {
     };
   }, [socket, fetchRegistrations]);
 
-  const filteredExams = testsData.filter((exam) => {
-    const isRegistered = registrationsData?.some((r) => r.exam_id === exam.id);
-    const isPublic = exam.is_public;
-    const topicName = exam.topic?.name;
+  const filteredExams = useMemo(
+    () =>
+      testsData.filter((exam) => {
+        const isRegistered = registrationsData?.some(
+          (r) => r.exam_id === exam.id,
+        );
+        const isPublic = exam.is_public;
+        const topicName = exam.topic?.name;
 
-    if (!isPublic && !isRegistered) return false;
+        if (!isPublic && !isRegistered) return false;
 
-    if (selectedTopic !== "all" && topicName !== selectedTopic) return false;
+        if (selectedTopic !== "all" && topicName !== selectedTopic)
+          return false;
 
-    return true;
-  });
+        return true;
+      }),
+    [registrationsData, selectedTopic, testsData],
+  );
+
+  useEffect(() => {
+    if (!user.id || filteredExams.length === 0) return;
+
+    let cancelled = false;
+
+    const fetchStatuses = async () => {
+      const statuses = await Promise.all(
+        filteredExams.map(async (exam) => {
+          try {
+            const response = await apiClient.get<ExamRuntimeStatus>(
+              ENDPOINTS.EXAM_RUNTIME.STATUS(exam.id),
+            );
+            return [exam.id, response.data] as const;
+          } catch (error) {
+            console.error("Fetch exam runtime status error:", error);
+            return null;
+          }
+        }),
+      );
+
+      if (cancelled) return;
+
+      setExamStatuses((prev) => {
+        const next = { ...prev };
+        statuses.forEach((item) => {
+          if (item) next[item[0]] = item[1];
+        });
+        return next;
+      });
+    };
+
+    void fetchStatuses();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user.id, filteredExams]);
+
+  useEffect(() => {
+    if (!user.id || filteredExams.length === 0 || typeof window === "undefined")
+      return;
+
+    const apiBaseUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const eventSources = filteredExams.map((exam) => {
+      const source = new EventSource(
+        `${apiBaseUrl}${ENDPOINTS.EXAM_RUNTIME.EVENTS(exam.id)}`,
+        { withCredentials: true },
+      );
+
+      const upsertStatus = (event: MessageEvent) => {
+        let payload: ExamRuntimeStatus;
+        try {
+          payload = JSON.parse(event.data) as ExamRuntimeStatus;
+        } catch {
+          return;
+        }
+        setExamStatuses((prev) => ({
+          ...prev,
+          [exam.id]: {
+            ...(prev[exam.id] ?? payload),
+            ...payload,
+          },
+        }));
+      };
+
+      const handleOpen = (event: MessageEvent) => {
+        let payload: Partial<ExamRuntimeStatus>;
+        try {
+          payload = JSON.parse(event.data) as Partial<ExamRuntimeStatus>;
+        } catch {
+          return;
+        }
+        setExamStatuses((prev) => ({
+          ...prev,
+          [exam.id]: {
+            ...(prev[exam.id] ?? {
+              examId: exam.id,
+              serverTime: new Date().toISOString(),
+              entryDeadline: exam.exam_end_time,
+              reason: null,
+              activeCount: 0,
+            }),
+            ...payload,
+            isOpen: true,
+            canStart: true,
+            reason: null,
+          } as ExamRuntimeStatus,
+        }));
+      };
+
+      const handleClosed = (event: MessageEvent) => {
+        let payload: Partial<ExamRuntimeStatus>;
+        try {
+          payload = JSON.parse(event.data) as Partial<ExamRuntimeStatus>;
+        } catch {
+          return;
+        }
+        setExamStatuses((prev) => ({
+          ...prev,
+          [exam.id]: {
+            ...(prev[exam.id] ?? {
+              examId: exam.id,
+              serverTime: new Date().toISOString(),
+              entryDeadline: exam.exam_end_time,
+              reason: "EXAM_CLOSED",
+              activeCount: 0,
+            }),
+            ...payload,
+            isOpen: false,
+            canStart: false,
+            reason: "EXAM_CLOSED",
+          } as ExamRuntimeStatus,
+        }));
+      };
+
+      const handleActiveCount = (event: MessageEvent) => {
+        let payload: Partial<ExamRuntimeStatus>;
+        try {
+          payload = JSON.parse(event.data) as Partial<ExamRuntimeStatus>;
+        } catch {
+          return;
+        }
+        setExamStatuses((prev) => ({
+          ...prev,
+          [exam.id]: {
+            ...(prev[exam.id] ?? {
+              examId: exam.id,
+              serverTime: new Date().toISOString(),
+              entryDeadline: exam.exam_end_time,
+              isOpen: false,
+              canStart: false,
+              reason: null,
+            }),
+            activeCount: Number(payload.activeCount ?? 0),
+          } as ExamRuntimeStatus,
+        }));
+      };
+
+      source.addEventListener("EXAM_STATUS", upsertStatus);
+      source.addEventListener("EXAM_OPEN", handleOpen);
+      source.addEventListener("EXAM_CLOSED", handleClosed);
+      source.addEventListener("EXAM_ACTIVE_COUNT", handleActiveCount);
+
+      return source;
+    });
+
+    return () => {
+      eventSources.forEach((source) => source.close());
+    };
+  }, [user.id, filteredExams]);
 
   const availableTopics = Array.from(
     new Set(
@@ -332,13 +504,17 @@ export default function StudentDashboard() {
 
                         <div className="pt-4 border-t border-gray-100">
                           {(() => {
-                            const now = new Date();
-                            const startTime = new Date(test.exam_start_time);
-                            const endTime = new Date(test.exam_end_time);
-
                             const isCompleted = submissions?.some(
-                              (s) => s.exam_id === test.id,
+                              (s) =>
+                                s.exam_id === test.id &&
+                                s.status === "COMPLETED",
                             );
+                            const hasInProgressSubmission = submissions?.some(
+                              (s) =>
+                                s.exam_id === test.id &&
+                                s.status === "IN_PROGRESS",
+                            );
+                            const runtimeStatus = examStatuses[test.id];
 
                             // Logic for official exams
                             if (!test.practice && isCompleted) {
@@ -391,7 +567,14 @@ export default function StudentDashboard() {
                             }
 
                             // APPROVED
-                            if (now < startTime) {
+                            const canStartExam =
+                              runtimeStatus?.canStart ?? false;
+
+                            if (
+                              !hasInProgressSubmission &&
+                              (!runtimeStatus ||
+                                runtimeStatus.reason === "NOT_STARTED")
+                            ) {
                               return (
                                 <Button
                                   disabled
@@ -400,7 +583,10 @@ export default function StudentDashboard() {
                                   Đã duyệt - Chờ giờ thi
                                 </Button>
                               );
-                            } else if (now >= startTime && now <= endTime) {
+                            } else if (
+                              canStartExam ||
+                              hasInProgressSubmission
+                            ) {
                               return (
                                 <Button
                                   className={`w-full bg-green-500 hover:bg-green-600 text-white hover:cursor-pointer font-semibold shadow-md hover:shadow-lg transition-all`}

@@ -85,6 +85,9 @@ export default function LecturerProfile() {
           id: user.id,
           full_name: user.full_name,
           email: user.email,
+          school: user.school,
+          phone: user.phone,
+          address: user.address,
           avatar_url: uploadedFile.url,
           role: user.role ?? "LECTURER",
         }),
@@ -117,7 +120,13 @@ export default function LecturerProfile() {
       toast.success("Cập nhật thông tin giảng viên thành công!");
       dispatch(
         setUser({
-          ...user,
+          id: user.id,
+          email: user.email,
+          school: user.school,
+          phone: user.phone,
+          address: user.address,
+          avatar_url: user.avatar_url,
+          role: user.role ?? "LECTURER",
           full_name: formData.username,
         }),
       );

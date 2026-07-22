@@ -2,30 +2,12 @@
 
 import type React from "react";
 
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  FileText,
-  User,
-  ChevronDown,
-  Camera,
-  Award,
-  Clipboard,
-  Edit,
-  EyeOff,
-  Eye,
-  Loader2,
-} from "lucide-react";
-import Link from "next/link";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { User, Camera, EyeOff, Eye, Loader2 } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
 import apiClient from "@/lib/api-client";
@@ -52,19 +34,16 @@ export default function StudentProfile() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [userProfile, setUserProfile] = useState<any>(null);
   const [submissionCount, setSubmissionCount] = useState(0);
   const [userRegistrations, setUserRegistrations] = useState<any[]>([]);
   const [completedSubmissions, setCompletedSubmissions] = useState<any[]>([]);
-  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
 
-  const fetchProfileData = useCallback(async () => {
-    if (!student.id) return;
+  useEffect(() => {
+    const loadProfileSummary = async () => {
+      if (!student.id) return;
 
-    try {
-      const [userResponse, registrationsResponse, submissionsResponse] =
-        await Promise.all([
-          apiClient.get(ENDPOINTS.USERS.DETAIL(student.id)),
+      try {
+        const [registrationsResponse, submissionsResponse] = await Promise.all([
           apiClient.get<PageResult<any>>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
             params: {
               page: 1,
@@ -82,40 +61,24 @@ export default function StudentProfile() {
           }),
         ]);
 
-      setUserProfile(userResponse.data);
-      setUserRegistrations(registrationsResponse.data.data ?? []);
-      setCompletedSubmissions(submissionsResponse.data.data ?? []);
-      setSubmissionCount(submissionsResponse.data.total ?? 0);
-      return { success: true as const };
-    } catch (error) {
-      console.error("Fetch profile data error:", error);
-      return {
-        success: false as const,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Không thể tải thông tin hồ sơ.",
-      };
-    }
+        setUserRegistrations(registrationsResponse.data.data ?? []);
+        setCompletedSubmissions(submissionsResponse.data.data ?? []);
+        setSubmissionCount(submissionsResponse.data.total ?? 0);
+      } catch (error) {
+        console.error("Fetch profile summary error:", error);
+        toast.error("Không thể tải dữ liệu hồ sơ. Vui lòng thử lại sau.");
+        setUserRegistrations([]);
+        setCompletedSubmissions([]);
+        setSubmissionCount(0);
+      }
+    };
+
+    void loadProfileSummary();
   }, [student.id]);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      const result = await fetchProfileData();
-      setProfileLoadError(
-        result && !result.success
-          ? "Không thể tải thông tin hồ sơ. Vui lòng thử lại sau."
-          : null,
-      );
-    };
-
-    void loadProfile();
-  }, [fetchProfileData]);
-
-  useEffect(() => {
     const fetchAvatar = async () => {
-      // Ưu tiên lấy từ userProfile mới fetch, hoặc fallback về redux student
-      const avatar = userProfile?.avatar_url || student.avatar_url;
+      const avatar = student.avatar_url;
       if (avatar?.startsWith("http")) {
         setAvatarUrl(avatar);
       } else if (avatar) {
@@ -124,7 +87,7 @@ export default function StudentProfile() {
       }
     };
     fetchAvatar();
-  }, [getLegacyAvatarViewUrl, userProfile, student.avatar_url]);
+  }, [getLegacyAvatarViewUrl, student.avatar_url]);
 
   //Filter for official (non-practice) exams
   const officialExamIds =
@@ -140,24 +103,29 @@ export default function StudentProfile() {
     ).length;
 
   const [formData, setFormData] = useState({
-    email: "",
-    full_name: "",
-    school: "",
-    phone: "",
-    address: "",
+    email: student.email || "",
+    full_name: student.full_name || "",
+    school: student.school || "",
+    phone: student.phone || "",
+    address: student.address || "",
   });
 
   useEffect(() => {
-    if (userProfile) {
-      setFormData({
-        email: userProfile.email || "",
-        full_name: userProfile.full_name || "",
-        school: userProfile.school || "",
-        phone: userProfile.phone || "",
-        address: userProfile.address || "",
-      });
-    }
-  }, [userProfile]);
+    setFormData((prev) => ({
+      ...prev,
+      email: student.email || "",
+      full_name: student.full_name || "",
+      school: student.school || "",
+      phone: student.phone || "",
+      address: student.address || "",
+    }));
+  }, [
+    student.address,
+    student.email,
+    student.full_name,
+    student.phone,
+    student.school,
+  ]);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -190,15 +158,34 @@ export default function StudentProfile() {
     e.preventDefault();
     if (!student.id) return;
 
+    const trimmedSchool = formData.school.trim();
+    const trimmedPhone = formData.phone.trim();
+    const trimmedAddress = formData.address.trim();
+
+    const updatePayload = {
+      full_name: formData.full_name,
+      school: trimmedSchool,
+      phone: trimmedPhone,
+      address: trimmedAddress,
+    };
+
     try {
       await apiClient.patch(ENDPOINTS.USERS.DETAIL(student.id), {
-        full_name: formData.full_name,
-        school: formData.school,
-        phone: formData.phone,
-        address: formData.address,
+        ...updatePayload,
       });
       toast.success("Cập nhật thông tin thành công!");
-      await fetchProfileData();
+      dispatch(
+        setUser({
+          id: student.id,
+          full_name: formData.full_name,
+          email: student.email,
+          school: trimmedSchool,
+          phone: trimmedPhone,
+          address: trimmedAddress,
+          avatar_url: student.avatar_url,
+          role: student.role ?? "STUDENT",
+        }),
+      );
     } catch (error) {
       console.error("Update failed:", error);
       toast.error("Cập nhật thất bại. Vui lòng thử lại.");
@@ -238,7 +225,7 @@ export default function StudentProfile() {
 
     try {
       setIsUploading(true);
-      const oldAvatarUrl = userProfile?.avatar_url || student.avatar_url;
+      const oldAvatarUrl = student.avatar_url;
 
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -255,6 +242,9 @@ export default function StudentProfile() {
           id: student.id,
           full_name: student.full_name,
           email: student.email,
+          school: student.school,
+          phone: student.phone,
+          address: student.address,
           avatar_url: uploadedFile.url,
           role: student.role ?? "STUDENT",
         }),
@@ -286,13 +276,6 @@ export default function StudentProfile() {
         <StudentMenu />
         <main className="flex-1 px-8 pb-8">
           <div className="space-y-6">
-            {profileLoadError && (
-              <Card className="shadow-lg bg-red-50 border-red-200">
-                <CardContent className="p-4 text-red-700">
-                  {profileLoadError}
-                </CardContent>
-              </Card>
-            )}
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Profile Picture Card */}

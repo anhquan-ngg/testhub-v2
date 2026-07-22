@@ -30,6 +30,9 @@ export const useAuth = () => {
           full_name:
             userData.full_name || userData.fullName || userData.name || "",
           email: userData.email || payload.email,
+          school: userData.school ?? "",
+          phone: userData.phone ?? "",
+          address: userData.address ?? "",
           avatar_url: userData.avatar_url ?? null,
           role: userRole,
         }),
