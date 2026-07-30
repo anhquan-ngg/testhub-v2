@@ -19,10 +19,11 @@ import {
   ChevronRight,
   Flag,
   Menu,
+  Printer,
+  FileDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useFindUniqueExam } from "../../../../../generated/hooks";
 import { QuestionType } from "@prisma/client";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useSelector, useDispatch } from "react-redux";
@@ -30,7 +31,7 @@ import { RootState } from "@/store";
 import { startTest, endTest } from "@/store/slices/examSlice";
 import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
 import { ExamData } from "@/types/exam";
 
 interface Question {
@@ -41,7 +42,7 @@ interface Question {
   question_type: QuestionType;
 }
 
-import { useMinIO } from "@/hook/useMinIO";
+import { useS3 } from "@/hooks/useS3";
 
 export default function ExamPage() {
   const params = useParams();
@@ -49,7 +50,7 @@ export default function ExamPage() {
   const dispatch = useDispatch();
   const userId = useAppSelector((state) => state.user.id);
   const examId = params.id as string;
-  const { getViewUrl } = useMinIO("questions-images");
+  const { getViewUrl } = useS3("questions-images");
 
   const testStarted = useSelector((state: RootState) => state.exam.testStarted);
   const [exam, setExam] = useState<ExamData | null>(null);
@@ -61,26 +62,84 @@ export default function ExamPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
+  const questionsInitialized = useRef(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const handlePrint = async () => {
+    if (!examId) return;
+    try {
+      setIsPrinting(true);
+      const response = await apiClient.get(`/submission/exam/${examId}/pdf`, {
+        responseType: "blob",
+      });
 
-  // ... (existing code, I need to be careful with context matching)
-  // I will insert useMinIO and state at top, and the effect later or merge?
-  // Since replace_file_content handles contiguous blocks, I have to be precise.
-  // The file is large. I will use multiple replace calls or one if possible.
-  // Wait, I can't insert hooks easily in the middle without replacing huge chunk.
-  // I'll start with imports and component start.
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Dethi_${exam?.title?.replace(/\s+/g, "_") || examId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Tải đề thi thành công");
+    } catch (err) {
+      console.error("Print error:", err);
+      toast.error("Có lỗi xảy ra khi tạo bản in. Vui lòng thử lại sau.");
+    } finally {
+      setIsPrinting(false);
+    }
+  };
+
+  const [printableQuestions, setPrintableQuestions] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchPrintData = async () => {
+      if (!exam?.questions) return;
+
+      const processed = await Promise.all(
+        exam.questions.map(async (q) => {
+          let opts = q.options;
+          if (typeof opts === "string") {
+            try {
+              opts = JSON.parse(opts);
+            } catch {}
+          }
+
+          let imageUrl = q.image_url;
+          if (imageUrl && !imageUrl.startsWith("http")) {
+            try {
+              const resolved = await getViewUrl(imageUrl);
+              if (resolved) imageUrl = resolved;
+            } catch (e) {
+              console.error("Error resolving print image:", e);
+            }
+          }
+
+          return {
+            ...q,
+            options: Array.isArray(opts) ? opts : [],
+            image_url: imageUrl,
+          };
+        }),
+      );
+      setPrintableQuestions(processed);
+    };
+
+    fetchPrintData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam]);
 
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const response = await axiosClient.post("/submission/start-exam", {
+      const response = await apiClient.post("/submission/start-exam", {
         examId: examId,
         studentId: userId,
       });
 
       if (response.status === 200) {
-        console.log(response.data);
         setExam(response.data.data);
       }
     } catch (error) {
@@ -99,7 +158,9 @@ export default function ExamPage() {
   }, [examId, userId]);
 
   useEffect(() => {
-    if (exam && testStarted) {
+    if (exam && testStarted && !questionsInitialized.current) {
+      questionsInitialized.current = true;
+
       const questionsWithParsedOptions = exam.questions.map((question) => {
         const clonedQuestion: any = { ...question };
 
@@ -117,8 +178,8 @@ export default function ExamPage() {
               clonedQuestion.options = clonedQuestion.options.map(
                 (option: any, index: number) => ({
                   ...option,
-                  id: index + 1,
-                })
+                  id: String(index + 1),
+                }),
               );
             }
           } catch (error) {
@@ -129,7 +190,7 @@ export default function ExamPage() {
       });
 
       const randomizedQuestions = questionsWithParsedOptions.sort(
-        () => Math.random() - 0.5
+        () => Math.random() - 0.5,
       );
       setQuestions(randomizedQuestions as any[]);
       setTimeLeft(exam.duration * 60);
@@ -187,7 +248,7 @@ export default function ExamPage() {
   const handleAnswer = (
     questionId: string,
     value: string,
-    type: QuestionType = "SINGLE_CHOICE"
+    type: QuestionType = "SINGLE_CHOICE",
   ) => {
     setAnswers((prev) => {
       if (type === "MULTIPLE_CHOICE") {
@@ -232,8 +293,8 @@ export default function ExamPage() {
         payload.options = question.options.map((opt: any) => ({
           text: opt.text,
           isCorrect: Array.isArray(answer)
-            ? answer.includes(opt.id)
-            : answer === opt.id,
+            ? answer.includes(String(opt.id))
+            : answer === String(opt.id),
         }));
         payload.options = JSON.stringify(payload.options);
       }
@@ -242,7 +303,7 @@ export default function ExamPage() {
     }
 
     try {
-      await axiosClient.post("/submission/submit-by-question", payload);
+      await apiClient.post("/submission/submit-by-question", payload);
       toast.success(`Đã nộp câu ${index + 1}`);
     } catch (error) {
       toast.error("Gửi câu trả lời thất bại");
@@ -261,10 +322,11 @@ export default function ExamPage() {
     };
 
     try {
-      await axiosClient.post("/submission/submit-exam", payload);
+      await apiClient.post("/submission/submit-exam", payload);
       toast.success("Nộp bài thành công!");
       dispatch(endTest());
-      router.push("/home");
+      setIsSubmitted(true);
+      // router.push("/home");
     } catch (error) {
       toast.error("Nộp bài thất bại");
       console.error(error);
@@ -295,6 +357,56 @@ export default function ExamPage() {
             <Link href="/home">Quay lại trang chủ</Link>
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  // Completion View
+  if (isSubmitted) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-4"
+        style={{
+          background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
+        }}
+      >
+        <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/95 backdrop-blur text-center">
+          <CardHeader className="pt-10 pb-4">
+            <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle2 className="w-10 h-10 text-green-600" />
+            </div>
+            <CardTitle className="text-3xl font-bold text-gray-900">
+              Nộp bài thành công!
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-8 pb-10 space-y-6">
+            <div className="space-y-2 text-gray-600">
+              <p className="text-lg">
+                Bạn đã hoàn thành bài thi <strong>{exam.title}</strong>.
+              </p>
+              <p>
+                Hệ thống đã ghi nhận kết quả của bạn. Vui lòng truy cập trang{" "}
+                <Link
+                  href={`/result/${examId}`}
+                  className="font-semibold text-blue-600 hover:underline"
+                >
+                  Kết quả thi
+                </Link>{" "}
+                để xem điểm số chi tiết.
+              </p>
+            </div>
+
+            <div className="pt-4">
+              <Button
+                size="lg"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
+                asChild
+              >
+                <Link href="/home">Quay lại trang chủ</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -354,7 +466,7 @@ export default function ExamPage() {
                       <p className="text-sm text-gray-500">Thời gian bắt đầu</p>
                       <p className="font-semibold text-gray-900">
                         {new Date(exam.exam_start_time).toLocaleDateString(
-                          "vi-VN"
+                          "vi-VN",
                         )}
                       </p>
                     </div>
@@ -411,6 +523,22 @@ export default function ExamPage() {
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
+                  {exam.practice && (
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:cursor-pointer"
+                      onClick={handlePrint}
+                      disabled={isPrinting}
+                    >
+                      {isPrinting ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700"></div>
+                      ) : (
+                        <Printer className="w-5 h-5" />
+                      )}
+                      {isPrinting ? "Đang tạo bản in..." : "In đề thi"}
+                    </Button>
+                  )}
                   <Button variant="outline" size="lg" className="px-8" asChild>
                     <Link href="/home">Quay lại</Link>
                   </Button>
@@ -426,6 +554,8 @@ export default function ExamPage() {
             </Card>
           </main>
         </div>
+
+        {/* Hidden Printable Content Removed (Now using Backend) */}
       </div>
     );
   }
@@ -552,14 +682,6 @@ export default function ExamPage() {
                   <h2 className="text-xl font-bold text-gray-800">
                     Câu hỏi {currentQuestionIndex + 1}
                   </h2>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-gray-500 hover:text-yellow-600"
-                  >
-                    <Flag className="w-4 h-4 mr-1" />
-                    Báo lỗi
-                  </Button>
                 </div>
 
                 <div className="prose max-w-none mb-8">
@@ -591,21 +713,21 @@ export default function ExamPage() {
                       <div
                         key={option.id}
                         className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                          answers[currentQuestion.id] === option.id
+                          answers[currentQuestion.id] === String(option.id)
                             ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
                             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                         }`}
                         onClick={() =>
-                          handleAnswer(currentQuestion.id, option.id)
+                          handleAnswer(currentQuestion.id, String(option.id))
                         }
                       >
                         <RadioGroupItem
-                          value={option.id}
-                          id={option.id}
+                          value={String(option.id)}
+                          id={String(option.id)}
                           className="text-blue-600"
                         />
                         <Label
-                          htmlFor={option.id}
+                          htmlFor={String(option.id)}
                           className="flex-1 cursor-pointer font-medium text-gray-700"
                         >
                           <MathRenderer content={option.text} />
@@ -622,7 +744,7 @@ export default function ExamPage() {
                         key={option.id}
                         className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
                           (answers[currentQuestion.id] as string[])?.includes(
-                            option.id
+                            String(option.id),
                           )
                             ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
                             : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
@@ -630,27 +752,27 @@ export default function ExamPage() {
                         onClick={() =>
                           handleAnswer(
                             currentQuestion.id,
-                            option.id,
-                            "MULTIPLE_CHOICE"
+                            String(option.id),
+                            "MULTIPLE_CHOICE",
                           )
                         }
                       >
                         <Checkbox
                           checked={(
                             (answers[currentQuestion.id] as string[]) || []
-                          ).includes(option.id)}
+                          ).includes(String(option.id))}
                           onCheckedChange={() =>
                             handleAnswer(
                               currentQuestion.id,
-                              option.id,
-                              "MULTIPLE_CHOICE"
+                              String(option.id),
+                              "MULTIPLE_CHOICE",
                             )
                           }
-                          id={option.id}
+                          id={String(option.id)}
                           className="text-blue-600"
                         />
                         <Label
-                          htmlFor={option.id}
+                          htmlFor={String(option.id)}
                           className="flex-1 cursor-pointer font-medium text-gray-700"
                         >
                           <MathRenderer content={option.text} />
@@ -669,7 +791,7 @@ export default function ExamPage() {
                         handleAnswer(
                           currentQuestion.id,
                           e.target.value,
-                          "ESSAY"
+                          "ESSAY",
                         )
                       }
                       className="min-h-[200px] p-4 bg-white border-gray-300 text-base"
@@ -686,7 +808,7 @@ export default function ExamPage() {
                   setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))
                 }
                 disabled={currentQuestionIndex === 0}
-                className="w-32"
+                className="w-32 hover:cursor-pointer"
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Câu trước
@@ -708,7 +830,7 @@ export default function ExamPage() {
                   }
                 }}
                 variant="outline"
-                className="w-32"
+                className="w-32 hover:cursor-pointer"
                 disabled={currentQuestionIndex === questions.length - 1}
               >
                 Câu sau

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, FileText, HelpCircle, BarChart3 } from "lucide-react";
 import {
@@ -13,63 +13,138 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import {
-  useCountExam,
-  useCountQuestion,
-  useCountSubmission,
-  useCountUser,
-  useFindManySubmission,
-} from "../../../../generated/hooks";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { SubmissionStatus } from "@prisma/client";
+import { useSocket } from "@/components/providers/SocketProvider";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+type DashboardSubmission = {
+  total_score?: number | string | null;
+  exam?: {
+    practice?: boolean | null;
+  } | null;
+};
 
 export default function AdminDashboard() {
-  const {
-    data: usersCount,
-    isLoading: isLoadingUsers,
-    error: usersError,
-  } = useCountUser();
+  const { socket } = useSocket();
+  const [usersCount, setUsersCount] = useState(0);
+  const [examsCount, setExamsCount] = useState(0);
+  const [questionsCount, setQuestionsCount] = useState(0);
+  const [submissionCount, setSubmissionCount] = useState(0);
+  const [allSubmissions, setAllSubmissions] = useState<DashboardSubmission[]>(
+    [],
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
-  const {
-    data: examsCount,
-    isLoading: isLoadingExams,
-    error: examsError,
-  } = useCountExam();
+  const fetchAllCompletedSubmissions = useCallback(async () => {
+    const limit = 100;
+    let page = 1;
+    const submissions: DashboardSubmission[] = [];
 
-  const {
-    data: questionsCount,
-    isLoading: isLoadingQuestions,
-    error: questionsError,
-  } = useCountQuestion();
-
-  const {
-    data: submissionCount,
-    isLoading: isLoadingSubmissions,
-    error: submissionsError,
-  } = useCountSubmission({
-    where: {
-      status: SubmissionStatus.COMPLETED,
-    },
-  });
-
-  const {
-    data: allSubmissions,
-    isLoading: isLoadingAllSubmissions,
-    error: allSubmissionsError,
-  } = useFindManySubmission({
-    where: {
-      status: SubmissionStatus.COMPLETED,
-    },
-    select: {
-      total_score: true,
-      exam: {
-        select: {
-          practice: true,
+    while (true) {
+      const response = await apiClient.get<PageResult<DashboardSubmission>>(
+        ENDPOINTS.SUBMISSIONS.BASE,
+        {
+          params: {
+            page,
+            limit,
+            status: SubmissionStatus.COMPLETED,
+          },
         },
-      },
-    },
-  });
+      );
+
+      const pageData = response.data.data ?? [];
+      submissions.push(...pageData);
+
+      if (pageData.length < limit) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return submissions;
+  }, []);
+
+  const fetchDashboardData = useCallback(async () => {
+    setIsLoading(true);
+    setHasError(false);
+    try {
+      const [
+        usersResponse,
+        examsResponse,
+        questionsResponse,
+        submissionsResponse,
+        completedSubmissions,
+      ] = await Promise.all([
+        apiClient.get<PageResult<unknown>>(ENDPOINTS.USERS.BASE, {
+          params: { page: 1, limit: 1 },
+        }),
+        apiClient.get<PageResult<unknown>>(ENDPOINTS.EXAMS.BASE, {
+          params: { page: 1, limit: 1 },
+        }),
+        apiClient.get<PageResult<unknown>>(ENDPOINTS.QUESTIONS.BASE, {
+          params: { page: 1, limit: 1 },
+        }),
+        apiClient.get<PageResult<unknown>>(ENDPOINTS.SUBMISSIONS.BASE, {
+          params: { page: 1, limit: 1, status: SubmissionStatus.COMPLETED },
+        }),
+        fetchAllCompletedSubmissions(),
+      ]);
+
+      setUsersCount(usersResponse.data.total);
+      setExamsCount(examsResponse.data.total);
+      setQuestionsCount(questionsResponse.data.total);
+      setSubmissionCount(submissionsResponse.data.total);
+      setAllSubmissions(completedSubmissions);
+    } catch (error) {
+      setHasError(true);
+      console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchDashboardData();
+  }, [fetchDashboardData]);
+
+  useEffect(() => {
+    if (hasError) {
+      toast.error(
+        "Có lỗi xảy ra khi tải dữ liệu thống kê. Vui lòng thử lại sau.",
+      );
+    }
+  }, [hasError]);
+
+  // Listen for real-time dashboard updates
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleDashboardUpdate = (metrics?: any) => {
+      console.log("Real-time dashboard update received:", metrics);
+
+      void fetchDashboardData();
+
+      toast.info("Dữ liệu dashboard đã được cập nhật tự động.");
+    };
+
+    socket.on("dashboard:update", handleDashboardUpdate);
+
+    return () => {
+      socket.off("dashboard:update", handleDashboardUpdate);
+    };
+  }, [socket, fetchDashboardData]);
 
   const scoreData = useMemo(() => {
     const ranges = [
@@ -82,7 +157,7 @@ export default function AdminDashboard() {
 
     if (!allSubmissions) return ranges;
 
-    (allSubmissions as any[]).forEach((sub) => {
+    allSubmissions.forEach((sub) => {
       const score = sub.total_score ? Number(sub.total_score) : 0;
       const isPractice = sub.exam?.practice ?? false;
 
@@ -105,26 +180,8 @@ export default function AdminDashboard() {
     return ranges;
   }, [allSubmissions]);
 
-  if (
-    isLoadingUsers ||
-    isLoadingExams ||
-    isLoadingQuestions ||
-    isLoadingSubmissions ||
-    isLoadingAllSubmissions
-  ) {
+  if (isLoading) {
     return <Spinner />;
-  }
-
-  if (
-    usersError ||
-    examsError ||
-    questionsError ||
-    submissionsError ||
-    allSubmissionsError
-  ) {
-    toast.error(
-      "Có lỗi xảy ra khi tải dữ liệu thống kê. Vui lòng thử lại sau."
-    );
   }
 
   return (

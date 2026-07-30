@@ -4,7 +4,7 @@ import type React from "react";
 
 import { FileText, HelpCircle, ChevronDown, User } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,7 +12,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hook/useAuth";
+import { useAuth } from "@/hooks/useAuth";
+import NotificationBell from "@/components/NotificationBell";
+import { useAppSelector } from "@/store/hook";
 
 export default function LecturerLayout({
   children,
@@ -20,6 +22,8 @@ export default function LecturerLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const full_name = useAppSelector((state) => state.user.full_name);
   const { handleLogout } = useAuth();
 
   return (
@@ -41,50 +45,48 @@ export default function LecturerLayout({
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
-          <Link href="/lecturer/exams">
-            <button
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
-                pathname === "/lecturer/exams"
-                  ? "bg-blue-50 text-[#0066cc]"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <FileText className="h-5 w-5" />
-              <span className="font-medium">Quản lý bài thi</span>
-            </button>
+          <Link
+            href="/lecturer/exams"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
+              pathname.includes("/lecturer/exams")
+                ? "bg-blue-50 text-[#0066cc]"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <FileText className="h-5 w-5" />
+            <span className="font-medium">Quản lý bài thi</span>
           </Link>
 
-          <Link href="/lecturer/questions">
-            <button
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
-                pathname === "/lecturer/questions"
-                  ? "bg-blue-50 text-[#0066cc]"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <HelpCircle className="h-5 w-5" />
-              <span className="font-medium">Ngân hàng câu hỏi</span>
-            </button>
+          <Link
+            href="/lecturer/questions"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
+              pathname === "/lecturer/questions"
+                ? "bg-blue-50 text-[#0066cc]"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <HelpCircle className="h-5 w-5" />
+            <span className="font-medium">Ngân hàng câu hỏi</span>
           </Link>
 
-          <Link href="/lecturer/profile">
-            <button
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
-                pathname === "/lecturer/profile"
-                  ? "bg-blue-50 text-[#0066cc]"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <User className="h-5 w-5" />
-              <span className="font-medium">Tài khoản</span>
-            </button>
+          <Link
+            href="/lecturer/profile"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
+              pathname === "/lecturer/profile"
+                ? "bg-blue-50 text-[#0066cc]"
+                : "text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            <User className="h-5 w-5" />
+            <span className="font-medium">Tài khoản</span>
           </Link>
         </nav>
       </aside>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-transparent p-6 flex justify-end">
+        <header className="bg-transparent p-6 flex justify-end items-center gap-3">
+          <NotificationBell />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -94,7 +96,7 @@ export default function LecturerLayout({
                 <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
                   <User className="h-5 w-5 text-gray-600" />
                 </div>
-                <span className="font-medium">Lecturer</span>
+                <span className="font-medium">{full_name}</span>
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -102,10 +104,14 @@ export default function LecturerLayout({
               align="end"
               className="w-48 bg-white border-gray-300"
             >
-              <DropdownMenuItem>Thông tin cá nhân</DropdownMenuItem>
-              <DropdownMenuItem>Cài đặt</DropdownMenuItem>
               <DropdownMenuItem
-                className="text-red-600"
+                className="hover:cursor-pointer"
+                onClick={() => router.push("/lecturer/profile")}
+              >
+                Thông tin cá nhân
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-red-600 hover:cursor-pointer"
                 onClick={() => handleLogout()}
               >
                 Đăng xuất

@@ -1,27 +1,22 @@
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
+import { LoginPayload, SignupPayload } from "@/types/auth.types";
 
 const authServices = {
-  login: (data: any) => {
-    return axiosClient.post(
-      "auth/login",
-      { ...data },
-      { withCredentials: true }
-    );
-  },
-  signup: (data: any) => {
-    return axiosClient.post(
-      "auth/signup",
-      { ...data },
-      { withCredentials: true }
-    );
-  },
-  logout: () => {
-    return axiosClient.post("auth/logout", {}, { withCredentials: true });
-  },
-  loginGoogle: (data: { accessToken?: string; code?: string }) => {
-    return axiosClient.post("auth/google-login", data, {
+  login: async (payload: LoginPayload) => {
+    return apiClient.post("auth/login", payload, {
       withCredentials: true,
     });
+  },
+  signup: async (payload: SignupPayload) => {
+    return apiClient.post("auth/signup", payload, {
+      withCredentials: true,
+    });
+  },
+  logout: async () => {
+    return apiClient.post("auth/logout", {}, { withCredentials: true });
+  },
+  me: async () => {
+    return apiClient.get("auth/me", { withCredentials: true });
   },
 };
 

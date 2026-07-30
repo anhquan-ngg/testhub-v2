@@ -11,8 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/hook/useAuth";
-import authServices from "@/services/authServices";
+import { useAuth } from "@/hooks/useAuth";
 
 import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import Link from "next/link";
@@ -44,8 +43,28 @@ const GoogleLogo = () => (
   </svg>
 );
 
+const OutlookLogo = () => (
+  <svg
+    className="h-5 w-5"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M13 4.5h7.5v6.25H13V4.5z" fill="#0078D4" />
+    <path d="M13 11.25h7.5v6.25H13v-6.25z" fill="#28A8EA" />
+    <path
+      d="M20.5 6.75H22v10.5l-8.9 2.9v-3.05l5.9-3.35-5.9-3.35V7.25l7.4-.5z"
+      fill="#50D9FF"
+    />
+    <path d="M2 6.5l10.5-2v15L2 17.5v-11z" fill="#0078D4" />
+    <path
+      d="M6.98 9.22c-1.48 0-2.43 1.18-2.43 2.8 0 1.6.93 2.76 2.36 2.76 1.48 0 2.43-1.15 2.43-2.82 0-1.56-.9-2.74-2.36-2.74zm-.03 1.11c.72 0 1.14.69 1.14 1.67 0 1.03-.42 1.67-1.13 1.67-.7 0-1.15-.66-1.15-1.66 0-1.01.44-1.68 1.14-1.68z"
+      fill="#FFFFFF"
+    />
+  </svg>
+);
+
 export default function LoginPage() {
-  const { handleLogin, handleGoogleLogin } = useAuth();
+  const { handleLogin, handleGoogleLogin, handleOutlookLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -149,25 +168,25 @@ export default function LoginPage() {
               <Separator className="flex-1 bg-gray-200" />
             </div>
 
-            {/* Gmail Login Button */}
-            <div className="w-full flex justify-center">
+            <div className="w-full flex flex-col gap-3 justify-center">
+              {/* Gmail Login Button */}
               <Button
                 variant="outline"
                 className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
-                onClick={() => {
-                  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-                  const redirectUri =
-                    process.env.NEXT_PUBLIC_GOOGLE_CALLBACK_URL ||
-                    "http://localhost:3000/auth/callback";
-                  const scope = "email profile openid";
-                  const responseType = "code";
-                  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=${responseType}&scope=${scope}&access_type=offline&prompt=consent`;
-
-                  window.location.href = authUrl;
-                }}
+                onClick={() => handleGoogleLogin()}
               >
                 <GoogleLogo />
                 Đăng nhập bằng Gmail
+              </Button>
+
+              {/* Outlook Login Button */}
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
+                onClick={() => handleOutlookLogin()}
+              >
+                <OutlookLogo />
+                Đăng nhập bằng Outlook
               </Button>
             </div>
           </CardContent>

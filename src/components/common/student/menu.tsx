@@ -5,11 +5,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hook/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { useAppSelector } from "@/store/hook";
 import { ChevronDown, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useActionState } from "react";
+import NotificationBell from "@/components/NotificationBell";
 
 const StudentMenu = () => {
   const full_name = useAppSelector((state) => state.user.full_name);
@@ -17,7 +17,8 @@ const StudentMenu = () => {
   const { handleLogout } = useAuth();
 
   return (
-    <header className="bg-transparent p-6 flex justify-end">
+    <header className="bg-transparent p-6 flex justify-end items-center gap-3">
+      <NotificationBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button

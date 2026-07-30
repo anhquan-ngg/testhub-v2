@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,70 +19,104 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCreateExam } from "../../../../../generated/hooks";
-import { ExamStatus } from "@prisma/client";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { useAppSelector } from "@/store/hook";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+type Topic = {
+  id: string;
+  name: string;
+};
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 export default function CreateExamPage() {
-  const lecturerId = useAppSelector((state) => state.user.id);
   const router = useRouter();
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [isLoadingTopics, setIsLoadingTopics] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [examForm, setExamForm] = useState({
     title: "",
-    topic: "",
+    topic_id: "",
     exam_start_time: "",
     exam_end_time: "",
     duration: "",
     practice: false,
+    is_public: false,
   });
 
-  const createExamMutation = useCreateExam({
-    onSuccess: () => {
-      toast.success("Tạo bài thi thành công!");
-      router.push("/lecturer/exams");
-    },
-    onError: (error) => {
-      toast.error("Tạo bài thi thất bại. Vui lòng thử lại.");
-      console.log(error);
-    },
-  });
+  useEffect(() => {
+    const fetchTopics = async () => {
+      setIsLoadingTopics(true);
+      try {
+        const response = await apiClient.get<PageResult<Topic>>(
+          ENDPOINTS.TOPICS.BASE,
+          {
+            params: { limit: 100 },
+          },
+        );
+        setTopics(response.data.data ?? []);
+      } catch (error) {
+        console.error("Fetch topics error:", error);
+        toast.error("Không thể tải danh sách chủ đề.");
+      } finally {
+        setIsLoadingTopics(false);
+      }
+    };
+
+    void fetchTopics();
+  }, []);
 
   const handleAddExam = async () => {
+    if (isSubmitting) return;
+
     if (
       !examForm.title ||
-      !examForm.topic ||
+      !examForm.topic_id ||
       !examForm.exam_start_time ||
       !examForm.exam_end_time ||
       !examForm.duration
     ) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+      toast.warning("Vui lòng điền đầy đủ thông tin!");
       return;
     }
 
-    const newExam = {
-      ...examForm,
-      lecturer_id: lecturerId,
-      exam_start_time: new Date(examForm.exam_start_time),
-      exam_end_time: new Date(examForm.exam_end_time),
+    const payload = {
+      title: examForm.title.trim(),
+      topic_id: examForm.topic_id,
+      exam_start_time: new Date(examForm.exam_start_time).toISOString(),
+      exam_end_time: new Date(examForm.exam_end_time).toISOString(),
       duration: Number.parseInt(examForm.duration),
-      status: ExamStatus.PENDING,
-    } as const;
+      practice: examForm.practice,
+      is_public: examForm.is_public,
+    };
 
-    console.log("New exam:", newExam);
-    await createExamMutation.mutateAsync({
-      data: newExam,
-    });
-
-    // Reset form và quay lại
-    setExamForm({
-      title: "",
-      topic: "",
-      exam_start_time: "",
-      exam_end_time: "",
-      duration: "",
-      practice: false,
-    });
-    router.push("/lecturer/exams");
+    setIsSubmitting(true);
+    try {
+      await apiClient.post(ENDPOINTS.EXAMS.BASE, payload);
+      toast.success("Tạo bài thi thành công!");
+      setExamForm({
+        title: "",
+        topic_id: "",
+        exam_start_time: "",
+        exam_end_time: "",
+        duration: "",
+        practice: false,
+        is_public: false,
+      });
+      router.push("/lecturer/exams");
+    } catch (error) {
+      console.error("Create exam error:", error);
+      toast.error("Tạo bài thi thất bại. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -119,15 +153,31 @@ export default function CreateExamPage() {
                 <Label htmlFor="exam-topic">
                   Chủ đề <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="exam-topic"
-                  placeholder="Nhập chủ đề"
-                  value={examForm.topic}
-                  onChange={(e) =>
-                    setExamForm({ ...examForm, topic: e.target.value })
+                <Select
+                  value={examForm.topic_id}
+                  onValueChange={(value) =>
+                    setExamForm({ ...examForm, topic_id: value })
                   }
-                  className="bg-white border-gray-300"
-                />
+                  disabled={isLoadingTopics}
+                >
+                  <SelectTrigger
+                    id="exam-topic"
+                    className="bg-white border-gray-300"
+                  >
+                    <SelectValue
+                      placeholder={
+                        isLoadingTopics ? "Đang tải chủ đề..." : "Chọn chủ đề"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-300">
+                    {topics.map((topic) => (
+                      <SelectItem key={topic.id} value={topic.id}>
+                        {topic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -204,21 +254,42 @@ export default function CreateExamPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center space-x-2 py-4">
+                <Checkbox
+                  id="is_public"
+                  checked={examForm.is_public}
+                  onCheckedChange={(checked) =>
+                    setExamForm({
+                      ...examForm,
+                      is_public: checked as boolean,
+                    })
+                  }
+                  className="bg-white border-gray-300"
+                />
+                <Label
+                  htmlFor="is_public"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Công khai bài thi (Sinh viên có thể thấy mà không cần đăng ký)
+                </Label>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-6">
               <Button
                 variant="outline"
                 onClick={() => router.push("/lecturer/exams")}
+                disabled={isSubmitting}
                 className="flex-1 border-gray-300 hover:bg-gray-100 hover:border-none hover:cursor-pointer"
               >
                 Hủy
               </Button>
               <Button
                 onClick={handleAddExam}
+                disabled={isSubmitting}
                 className="flex-1 bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
               >
-                Tạo bài thi
+                {isSubmitting ? "Đang tạo..." : "Tạo bài thi"}
               </Button>
             </div>
           </div>

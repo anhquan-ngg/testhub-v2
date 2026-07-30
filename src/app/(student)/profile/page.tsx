@@ -2,12 +2,7 @@
 
 import type React from "react";
 
-import { useEffect, useState } from "react";
-import {
-  useCountSubmission,
-  useFindUniqueUser,
-  useUpdateUser,
-} from "../../../../generated/hooks";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +17,7 @@ import {
   Edit,
   EyeOff,
   Eye,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -32,39 +28,116 @@ import {
 } from "@/components/ui/dropdown-menu";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import axiosClient from "@/lib/axios";
+import apiClient from "@/lib/api-client";
 import { toast } from "sonner";
-import { useAppSelector } from "@/store/hook";
+import { useAppSelector, useAppDispatch } from "@/store/hook";
+import { setUser } from "@/store/slices/authSlice";
 
-import { useMinIO } from "@/hook/useMinIO";
+import { useS3 } from "@/hooks/useS3";
+import { useFiles } from "@/hooks/useFiles";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 export default function StudentProfile() {
   const student = useAppSelector((state) => state.user);
-  const { getViewUrl } = useMinIO("avatars");
+  const dispatch = useAppDispatch();
+  const { getViewUrl: getLegacyAvatarViewUrl } = useS3("avatars");
+  const { uploadAvatar, markFileDeletedByUrl } = useFiles();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [submissionCount, setSubmissionCount] = useState(0);
+  const [userRegistrations, setUserRegistrations] = useState<any[]>([]);
+  const [completedSubmissions, setCompletedSubmissions] = useState<any[]>([]);
+  const [profileLoadError, setProfileLoadError] = useState<string | null>(null);
 
-  const { data: userProfile } = useFindUniqueUser({
-    where: { id: student.id },
-    include: { exams: false, questions: false, submissions: false },
-  });
+  const fetchProfileData = useCallback(async () => {
+    if (!student.id) return;
+
+    try {
+      const [userResponse, registrationsResponse, submissionsResponse] =
+        await Promise.all([
+          apiClient.get(ENDPOINTS.USERS.DETAIL(student.id)),
+          apiClient.get<PageResult<any>>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
+            params: {
+              page: 1,
+              limit: 100,
+              student_id: student.id,
+            },
+          }),
+          apiClient.get<PageResult<any>>(ENDPOINTS.SUBMISSIONS.BASE, {
+            params: {
+              page: 1,
+              limit: 100,
+              student_id: student.id,
+              status: "COMPLETED",
+            },
+          }),
+        ]);
+
+      setUserProfile(userResponse.data);
+      setUserRegistrations(registrationsResponse.data.data ?? []);
+      setCompletedSubmissions(submissionsResponse.data.data ?? []);
+      setSubmissionCount(submissionsResponse.data.total ?? 0);
+      return { success: true as const };
+    } catch (error) {
+      console.error("Fetch profile data error:", error);
+      return {
+        success: false as const,
+        error:
+          error instanceof Error
+            ? error.message
+            : "Không thể tải thông tin hồ sơ.",
+      };
+    }
+  }, [student.id]);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      const result = await fetchProfileData();
+      setProfileLoadError(
+        result && !result.success
+          ? "Không thể tải thông tin hồ sơ. Vui lòng thử lại sau."
+          : null,
+      );
+    };
+
+    void loadProfile();
+  }, [fetchProfileData]);
 
   useEffect(() => {
     const fetchAvatar = async () => {
       // Ưu tiên lấy từ userProfile mới fetch, hoặc fallback về redux student
-      const fname = userProfile?.avatar_url || student.avatar_url;
-      if (fname) {
-        const url = await getViewUrl(fname);
-        if (url) setAvatarUrl(url);
+      const avatar = userProfile?.avatar_url || student.avatar_url;
+      if (avatar?.startsWith("http")) {
+        setAvatarUrl(avatar);
+      } else if (avatar) {
+        const legacyUrl = await getLegacyAvatarViewUrl(avatar);
+        setAvatarUrl(legacyUrl ?? avatar);
       }
     };
     fetchAvatar();
-  }, [userProfile, student.avatar_url]);
+  }, [getLegacyAvatarViewUrl, userProfile, student.avatar_url]);
 
-  const { data: submissionCount } = useCountSubmission({
-    where: { student_id: student.id, status: "COMPLETED" },
-  });
+  //Filter for official (non-practice) exams
+  const officialExamIds =
+    userRegistrations
+      ?.filter((reg: any) => reg.exam?.practice === false)
+      .map((reg: any) => reg.exam_id) || [];
 
-  const { mutate: updateUser } = useUpdateUser();
+  // Calculate pending exams (registered but not completed)
+  const pendingExamsCount =
+    officialExamIds.length -
+    completedSubmissions.filter((submission: any) =>
+      officialExamIds.includes(submission.exam_id),
+    ).length;
 
   const [formData, setFormData] = useState({
     email: "",
@@ -113,30 +186,23 @@ export default function StudentProfile() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!student.id) return;
 
-    updateUser(
-      {
-        where: { id: student.id },
-        data: {
-          full_name: formData.full_name,
-          school: formData.school,
-          phone: formData.phone,
-          address: formData.address,
-        },
-      },
-      {
-        onSuccess: () => {
-          toast.success("Cập nhật thông tin thành công!");
-        },
-        onError: (error) => {
-          console.error("Update failed:", error);
-          toast.error("Cập nhật thất bại. Vui lòng thử lại.");
-        },
-      }
-    );
+    try {
+      await apiClient.patch(ENDPOINTS.USERS.DETAIL(student.id), {
+        full_name: formData.full_name,
+        school: formData.school,
+        phone: formData.phone,
+        address: formData.address,
+      });
+      toast.success("Cập nhật thông tin thành công!");
+      await fetchProfileData();
+    } catch (error) {
+      console.error("Update failed:", error);
+      toast.error("Cập nhật thất bại. Vui lòng thử lại.");
+    }
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
@@ -147,7 +213,7 @@ export default function StudentProfile() {
     }
 
     try {
-      const response = await axiosClient.post("/auth/change-password", {
+      const response = await apiClient.post("/auth/change-password", {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
@@ -166,6 +232,45 @@ export default function StudentProfile() {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !student.id) return;
+
+    try {
+      setIsUploading(true);
+      const oldAvatarUrl = userProfile?.avatar_url || student.avatar_url;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setAvatarUrl(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      const uploadedFile = await uploadAvatar(file, student.id);
+      await markFileDeletedByUrl(oldAvatarUrl, student.id);
+      setAvatarUrl(uploadedFile.url);
+
+      dispatch(
+        setUser({
+          id: student.id,
+          full_name: student.full_name,
+          email: student.email,
+          avatar_url: uploadedFile.url,
+          role: student.role ?? "STUDENT",
+        }),
+      );
+      toast.success("Cập nhật ảnh đại diện thành công!");
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Lỗi khi tải ảnh lên. Vui lòng thử lại.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   return (
     <div
       className="min-h-screen flex"
@@ -179,16 +284,21 @@ export default function StudentProfile() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <StudentMenu />
-
         <main className="flex-1 px-8 pb-8">
           <div className="space-y-6">
+            {profileLoadError && (
+              <Card className="shadow-lg bg-red-50 border-red-200">
+                <CardContent className="p-4 text-red-700">
+                  {profileLoadError}
+                </CardContent>
+              </Card>
+            )}
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Profile Picture Card */}
               <Card className="shadow-lg bg-white border-gray-300">
                 <CardContent className="p-6 flex flex-col items-center space-y-4">
                   <div className="relative">
-                    <Camera className="absolute -top-2 -right-2 h-6 w-6 text-gray-700 bg-white rounded-full p-1 shadow-md cursor-pointer" />
                     <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300 overflow-hidden">
                       {avatarUrl ? (
                         <img
@@ -200,7 +310,25 @@ export default function StudentProfile() {
                         <User className="h-12 w-12 text-gray-500" />
                       )}
                     </div>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className="absolute bottom-0 right-0 bg-[#0066cc] text-white rounded-full p-2 shadow-lg hover:bg-[#0052a3] transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                   <p className="font-semibold text-gray-900">
                     {student.full_name}
                   </p>
@@ -209,8 +337,7 @@ export default function StudentProfile() {
 
               {/* Tests Completed Card */}
               <Card className="shadow-lg bg-white border-gray-300">
-                <CardContent className="p-6 flex flex-col items-center space-y-4">
-                  <Award className="h-8 w-8 text-gray-700" />
+                <CardContent className="p-6 flex flex-col items-center justify-center space-y-6">
                   <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
                     <span className="text-2xl font-bold text-teal-600">
                       {submissionCount || 0}
@@ -222,11 +349,10 @@ export default function StudentProfile() {
 
               {/* Tests To Do Card */}
               <Card className="shadow-lg bg-white border-gray-300">
-                <CardContent className="p-6 flex flex-col items-center space-y-4">
-                  <Clipboard className="h-8 w-8 text-gray-700" />
+                <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
                   <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
                     <span className="text-2xl font-bold text-orange-500">
-                      0
+                      {pendingExamsCount}
                     </span>
                   </div>
                   <p className="font-medium text-gray-700">Bài cần làm</p>

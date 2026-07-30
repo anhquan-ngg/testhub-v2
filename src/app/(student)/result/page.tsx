@@ -5,35 +5,39 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  BookOpen,
-  Award,
-  Clock,
-  TrendingUp,
-  CheckCircle,
-  FileText,
-} from "lucide-react";
+import { Clock, CheckCircle, FileText } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
-import { useFindManySubmission } from "../../../../generated/hooks";
 import { useAppSelector } from "@/store/hook";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+import { getDistributionQuestions } from "@/lib/exam-utils";
 
 interface SubmissionWithDetails {
   id: string;
-  total_score: number | null;
+  total_score: number | string | null;
   rating: string | null;
-  start_time: Date | null;
-  end_time: Date | null;
+  start_time: string | Date | null;
+  end_time: string | Date | null;
   status: string;
   exam: {
     id: string;
     title: string;
-    topic: string;
+    topic?: {
+      id: string;
+      name: string;
+    } | null;
     practice: boolean;
+    mode: string;
+    sample_size: number | null;
+    distribution: string | null;
+    _count: {
+      questions: number;
+    };
   };
   questions?: Array<{
     id: string;
-    score: number | null;
+    score: number | string | null;
     is_correct: boolean;
     options: string | null;
     answer: string | null;
@@ -47,55 +51,54 @@ interface SubmissionWithDetails {
   }>;
 }
 
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
 export default function ResultPage() {
   const router = useRouter();
   const userId = useAppSelector((state) => state.user.id);
+  const [submissions, setSubmissions] = useState<SubmissionWithDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { data: submissionsData, isLoading } = useFindManySubmission(
-    {
-      where: {
-        student_id: userId,
-      },
-      include: {
-        exam: {
-          select: {
-            id: true,
-            title: true,
-            topic: true,
-            practice: true,
-          },
-        },
-        questions: {
-          include: {
-            question: {
-              select: {
-                id: true,
-                question_text: true,
-                question_type: true,
-                options: true,
-                correct_answer: true,
-              },
+  useEffect(() => {
+    const fetchSubmissions = async () => {
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const response = await apiClient.get<PageResult<SubmissionWithDetails>>(
+          ENDPOINTS.SUBMISSIONS.BASE,
+          {
+            params: {
+              student_id: userId,
+              status: "COMPLETED",
+              limit: 100,
             },
           },
-        },
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-    },
-    {
-      enabled: !!userId,
-    }
-  );
+        );
 
-  // Filter only completed submissions
-  const submissions = submissionsData?.filter(
-    (sub: any) => sub.status === "COMPLETED"
-  );
+        setSubmissions(response.data.data ?? []);
+      } catch (error) {
+        console.error("Fetch submissions error:", error);
+        setSubmissions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void fetchSubmissions();
+  }, [userId]);
 
   const calculateTimeTaken = (
-    startTime: Date | null,
-    endTime: Date | null
+    startTime: string | Date | null,
+    endTime: string | Date | null,
   ): string => {
     if (!startTime || !endTime) return "N/A";
 
@@ -138,15 +141,6 @@ export default function ResultPage() {
     }
   };
 
-  const parseOptions = (optionsStr: string | null): any[] => {
-    if (!optionsStr) return [];
-    try {
-      return JSON.parse(optionsStr);
-    } catch {
-      return [];
-    }
-  };
-
   if (isLoading) {
     return (
       <div
@@ -182,7 +176,6 @@ export default function ResultPage() {
                 Kết quả bài thi
               </h2>
               <div className="flex items-center gap-2">
-                <Award className="w-6 h-6 text-yellow-500" />
                 <span className="text-lg font-semibold text-gray-700">
                   Tổng số bài: {submissions?.length || 0}
                 </span>
@@ -204,11 +197,11 @@ export default function ResultPage() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {submissions.map((submission: any) => {
+                {submissions.map((submission) => {
                   const isPractice = submission.exam.practice;
                   const timeTaken = calculateTimeTaken(
                     submission.start_time,
-                    submission.end_time
+                    submission.end_time,
                   );
 
                   return (
@@ -236,22 +229,20 @@ export default function ResultPage() {
                               </Badge>
                             </div>
                             <p className="text-gray-600 flex items-center gap-2">
-                              <BookOpen className="w-4 h-4" />
                               <span className="font-medium">Chủ đề:</span>
-                              {submission.exam.topic}
+                              {submission.exam.topic?.name ?? "N/A"}
                             </p>
                           </div>
 
                           <div className="flex flex-col items-end gap-2">
                             <Badge
                               className={`${getRatingColor(
-                                submission.rating
+                                submission.rating,
                               )} text-white text-base px-4 py-1`}
                             >
                               {getRatingText(submission.rating)}
                             </Badge>
                             <div className="flex items-center gap-2 text-lg font-bold text-gray-900">
-                              <TrendingUp className="w-5 h-5 text-green-600" />
                               <span>
                                 Điểm:{" "}
                                 {submission.total_score !== null
@@ -296,20 +287,27 @@ export default function ResultPage() {
                                 Số câu hỏi
                               </p>
                               <p className="font-semibold text-gray-900">
-                                {submission.questions?.length || 0}
+                                {submission.exam.mode === "RANDOM_N"
+                                  ? submission.exam.sample_size
+                                  : submission.exam.mode === "BY_TYPE" ||
+                                      submission.exam.mode === "BY_CHAPTER"
+                                    ? getDistributionQuestions(
+                                        submission.exam.distribution,
+                                      )
+                                    : submission.exam._count.questions || 0}
                               </p>
                             </div>
                           </div>
                         </div>
 
-                        {isPractice && submission.questions && (
+                        {isPractice && (
                           <div className="mt-4">
                             <Button
                               onClick={() =>
                                 router.push(`/result/${submission.id}`)
                               }
                               variant="outline"
-                              className="w-full flex items-center justify-center gap-2 hover:bg-gray-50"
+                              className="w-full flex items-center justify-center bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer gap-2"
                             >
                               <FileText className="w-4 h-4" />
                               Xem chi tiết câu trả lời

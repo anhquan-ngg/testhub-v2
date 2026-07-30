@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,16 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ExamStatus, QuestionFormat, QuestionType } from "@prisma/client";
+import { QuestionFormat, QuestionType } from "@prisma/client";
 import { toast } from "sonner";
-import {
-  useFindManyQuestion,
-  useFindUniqueExam,
-  useUpdateExam,
-  useUpsertExamQuestions,
-  useDeleteManyExamQuestions,
-  useFindManyExamQuestions,
-} from "../../../../../../generated/hooks";
 // ... (skip lines)
 import {
   Dialog,
@@ -49,61 +41,261 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2 } from "lucide-react";
 import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
 
 type EditExamPageProps = {
   params: Promise<{ id: string }>;
 };
 
+type ExamMode = "MANUAL" | "RANDOM_N" | "BY_TYPE" | "BY_CHAPTER";
+
 interface QuestionConfig {
   id: number;
+  chapter_id?: string;
+  child_chapter_id?: string;
   question_type: QuestionType;
   question_format: QuestionFormat;
   quantity: number;
 }
 
-const mergeQuestionConfigs = (items: QuestionConfig[]): QuestionConfig[] => {
-  const groupedMap = items.reduce((acc, current) => {
-    const uniqueKey = `${current.question_type}|${current.question_format}`;
-    if (acc[uniqueKey]) {
-      // Nếu key đã tồn tại: Cộng dồn quantity
-      acc[uniqueKey].quantity += current.quantity;
-    } else {
-      // Nếu key chưa tồn tại: Tạo mới entry (spread ...current để copy object)
-      acc[uniqueKey] = { ...current };
-    }
+type ExamTypeDistributionConfig = {
+  question_type: QuestionType;
+  question_format: QuestionFormat;
+  quantity: number;
+};
 
-    return acc;
-  }, {} as Record<string, QuestionConfig>);
+type ExamChapterDistributionConfig = {
+  chapter_id: string;
+  quantity: number;
+};
+
+type ExamDistributionConfig =
+  | ExamTypeDistributionConfig
+  | ExamChapterDistributionConfig;
+
+type PageResult<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+};
+
+type QuestionItem = {
+  id: string;
+  chapter_id?: string;
+  question_text: string;
+  question_type: QuestionType;
+  question_format: QuestionFormat;
+  topic?: string | null;
+  chapter?: {
+    name?: string | null;
+    topic?: {
+      name?: string | null;
+    } | null;
+  } | null;
+};
+
+type ChapterItem = {
+  id: string;
+  name: string;
+  topic_id: string;
+  parent_id?: string | null;
+};
+
+type ExamQuestionItem = {
+  question_id: string;
+  question?: QuestionItem;
+};
+
+type ExamDetail = {
+  id: string;
+  title: string;
+  topic?: string | { name?: string | null } | null;
+  topic_id?: string;
+  exam_start_time: string | Date;
+  exam_end_time: string | Date;
+  duration: number;
+  practice: boolean;
+  is_public: boolean;
+  mode: ExamMode;
+  sample_size?: number | null;
+  distribution?: string | null;
+  questions?: ExamQuestionItem[];
+};
+
+const getQuestionTopicName = (question: QuestionItem) =>
+  question.topic ??
+  question.chapter?.topic?.name ??
+  question.chapter?.name ??
+  "";
+
+const getExamTopicName = (topic: ExamDetail["topic"]) => {
+  if (!topic) return "";
+  if (typeof topic === "string") return topic;
+  return topic.name ?? "";
+};
+
+const ALL_CHAPTERS_VALUE = "ALL";
+
+const getConfigChapterId = (item: QuestionConfig) => {
+  if (item.child_chapter_id && item.child_chapter_id !== ALL_CHAPTERS_VALUE) {
+    return item.child_chapter_id;
+  }
+
+  if (item.chapter_id && item.chapter_id !== ALL_CHAPTERS_VALUE) {
+    return item.chapter_id;
+  }
+
+  return undefined;
+};
+
+const mergeTypeQuestionConfigs = (
+  items: QuestionConfig[],
+): QuestionConfig[] => {
+  const groupedMap = items.reduce(
+    (acc, current) => {
+      const uniqueKey = `${current.question_type}|${current.question_format}`;
+      if (acc[uniqueKey]) {
+        // Nếu key đã tồn tại: Cộng dồn quantity
+        acc[uniqueKey].quantity += current.quantity;
+      } else {
+        // Nếu key chưa tồn tại: Tạo mới entry (spread ...current để copy object)
+        acc[uniqueKey] = { ...current };
+      }
+
+      return acc;
+    },
+    {} as Record<string, QuestionConfig>,
+  );
 
   // Bước B: Lấy danh sách values từ Object đó trả về thành Array
+  return Object.values(groupedMap);
+};
+
+const mergeChapterQuestionConfigs = (
+  items: QuestionConfig[],
+): QuestionConfig[] => {
+  const groupedMap = items.reduce(
+    (acc, current) => {
+      const chapterId = getConfigChapterId(current);
+      const uniqueKey = chapterId ?? ALL_CHAPTERS_VALUE;
+      if (acc[uniqueKey]) {
+        acc[uniqueKey].quantity += current.quantity;
+      } else {
+        acc[uniqueKey] = {
+          ...current,
+          chapter_id: chapterId ?? ALL_CHAPTERS_VALUE,
+          child_chapter_id: ALL_CHAPTERS_VALUE,
+        };
+      }
+
+      return acc;
+    },
+    {} as Record<string, QuestionConfig>,
+  );
+
   return Object.values(groupedMap);
 };
 
 export default function EditExamPage({ params }: EditExamPageProps) {
   const examId = use(params).id;
   const router = useRouter();
-  const [questionBank, setQuestionBank] = useState([] as any);
-  const [questionSelectionMode, setQuestionSelectionMode] = useState<
-    "MANUAL" | "RANDOM_N" | "BY_TYPE"
-  >("MANUAL");
+  const [exam, setExam] = useState<ExamDetail | null>(null);
+  const [questionBank, setQuestionBank] = useState<QuestionItem[]>([]);
+  const [chapters, setChapters] = useState<ChapterItem[]>([]);
+  const [existingQuestionIds, setExistingQuestionIds] = useState<string[]>([]);
+  const [questionSelectionMode, setQuestionSelectionMode] =
+    useState<ExamMode>("MANUAL");
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [randomCount, setRandomCount] = useState("10");
   const [configRows, setConfigRows] = useState<QuestionConfig[]>([
     {
       id: 1,
+      chapter_id: ALL_CHAPTERS_VALUE,
+      child_chapter_id: ALL_CHAPTERS_VALUE,
       question_type: "SINGLE_CHOICE",
       question_format: "KNOWLEDGE",
       quantity: 0,
     },
   ]);
-  const [distribution, setDistribution] = useState([] as any);
+  const [distribution, setDistribution] = useState<ExamDistributionConfig[]>(
+    [],
+  );
   const [nextRowId, setNextRowId] = useState(2);
+  const questionChapterIds = useMemo(
+    () =>
+      new Set(
+        questionBank
+          .map((question) => question.chapter_id)
+          .filter((chapterId): chapterId is string => Boolean(chapterId)),
+      ),
+    [questionBank],
+  );
+  const parentChapterOptions = useMemo(() => {
+    const parentIdsWithQuestionChildren = new Set<string>();
+
+    chapters.forEach((chapter) => {
+      if (chapter.parent_id && questionChapterIds.has(chapter.id)) {
+        parentIdsWithQuestionChildren.add(chapter.parent_id);
+      }
+    });
+
+    return chapters.filter(
+      (chapter) =>
+        !chapter.parent_id &&
+        (questionChapterIds.has(chapter.id) ||
+          parentIdsWithQuestionChildren.has(chapter.id)),
+    );
+  }, [chapters, questionChapterIds]);
+  const childChaptersByParent = useMemo(
+    () =>
+      chapters.reduce((acc, chapter) => {
+        if (!chapter.parent_id || !questionChapterIds.has(chapter.id)) {
+          return acc;
+        }
+
+        const childChapters = acc.get(chapter.parent_id) ?? [];
+        childChapters.push(chapter);
+        acc.set(chapter.parent_id, childChapters);
+        return acc;
+      }, new Map<string, ChapterItem[]>()),
+    [chapters, questionChapterIds],
+  );
+
+  const resolveChapterSelection = useCallback(
+    (chapterId?: string) => {
+      if (!chapterId) {
+        return {
+          chapter_id: ALL_CHAPTERS_VALUE,
+          child_chapter_id: ALL_CHAPTERS_VALUE,
+        };
+      }
+
+      const chapter = chapters.find((item) => item.id === chapterId);
+
+      if (chapter?.parent_id) {
+        return {
+          chapter_id: chapter.parent_id,
+          child_chapter_id: chapter.id,
+        };
+      }
+
+      return {
+        chapter_id: chapterId,
+        child_chapter_id: ALL_CHAPTERS_VALUE,
+      };
+    },
+    [chapters],
+  );
 
   const handleAddConfigRow = () => {
     setConfigRows([
       ...configRows,
       {
         id: nextRowId,
+        chapter_id: ALL_CHAPTERS_VALUE,
+        child_chapter_id: ALL_CHAPTERS_VALUE,
         question_type: "SINGLE_CHOICE",
         question_format: "KNOWLEDGE",
         quantity: 0,
@@ -112,11 +304,23 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     setNextRowId(nextRowId + 1);
   };
 
-  const handleUpdateConfigRow = (id: number, field: string, value: any) => {
+  const handleUpdateConfigRow = (
+    id: number,
+    field: keyof Omit<QuestionConfig, "id">,
+    value: QuestionConfig[keyof Omit<QuestionConfig, "id">],
+  ) => {
     setConfigRows(
       configRows.map((row) =>
-        row.id === id ? { ...row, [field]: value } : row
-      )
+        row.id === id
+          ? {
+              ...row,
+              [field]: value,
+              ...(field === "chapter_id" && {
+                child_chapter_id: ALL_CHAPTERS_VALUE,
+              }),
+            }
+          : row,
+      ),
     );
   };
 
@@ -130,6 +334,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     exam_end_time: "",
     duration: "",
     practice: false,
+    is_public: false,
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -137,160 +342,228 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     setSelectedQuestions((prev) =>
       prev.includes(questionId)
         ? prev.filter((id) => id !== questionId)
-        : [...prev, questionId]
+        : [...prev, questionId],
     );
   };
 
   const handleSelectByConfig = () => {
-    const mergedConfigs = mergeQuestionConfigs(configRows);
-    const distribution = mergedConfigs.map(({ id, ...rest }) => rest);
+    const distribution =
+      questionSelectionMode === "BY_CHAPTER"
+        ? mergeChapterQuestionConfigs(configRows).flatMap((item) => {
+            const chapterId = getConfigChapterId(item);
+
+            if (!chapterId) {
+              return [];
+            }
+
+            return [
+              {
+                chapter_id: chapterId,
+                quantity: item.quantity,
+              },
+            ];
+          })
+        : mergeTypeQuestionConfigs(configRows).map((item) => ({
+            question_type: item.question_type,
+            question_format: item.question_format,
+            quantity: item.quantity,
+          }));
+
+    if (questionSelectionMode === "BY_CHAPTER" && distribution.length === 0) {
+      toast.warning("Vui lòng chọn ít nhất một chapter.");
+      return;
+    }
+
     setDistribution(distribution);
     setIsDialogOpen(false);
   };
-
-  const { data: exam } = useFindUniqueExam({ where: { id: examId } });
-
-  const updateExamMutation = useUpdateExam({
-    onSuccess: () => {
-      toast.success("Cập nhật bài thi thành công!");
-      router.push("/lecturer/exams");
-    },
-    onError: (error) => {
-      toast.error("Cập nhật bài thi thất bại. Vui lòng thử lại.");
+  const fetchExam = useCallback(async () => {
+    try {
+      const response = await apiClient.get<ExamDetail>(
+        ENDPOINTS.EXAMS.DETAIL(examId),
+      );
+      setExam(response.data);
+    } catch (error) {
+      toast.error("Không thể tải thông tin bài thi.");
       console.log(error);
-    },
-  });
+    }
+  }, [examId]);
 
-  const { data: questionsData } = useFindManyQuestion({
-    orderBy: { created_at: "desc" },
-  });
-
-  const { data: examQuestionsData } = useFindManyExamQuestions({
-    where: { exam_id: examId },
-  });
-
-  const upsertExamQuestions = useUpsertExamQuestions({
-    onSuccess: () => {
-      toast.success("Thêm câu hỏi vào bài thi thành công!");
-    },
-    onError: (error) => {
-      toast.error("Thêm câu hỏi vào bài thi thất bại. Vui lòng thử lại.");
+  const fetchQuestions = useCallback(async () => {
+    try {
+      const response = await apiClient.get<PageResult<QuestionItem>>(
+        ENDPOINTS.QUESTIONS.BASE,
+        {
+          params: {
+            page: 1,
+            limit: 100,
+          },
+        },
+      );
+      setQuestionBank(response.data.data);
+    } catch (error) {
+      toast.error("Không thể tải ngân hàng câu hỏi.");
       console.log(error);
-    },
-  });
+    }
+  }, []);
 
-  const deleteManyExamQuestions = useDeleteManyExamQuestions({
-    onSuccess: () => {
-      console.log("Đã xóa các câu hỏi không được chọn");
-    },
-    onError: (error) => {
-      console.error("Lỗi khi xóa câu hỏi:", error);
-    },
-  });
+  const fetchChapters = useCallback(async (topicId?: string) => {
+    if (!topicId) {
+      setChapters([]);
+      return;
+    }
+
+    try {
+      const response = await apiClient.get<PageResult<ChapterItem>>(
+        ENDPOINTS.CHAPTERS.BASE,
+        {
+          params: {
+            topic_id: topicId,
+            limit: 100,
+          },
+        },
+      );
+      setChapters(response.data.data ?? []);
+    } catch (error) {
+      toast.error("Không thể tải danh sách chapter.");
+      console.log(error);
+    }
+  }, []);
+  const syncExamQuestions = async (id: string) => {
+    const selectedQuestionSet = new Set(selectedQuestions);
+    const existingQuestionSet = new Set(existingQuestionIds);
+    const questionsToAdd = selectedQuestions.filter(
+      (questionId) => !existingQuestionSet.has(questionId),
+    );
+    const questionsToRemove = existingQuestionIds.filter(
+      (questionId) => !selectedQuestionSet.has(questionId),
+    );
+
+    await Promise.all([
+      ...questionsToAdd.map((questionId) =>
+        apiClient.post(ENDPOINTS.EXAMS.QUESTIONS.BASE(id), {
+          question_id: questionId,
+        }),
+      ),
+      ...questionsToRemove.map((questionId) =>
+        apiClient.delete(ENDPOINTS.EXAMS.QUESTIONS.DETAIL(id, questionId)),
+      ),
+    ]);
+  };
 
   const handleEditExam = async (id: string) => {
+    const parsedDuration = Number.parseInt(examForm.duration, 10);
+
     if (
       !examForm.title ||
       !examForm.topic ||
       !examForm.exam_start_time ||
       !examForm.exam_end_time ||
-      !examForm.duration
+      !/^[0-9]+$/.test(examForm.duration) ||
+      !Number.isFinite(parsedDuration)
     ) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+      toast.warning("Vui lòng điền đầy đủ thông tin!");
       return;
     }
 
     const payload = {
-      ...examForm,
-      exam_start_time: new Date(examForm.exam_start_time),
-      exam_end_time: new Date(examForm.exam_end_time),
-      duration: Number.parseInt(examForm.duration),
-      status: ExamStatus.PENDING,
+      title: examForm.title,
+      exam_start_time: new Date(examForm.exam_start_time).toISOString(),
+      exam_end_time: new Date(examForm.exam_end_time).toISOString(),
+      duration: parsedDuration,
+      practice: examForm.practice,
+      is_public: examForm.is_public,
       mode: questionSelectionMode,
       sample_size:
         questionSelectionMode === "RANDOM_N"
           ? Number.parseInt(randomCount)
           : null,
       distribution:
-        questionSelectionMode === "BY_TYPE"
+        questionSelectionMode === "BY_TYPE" ||
+        questionSelectionMode === "BY_CHAPTER"
           ? JSON.stringify(distribution)
           : null,
-    } as const;
+    };
 
-    const upsertPromises = selectedQuestions.map((questionId) =>
-      upsertExamQuestions.mutateAsync({
-        where: {
-          exam_id_question_id: {
-            exam_id: id,
-            question_id: questionId,
-          },
-        },
-        create: {
-          exam_id: id,
-          question_id: questionId,
-        },
-        update: {},
-      })
-    );
-
-    await Promise.all([
-      updateExamMutation.mutateAsync({
-        where: { id },
-        data: payload,
-      }),
-      deleteManyExamQuestions.mutateAsync({
-        where: {
-          exam_id: id,
-          question_id: {
-            notIn: selectedQuestions,
-          },
-        },
-      }),
-      ...upsertPromises,
-    ]);
+    try {
+      await apiClient.patch(ENDPOINTS.EXAMS.DETAIL(id), payload);
+      await syncExamQuestions(id);
+      toast.success("Cập nhật bài thi thành công!");
+      router.push("/lecturer/exams");
+    } catch (error) {
+      toast.error("Cập nhật bài thi thất bại. Vui lòng thử lại.");
+      console.log(error);
+    }
   };
+  useEffect(() => {
+    void fetchExam();
+    void fetchQuestions();
+  }, [fetchExam, fetchQuestions]);
 
   useEffect(() => {
-    if (exam) {
-      setExamForm({
-        title: exam.title,
-        topic: exam.topic,
-        exam_start_time: exam.exam_start_time.toISOString().slice(0, 16),
-        exam_end_time: exam.exam_end_time.toISOString().slice(0, 16),
-        duration: exam.duration.toString(),
-        practice: exam.practice,
+    void fetchChapters(exam?.topic_id);
+  }, [exam?.topic_id, fetchChapters]);
+
+  useEffect(() => {
+    if (!exam) return;
+
+    const questionIds =
+      exam.questions?.map((item) => item.question_id).filter(Boolean) ?? [];
+
+    setExamForm({
+      title: exam.title,
+      topic: getExamTopicName(exam.topic),
+      exam_start_time: new Date(exam.exam_start_time)
+        .toISOString()
+        .slice(0, 16),
+      exam_end_time: new Date(exam.exam_end_time).toISOString().slice(0, 16),
+      duration: exam.duration.toString(),
+      practice: exam.practice,
+      is_public: exam.is_public,
+    });
+    setQuestionSelectionMode(exam.mode);
+    setSelectedQuestions(questionIds);
+    setExistingQuestionIds(questionIds);
+
+    if (exam.mode === "RANDOM_N" && exam.sample_size) {
+      setRandomCount(exam.sample_size.toString());
+    } else if (exam.mode === "BY_TYPE" && exam.distribution) {
+      const parsedDistribution = JSON.parse(
+        exam.distribution,
+      ) as ExamTypeDistributionConfig[];
+      const configRowsWithIds = parsedDistribution.map((item, index) => {
+        return {
+          id: index + 1,
+          chapter_id: ALL_CHAPTERS_VALUE,
+          child_chapter_id: ALL_CHAPTERS_VALUE,
+          question_type: item.question_type,
+          question_format: item.question_format,
+          quantity: item.quantity,
+        };
       });
-      setQuestionSelectionMode(exam.mode);
-      if (exam.mode === "RANDOM_N" && exam.sample_size) {
-        setRandomCount(exam.sample_size.toString());
-      } else if (exam.mode === "BY_TYPE" && exam.distribution) {
-        const parsedDistribution = JSON.parse(exam.distribution);
-        console.log(parsedDistribution);
-        const configRowsWithIds = parsedDistribution.map(
-          (item: any, index: number) => ({
-            id: index + 1,
-            question_type: item.question_type,
-            question_format: item.question_format,
-            quantity: item.quantity,
-          })
-        );
-        console.log(configRowsWithIds);
-        setConfigRows(configRowsWithIds);
-        setNextRowId(configRowsWithIds.length + 1);
-        setDistribution(parsedDistribution);
-      }
-    }
-  }, [exam]);
+      setConfigRows(configRowsWithIds);
+      setNextRowId(configRowsWithIds.length + 1);
+      setDistribution(parsedDistribution);
+    } else if (exam.mode === "BY_CHAPTER" && exam.distribution) {
+      const parsedDistribution = JSON.parse(
+        exam.distribution,
+      ) as ExamChapterDistributionConfig[];
+      const configRowsWithIds = parsedDistribution.map((item, index) => {
+        const chapterSelection = resolveChapterSelection(item.chapter_id);
 
-  useEffect(() => {
-    setQuestionBank(questionsData);
-  }, [questionsData]);
-
-  useEffect(() => {
-    if (examQuestionsData) {
-      setSelectedQuestions(examQuestionsData.map((q) => q.question_id));
+        return {
+          id: index + 1,
+          ...chapterSelection,
+          question_type: "SINGLE_CHOICE" as QuestionType,
+          question_format: "KNOWLEDGE" as QuestionFormat,
+          quantity: item.quantity,
+        };
+      });
+      setConfigRows(configRowsWithIds);
+      setNextRowId(configRowsWithIds.length + 1);
+      setDistribution(parsedDistribution);
     }
-  }, [examQuestionsData]);
+  }, [exam, resolveChapterSelection]);
 
   return (
     <div className="space-y-6">
@@ -411,6 +684,25 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center space-x-2 py-4">
+                <Checkbox
+                  id="is_public"
+                  checked={examForm.is_public}
+                  onCheckedChange={(checked) =>
+                    setExamForm({
+                      ...examForm,
+                      is_public: checked as boolean,
+                    })
+                  }
+                  className="bg-white border-gray-300"
+                />
+                <Label
+                  htmlFor="is_public"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Công khai bài thi (Sinh viên có thể thấy mà không cần đăng ký)
+                </Label>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -422,7 +714,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                       Chọn câu hỏi
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="min-w-[600px] bg-white border-gray-300">
+                  <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[calc(100vh-4rem)] overflow-y-auto bg-white border-gray-300">
                     <DialogHeader>
                       <DialogTitle>Chọn câu hỏi</DialogTitle>
                       <DialogDescription>
@@ -431,11 +723,11 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                     </DialogHeader>
                     <Select
                       value={questionSelectionMode}
-                      onValueChange={(value: any) =>
-                        setQuestionSelectionMode(value)
+                      onValueChange={(value) =>
+                        setQuestionSelectionMode(value as ExamMode)
                       }
                     >
-                      <SelectTrigger className="bg-white border-gray-300">
+                      <SelectTrigger className="w-full max-w-full sm:w-[370px] bg-white border-gray-300">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white border-gray-300">
@@ -446,6 +738,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                         <SelectItem value="BY_TYPE">
                           Cấu hình theo loại và định dạng
                         </SelectItem>
+                        <SelectItem value="BY_CHAPTER">
+                          Cấu hình theo chapter
+                        </SelectItem>
                       </SelectContent>
                     </Select>
 
@@ -453,7 +748,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                       <div className="space-y-2">
                         <div className="border border-gray-300 rounded-lg p-4 space-y-3 max-h-64 overflow-y-auto">
                           {questionBank?.length > 0 ? (
-                            questionBank.map((question: any) => (
+                            questionBank.map((question) => (
                               <div
                                 key={question.id}
                                 className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded"
@@ -461,7 +756,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                 <Checkbox
                                   id={`question-${question.id}`}
                                   checked={selectedQuestions.includes(
-                                    question.id
+                                    question.id,
                                   )}
                                   onCheckedChange={() =>
                                     handleToggleQuestion(question.id)
@@ -476,7 +771,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                     {question.question_text}
                                   </div>
                                   <div className="text-xs text-gray-500 mt-1">
-                                    Chủ đề: {question.topic} | Loại:{" "}
+                                    Chủ đề: {getQuestionTopicName(question)} |
+                                    Loại:{" "}
                                     {
                                       QuestionTypeMap[
                                         question.question_type as keyof typeof QuestionTypeMap
@@ -528,25 +824,48 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                       </div>
                     )}
 
-                    {questionSelectionMode === "BY_TYPE" && (
-                      <div className="space-y-4">
+                    {(questionSelectionMode === "BY_TYPE" ||
+                      questionSelectionMode === "BY_CHAPTER") && (
+                      <div className="min-w-0 space-y-4">
                         <Label className="text-base font-semibold block">
                           Cấu hình câu hỏi
                         </Label>
-                        <div className="border border-gray-300 rounded-lg overflow-hidden p-1">
-                          <Table>
+                        <div className="max-w-full overflow-x-auto rounded-lg border border-gray-300">
+                          <Table
+                            className={
+                              questionSelectionMode === "BY_CHAPTER"
+                                ? "min-w-[650px] table-fixed"
+                                : "min-w-[650px] table-fixed"
+                            }
+                          >
                             <TableHeader>
                               <TableRow className="border-gray-300">
-                                <TableHead className="w-1/3">
-                                  Loại câu hỏi
-                                </TableHead>
-                                <TableHead className="w-1/3">
-                                  Định dạng
-                                </TableHead>
-                                <TableHead className="w-1/4">
+                                {questionSelectionMode === "BY_CHAPTER" && (
+                                  <>
+                                    <TableHead className="w-[210px]">
+                                      Chapter
+                                    </TableHead>
+                                    <TableHead className="w-[210px]">
+                                      Chapter con
+                                    </TableHead>
+                                  </>
+                                )}
+                                {questionSelectionMode === "BY_TYPE" && (
+                                  <>
+                                    <TableHead className="w-[260px]">
+                                      Loại câu hỏi
+                                    </TableHead>
+                                    <TableHead className="w-[190px]">
+                                      Định dạng
+                                    </TableHead>
+                                  </>
+                                )}
+                                <TableHead className="w-[120px]">
                                   Số lượng
                                 </TableHead>
-                                <TableHead className="w-12">Thao tác</TableHead>
+                                <TableHead className="w-[80px]">
+                                  Thao tác
+                                </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody className="bg-white border-gray-300">
@@ -555,64 +874,153 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                   key={row.id}
                                   className="border-gray-300"
                                 >
-                                  <TableCell>
-                                    <Select
-                                      value={row.question_type}
-                                      onValueChange={(value) =>
-                                        handleUpdateConfigRow(
-                                          row.id,
-                                          "question_type",
-                                          value
-                                        )
-                                      }
-                                    >
-                                      <SelectTrigger className="w-full bg-white border-gray-300">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent className="bg-white border-gray-300">
-                                        <SelectItem value="SINGLE_CHOICE">
-                                          Trắc nghiệm 1 đáp án
-                                        </SelectItem>
-                                        <SelectItem value="MULTIPLE_CHOICE">
-                                          Trắc nghiệm nhiều đáp án
-                                        </SelectItem>
-                                        <SelectItem value="ESSAY">
-                                          Tự luận
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Select
-                                      value={row.question_format}
-                                      onValueChange={(value) =>
-                                        handleUpdateConfigRow(
-                                          row.id,
-                                          "question_format",
-                                          value
-                                        )
-                                      }
-                                    >
-                                      <SelectTrigger className="w-full bg-white border-gray-300">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent className="bg-white border-gray-300">
-                                        <SelectItem value="KNOWLEDGE">
-                                          Nhận biết
-                                        </SelectItem>
-                                        <SelectItem value="UNDERSTANDING">
-                                          Thông hiểu
-                                        </SelectItem>
-                                        <SelectItem value="APPLYING">
-                                          Vận dụng
-                                        </SelectItem>
-                                        <SelectItem value="ADVANCED">
-                                          Nâng cao
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                  </TableCell>
-                                  <TableCell>
+                                  {questionSelectionMode === "BY_CHAPTER" && (
+                                    <>
+                                      <TableCell className="align-middle">
+                                        <Select
+                                          value={
+                                            row.chapter_id ?? ALL_CHAPTERS_VALUE
+                                          }
+                                          onValueChange={(value) =>
+                                            handleUpdateConfigRow(
+                                              row.id,
+                                              "chapter_id",
+                                              value,
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger className="w-full min-w-0 bg-white border-gray-300">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white border-gray-300">
+                                            <SelectItem
+                                              value={ALL_CHAPTERS_VALUE}
+                                            >
+                                              Tất cả chương
+                                            </SelectItem>
+                                            {parentChapterOptions.map(
+                                              (chapter) => (
+                                                <SelectItem
+                                                  key={chapter.id}
+                                                  value={chapter.id}
+                                                >
+                                                  {chapter.name}
+                                                </SelectItem>
+                                              ),
+                                            )}
+                                          </SelectContent>
+                                        </Select>
+                                      </TableCell>
+                                      <TableCell className="align-middle">
+                                        <Select
+                                          value={
+                                            row.child_chapter_id ??
+                                            ALL_CHAPTERS_VALUE
+                                          }
+                                          disabled={
+                                            !row.chapter_id ||
+                                            row.chapter_id ===
+                                              ALL_CHAPTERS_VALUE ||
+                                            !childChaptersByParent.get(
+                                              row.chapter_id,
+                                            )?.length
+                                          }
+                                          onValueChange={(value) =>
+                                            handleUpdateConfigRow(
+                                              row.id,
+                                              "child_chapter_id",
+                                              value,
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger className="w-full min-w-0 bg-white border-gray-300">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white border-gray-300">
+                                            <SelectItem
+                                              value={ALL_CHAPTERS_VALUE}
+                                            >
+                                              Không chọn
+                                            </SelectItem>
+                                            {(
+                                              childChaptersByParent.get(
+                                                row.chapter_id ?? "",
+                                              ) ?? []
+                                            ).map((chapter) => (
+                                              <SelectItem
+                                                key={chapter.id}
+                                                value={chapter.id}
+                                              >
+                                                {chapter.name}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </TableCell>
+                                    </>
+                                  )}
+                                  {questionSelectionMode === "BY_TYPE" && (
+                                    <>
+                                      <TableCell className="align-middle">
+                                        <Select
+                                          value={row.question_type}
+                                          onValueChange={(value) =>
+                                            handleUpdateConfigRow(
+                                              row.id,
+                                              "question_type",
+                                              value,
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger className="w-full min-w-0 bg-white border-gray-300">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white border-gray-300">
+                                            <SelectItem value="SINGLE_CHOICE">
+                                              Trắc nghiệm 1 đáp án
+                                            </SelectItem>
+                                            <SelectItem value="MULTIPLE_CHOICE">
+                                              Trắc nghiệm nhiều đáp án
+                                            </SelectItem>
+                                            <SelectItem value="ESSAY">
+                                              Tự luận
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </TableCell>
+                                      <TableCell className="align-middle">
+                                        <Select
+                                          value={row.question_format}
+                                          onValueChange={(value) =>
+                                            handleUpdateConfigRow(
+                                              row.id,
+                                              "question_format",
+                                              value,
+                                            )
+                                          }
+                                        >
+                                          <SelectTrigger className="w-full min-w-0 bg-white border-gray-300">
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent className="bg-white border-gray-300">
+                                            <SelectItem value="KNOWLEDGE">
+                                              Nhận biết
+                                            </SelectItem>
+                                            <SelectItem value="UNDERSTANDING">
+                                              Thông hiểu
+                                            </SelectItem>
+                                            <SelectItem value="APPLYING">
+                                              Vận dụng
+                                            </SelectItem>
+                                            <SelectItem value="ADVANCED">
+                                              Nâng cao
+                                            </SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </TableCell>
+                                    </>
+                                  )}
+                                  <TableCell className="align-middle">
                                     <Input
                                       type="number"
                                       min="0"
@@ -621,16 +1029,17 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                         handleUpdateConfigRow(
                                           row.id,
                                           "quantity",
-                                          Number.parseInt(e.target.value) || 0
+                                          Number.parseInt(e.target.value) || 0,
                                         )
                                       }
-                                      className="w-20 bg-white border-gray-300"
+                                      className="w-full bg-white border-gray-300"
                                     />
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="align-middle">
                                     <Button
                                       variant="ghost"
                                       size="sm"
+                                      className="h-9 w-9 p-0"
                                       onClick={() =>
                                         handleRemoveConfigRow(row.id)
                                       }

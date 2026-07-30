@@ -31,7 +31,7 @@ const StudentSideBar = () => {
         <Link href="/result">
           <button
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg mt-2 hover:cursor-pointer ${
-              pathname === "/result"
+              pathname.includes("/result")
                 ? "bg-blue-50 text-[#0066cc]"
                 : "text-gray-700 hover:bg-gray-50"
             }`}
