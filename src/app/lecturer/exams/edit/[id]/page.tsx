@@ -198,6 +198,22 @@ const mergeChapterQuestionConfigs = (
   return Object.values(groupedMap);
 };
 
+// Hàm format Date thành YYYY-MM-DDThh:mm theo giờ local
+const formatToLocalISO = (dateString: string | Date) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "";
+
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export default function EditExamPage({ params }: EditExamPageProps) {
   const examId = use(params).id;
   const router = useRouter();
@@ -513,10 +529,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     setExamForm({
       title: exam.title,
       topic: getExamTopicName(exam.topic),
-      exam_start_time: new Date(exam.exam_start_time)
-        .toISOString()
-        .slice(0, 16),
-      exam_end_time: new Date(exam.exam_end_time).toISOString().slice(0, 16),
+      exam_start_time: formatToLocalISO(exam.exam_start_time),
+      exam_end_time: formatToLocalISO(exam.exam_end_time),
       duration: exam.duration.toString(),
       practice: exam.practice,
       is_public: exam.is_public,
@@ -619,7 +633,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                 <Input
                   id="start-time"
                   type="datetime-local"
-                  value={examForm.exam_start_time}
+                  value={formatToLocalISO(examForm.exam_start_time)}
                   onChange={(e) =>
                     setExamForm({
                       ...examForm,
@@ -636,7 +650,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                 <Input
                   id="end-time"
                   type="datetime-local"
-                  value={examForm.exam_end_time}
+                  value={formatToLocalISO(examForm.exam_end_time)}
                   onChange={(e) =>
                     setExamForm({
                       ...examForm,

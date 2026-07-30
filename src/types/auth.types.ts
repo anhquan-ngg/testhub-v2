@@ -2,6 +2,9 @@ export interface User {
   id: string;
   email: string;
   fullName: string;
+  school?: string | null;
+  phone?: string | null;
+  address?: string | null;
   role: "ADMIN" | "STUDENT" | "LECTURER";
   avatar?: string;
 }

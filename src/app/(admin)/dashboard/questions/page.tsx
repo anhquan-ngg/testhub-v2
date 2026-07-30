@@ -127,7 +127,11 @@ export default function QuestionsPage() {
                       </div>
                     </TableCell>
                     <TableCell>{question.lecturer?.full_name}</TableCell>
-                    <TableCell>{question.topic}</TableCell>
+                    <TableCell>
+                      {typeof question.topic === "string"
+                        ? question.topic
+                        : question.topic?.name ?? "N/A"}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         className={`px-2 py-1 text-white rounded-lg ${

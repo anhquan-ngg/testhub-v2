@@ -42,9 +42,17 @@ export const ENDPOINTS = {
   SUBMISSIONS: {
     BASE: "/submission",
     DETAIL: (id: string) => `/submission/${id}`,
+    START_EXAM: (examId: string) => `/submission/exams/${examId}/start`,
+    EXAM_SESSION: (examId: string) => `/submission/exams/${examId}/session`,
+    SUBMIT_QUESTION: "/submission/submit-by-question",
+    SUBMIT_EXAM: "/submission/submit-exam",
     PDF: (id: string) => `/submission/${id}/pdf`,
     EXAM_PDF: (id: string) => `/submission/exam/${id}/pdf`,
     EXAM_REPORT_PDF: (id: string) => `/submission/exam/${id}/report-pdf`,
+  },
+  EXAM_RUNTIME: {
+    STATUS: (examId: string) => `/exam-runtime/exams/${examId}/status`,
+    EVENTS: (examId: string) => `/exam-runtime/exams/${examId}/events`,
   },
   FILES: {
     BASE: "/files",

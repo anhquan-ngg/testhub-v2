@@ -33,6 +33,8 @@ import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
 import { ExamData } from "@/types/exam";
+import { ENDPOINTS } from "@/constants/endpoints";
+import { io, Socket } from "socket.io-client";
 
 interface Question {
   id: string;
@@ -63,9 +65,11 @@ export default function ExamPage() {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [examClosed, setExamClosed] = useState(false);
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
   const questionsInitialized = useRef(false);
+  const heartbeatSocketRef = useRef<Socket | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const handlePrint = async () => {
     if (!examId) return;
@@ -134,15 +138,55 @@ export default function ExamPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const response = await apiClient.post("/submission/start-exam", {
-        examId: examId,
-        studentId: userId,
-      });
+      const sessionResponse = await apiClient.get(
+        ENDPOINTS.SUBMISSIONS.EXAM_SESSION(examId),
+      );
+      const sessionData = sessionResponse.data.data;
+
+      if (sessionData?.hasActiveSubmission) {
+        setExam(sessionData);
+        setStartTime(
+          sessionData.entered_at
+            ? new Date(sessionData.entered_at)
+            : new Date(),
+        );
+        dispatch(startTest());
+        return;
+      }
+
+      if (sessionData?.reason === "EXAM_CLOSED") {
+        setExamClosed(true);
+        return;
+      }
+
+      if (!sessionData?.canStart) {
+        toast.error("Bài thi chưa mở hoặc đã hết thời gian vào thi.");
+        router.push("/home");
+        return;
+      }
+
+      const response = await apiClient.post(
+        ENDPOINTS.SUBMISSIONS.START_EXAM(examId),
+      );
 
       if (response.status === 200) {
         setExam(response.data.data);
+        setStartTime(
+          response.data.data.entered_at
+            ? new Date(response.data.data.entered_at)
+            : new Date(),
+        );
       }
     } catch (error) {
+      const errorReason =
+        (error as any)?.response?.data?.reason ??
+        (error as any)?.response?.data?.data?.reason;
+
+      if (errorReason === "EXAM_CLOSED") {
+        setExamClosed(true);
+        return;
+      }
+
       toast.error("Lỗi khi tải dữ liệu bài thi");
       console.log(error);
     } finally {
@@ -193,7 +237,11 @@ export default function ExamPage() {
         () => Math.random() - 0.5,
       );
       setQuestions(randomizedQuestions as any[]);
-      setTimeLeft(exam.duration * 60);
+      const enteredAt = exam.entered_at
+        ? new Date(exam.entered_at).getTime()
+        : Date.now();
+      const endsAt = enteredAt + exam.duration * 60 * 1000;
+      setTimeLeft(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
     }
   }, [exam, testStarted]);
 
@@ -209,6 +257,40 @@ export default function ExamPage() {
       return () => clearInterval(timer);
     }
   }, [timeLeft, testStarted]);
+
+  useEffect(() => {
+    if (!exam?.submissionId || !userId || !testStarted) return;
+
+    const apiBaseUrl =
+      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    const heartbeatSocket = io(`${apiBaseUrl}/exam-runtime`, {
+      withCredentials: true,
+      query: { userId },
+      transports: ["websocket", "polling"],
+    });
+
+    heartbeatSocketRef.current = heartbeatSocket;
+
+    const sendHeartbeat = () => {
+      heartbeatSocket.emit("exam:heartbeat", {
+        submissionId: exam.submissionId,
+      });
+    };
+
+    heartbeatSocket.on("connect", sendHeartbeat);
+    heartbeatSocket.on("exam:heartbeat_error", (payload) => {
+      console.error("Exam heartbeat error:", payload);
+    });
+
+    const interval = window.setInterval(sendHeartbeat, 30_000);
+
+    return () => {
+      window.clearInterval(interval);
+      heartbeatSocket.off("connect", sendHeartbeat);
+      heartbeatSocket.disconnect();
+      heartbeatSocketRef.current = null;
+    };
+  }, [exam?.submissionId, testStarted, userId]);
 
   // Auto submit when timer runs out
   useEffect(() => {
@@ -303,7 +385,7 @@ export default function ExamPage() {
     }
 
     try {
-      await apiClient.post("/submission/submit-by-question", payload);
+      await apiClient.post(ENDPOINTS.SUBMISSIONS.SUBMIT_QUESTION, payload);
       toast.success(`Đã nộp câu ${index + 1}`);
     } catch (error) {
       toast.error("Gửi câu trả lời thất bại");
@@ -322,7 +404,7 @@ export default function ExamPage() {
     };
 
     try {
-      await apiClient.post("/submission/submit-exam", payload);
+      await apiClient.post(ENDPOINTS.SUBMISSIONS.SUBMIT_EXAM, payload);
       toast.success("Nộp bài thành công!");
       dispatch(endTest());
       setIsSubmitted(true);
@@ -334,7 +416,7 @@ export default function ExamPage() {
   };
 
   const handleStartTest = () => {
-    setStartTime(new Date());
+    setStartTime((current) => current ?? new Date());
     dispatch(startTest());
   };
 
@@ -347,6 +429,49 @@ export default function ExamPage() {
   }
 
   if (!exam) {
+    if (examClosed) {
+      return (
+        <div
+          className="min-h-screen flex items-center justify-center p-4"
+          style={{
+            background: "linear-gradient(to bottom right, #f8d7da, #fef2f2)",
+          }}
+        >
+          <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/95 backdrop-blur text-center">
+            <CardHeader className="pt-10 pb-4">
+              <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <AlertCircle className="w-10 h-10 text-red-600" />
+              </div>
+              <CardTitle className="text-3xl font-bold text-gray-900">
+                Bài thi đã đóng
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-8 pb-10 space-y-6">
+              <div className="space-y-2 text-gray-600">
+                <p className="text-lg">
+                  Bài thi này hiện không còn mở để làm bài.
+                </p>
+                <p>
+                  Vui lòng quay lại trang chủ để xem các bài thi khác hoặc liên
+                  hệ giảng viên nếu bạn cho rằng đây là nhầm lẫn.
+                </p>
+              </div>
+
+              <div className="pt-4">
+                <Button
+                  size="lg"
+                  className="w-full bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all"
+                  asChild
+                >
+                  <Link href="/home">Quay lại trang chủ</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -438,7 +563,9 @@ export default function ExamPage() {
                     </CardTitle>
                     <p className="text-lg opacity-90">
                       <span className="font-semibold">Chủ đề:</span>{" "}
-                      {exam.topic}
+                      {typeof exam.topic === "string"
+                        ? exam.topic
+                        : (exam.topic?.name ?? "N/A")}
                     </p>
                   </div>
                 </div>

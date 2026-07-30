@@ -4,6 +4,9 @@ interface AuthState {
   id: string;
   full_name: string;
   email: string;
+  school: string;
+  phone: string;
+  address: string;
   avatar_url: string | null;
   role: "ADMIN" | "STUDENT" | "LECTURER" | null;
   isLoggedIn: boolean;
@@ -14,6 +17,9 @@ const initialState: AuthState = {
   id: "",
   full_name: "",
   email: "",
+  school: "",
+  phone: "",
+  address: "",
   avatar_url: null,
   role: null,
   isLoggedIn: false,
@@ -25,6 +31,9 @@ type AuthPayload =
       full_name: string;
       fullName: string;
       email: string;
+      school: string;
+      phone: string;
+      address: string;
       avatar_url: string | null;
       avatar: string | null;
       role: "ADMIN" | "STUDENT" | "LECTURER";
@@ -40,6 +49,9 @@ export const authSlice = createSlice({
         state.id = "";
         state.full_name = "";
         state.email = "";
+        state.school = "";
+        state.phone = "";
+        state.address = "";
         state.avatar_url = null;
         state.role = null;
         state.isLoggedIn = false;
@@ -47,9 +59,13 @@ export const authSlice = createSlice({
       }
 
       state.id = action.payload.id ?? "";
-      state.full_name = action.payload.full_name ?? action.payload.fullName ?? "";
-      state.email = action.payload.email ?? "";
-      state.avatar_url = action.payload.avatar_url ?? action.payload.avatar ?? null;
+      state.full_name =
+        action.payload.full_name ?? action.payload.fullName ?? state.full_name;
+      state.email = action.payload.email ?? state.email;
+      state.school = action.payload.school ?? state.school;
+      state.phone = action.payload.phone ?? state.phone;
+      state.address = action.payload.address ?? state.address;
+      state.avatar_url = action.payload.avatar_url ?? action.payload.avatar ?? state.avatar_url;
       state.role = action.payload.role ?? null;
       state.isLoggedIn = true;
     },
@@ -57,6 +73,9 @@ export const authSlice = createSlice({
       state.id = "";
       state.full_name = "";
       state.email = "";
+      state.school = "";
+      state.phone = "";
+      state.address = "";
       state.avatar_url = null;
       state.role = null;
       state.isLoggedIn = false;
