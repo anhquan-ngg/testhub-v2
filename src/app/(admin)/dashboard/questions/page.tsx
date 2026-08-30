@@ -130,7 +130,7 @@ export default function QuestionsPage() {
                     <TableCell>
                       {typeof question.topic === "string"
                         ? question.topic
-                        : question.topic?.name ?? "N/A"}
+                        : (question.topic as any)?.name ?? "N/A"}
                     </TableCell>
                     <TableCell>
                       <Badge

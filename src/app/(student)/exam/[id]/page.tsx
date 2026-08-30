@@ -21,6 +21,9 @@ import {
   Menu,
   Printer,
   FileDown,
+  Video,
+  Volume2,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -33,15 +36,35 @@ import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
 import { ExamData } from "@/types/exam";
+import { parseOptions } from "@/lib/exam-utils";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { io, Socket } from "socket.io-client";
+
+interface QuestionFile {
+  id: string;
+  url: string;
+  name: string;
+  type: "IMAGE" | "VIDEO" | "AUDIO" | "DOCUMENT" | string;
+  order?: number;
+}
 
 interface Question {
   id: string;
   question_text: string;
   image_url: string;
+  files?: QuestionFile[];
   options: any[];
   question_type: QuestionType;
+  submitted_answer?: string | null;
+  submitted_options?: string | null;
+  answered?: boolean;
+}
+
+interface ResolvedQuestionFile {
+  id: string;
+  url: string;
+  name: string;
+  type: "IMAGE" | "VIDEO" | "AUDIO" | "DOCUMENT" | string;
 }
 
 import { useS3 } from "@/hooks/useS3";
@@ -58,12 +81,18 @@ export default function ExamPage() {
   const [exam, setExam] = useState<ExamData | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [submittedQuestionIds, setSubmittedQuestionIds] = useState<
+    Set<string>
+  >(new Set());
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [currentResolvedFiles, setCurrentResolvedFiles] = useState<
+    ResolvedQuestionFile[]
+  >([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [examClosed, setExamClosed] = useState(false);
   const timerInitialized = useRef(false);
@@ -205,6 +234,9 @@ export default function ExamPage() {
     if (exam && testStarted && !questionsInitialized.current) {
       questionsInitialized.current = true;
 
+      const prefilledAnswers: Record<string, string | string[]> = {};
+      const prefilledSubmittedIds = new Set<string>();
+
       const questionsWithParsedOptions = exam.questions.map((question) => {
         const clonedQuestion: any = { ...question };
 
@@ -230,13 +262,51 @@ export default function ExamPage() {
             console.error("Failed to parse options:", error);
           }
         }
+
+        // Restore answers already submitted via submit-by-question (e.g. after a page reload).
+        // `submitted_options[].isCorrect` here means "the student picked this option" — not the
+        // real answer key — so it's safe to use for prefill without leaking correctness.
+        if (clonedQuestion.answered) {
+          if (clonedQuestion.question_type === "ESSAY") {
+            prefilledAnswers[clonedQuestion.id] =
+              clonedQuestion.submitted_answer ?? "";
+            prefilledSubmittedIds.add(clonedQuestion.id);
+          } else if (Array.isArray(clonedQuestion.options)) {
+            // The question was submitted server-side regardless of whether we can
+            // reconstruct which option(s) were picked (e.g. all options unselected,
+            // or option text changed since submission) — reflect that in the sidebar.
+            prefilledSubmittedIds.add(clonedQuestion.id);
+
+            const submittedOptions = parseOptions(
+              clonedQuestion.submitted_options,
+            ) as { text: string; isCorrect?: boolean }[];
+            const chosenTexts = new Set(
+              submittedOptions
+                .filter((opt) => opt.isCorrect)
+                .map((opt) => opt.text),
+            );
+            const matchedIds = clonedQuestion.options
+              .filter((opt: any) => chosenTexts.has(opt.text))
+              .map((opt: any) => String(opt.id));
+
+            if (matchedIds.length > 0) {
+              prefilledAnswers[clonedQuestion.id] =
+                clonedQuestion.question_type === "MULTIPLE_CHOICE"
+                  ? matchedIds
+                  : matchedIds[0];
+            }
+          }
+        }
+
         return clonedQuestion;
       });
 
-      const randomizedQuestions = questionsWithParsedOptions.sort(
-        () => Math.random() - 0.5,
-      );
-      setQuestions(randomizedQuestions as any[]);
+      // Question order is now decided and persisted once by the backend (randomized per
+      // student, stable across reloads) — no client-side shuffling here anymore.
+      setQuestions(questionsWithParsedOptions as any[]);
+      setAnswers(prefilledAnswers);
+      setSubmittedQuestionIds(prefilledSubmittedIds);
+
       const enteredAt = exam.entered_at
         ? new Date(exam.entered_at).getTime()
         : Date.now();
@@ -300,24 +370,85 @@ export default function ExamPage() {
   }, [timeLeft, testStarted]);
 
   useEffect(() => {
-    const fetchImage = async () => {
+    let cancelled = false;
+
+    const fetchFiles = async () => {
       const currentQ = questions[currentQuestionIndex];
-      if (currentQ?.image_url) {
-        // Nếu là link http(s) thì dùng luôn (trường hợp user nhập link ngoài), nếu không thì fetch minio
-        if (currentQ.image_url.startsWith("http")) {
-          setCurrentImageUrl(currentQ.image_url);
-        } else {
-          const url = await getViewUrl(currentQ.image_url);
-          setCurrentImageUrl(url);
+      if (!currentQ) {
+        if (!cancelled) {
+          setCurrentResolvedFiles([]);
+          setCurrentImageUrl(null);
+        }
+        return;
+      }
+
+      const resolved: ResolvedQuestionFile[] = [];
+
+      if (
+        currentQ.files &&
+        Array.isArray(currentQ.files) &&
+        currentQ.files.length > 0
+      ) {
+        const sortedFiles = [...currentQ.files].sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0),
+        );
+        for (const file of sortedFiles) {
+          let resolvedUrl = file.url;
+          if (file.url && !file.url.startsWith("http")) {
+            try {
+              const url = await getViewUrl(file.url);
+              if (url) resolvedUrl = url;
+            } catch (e) {
+              console.error("Error resolving file URL:", e);
+            }
+          }
+          resolved.push({
+            id: file.id || file.url,
+            url: resolvedUrl,
+            name: file.name || "File đính kèm",
+            type: file.type || "IMAGE",
+          });
+        }
+      }
+
+      if (currentQ.image_url) {
+        let imageUrl = currentQ.image_url;
+        if (!imageUrl.startsWith("http")) {
+          try {
+            const url = await getViewUrl(imageUrl);
+            if (url) imageUrl = url;
+          } catch (e) {
+            console.error("Error resolving legacy image URL:", e);
+          }
+        }
+        if (cancelled) return;
+        setCurrentImageUrl(imageUrl);
+        if (!resolved.some((f) => f.url === imageUrl)) {
+          resolved.unshift({
+            id: "legacy-image",
+            url: imageUrl,
+            name: "Hình ảnh câu hỏi",
+            type: "IMAGE",
+          });
         }
       } else {
+        if (cancelled) return;
         setCurrentImageUrl(null);
       }
+
+      if (!cancelled) {
+        setCurrentResolvedFiles(resolved);
+      }
     };
+
     if (testStarted && questions.length > 0) {
-      fetchImage();
+      fetchFiles();
     }
-  }, [currentQuestionIndex, questions, testStarted]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentQuestionIndex, questions, testStarted, getViewUrl]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -351,6 +482,13 @@ export default function ExamPage() {
         ...prev,
         [questionId]: value,
       };
+    });
+    // The displayed answer no longer matches what's on the server until re-submitted.
+    setSubmittedQuestionIds((prev) => {
+      if (!prev.has(questionId)) return prev;
+      const next = new Set(prev);
+      next.delete(questionId);
+      return next;
     });
   };
 
@@ -387,6 +525,7 @@ export default function ExamPage() {
     try {
       await apiClient.post(ENDPOINTS.SUBMISSIONS.SUBMIT_QUESTION, payload);
       toast.success(`Đã nộp câu ${index + 1}`);
+      setSubmittedQuestionIds((prev) => new Set(prev).add(question.id));
     } catch (error) {
       toast.error("Gửi câu trả lời thất bại");
       console.error(error);
@@ -565,7 +704,7 @@ export default function ExamPage() {
                       <span className="font-semibold">Chủ đề:</span>{" "}
                       {typeof exam.topic === "string"
                         ? exam.topic
-                        : (exam.topic?.name ?? "N/A")}
+                        : ((exam.topic as any)?.name ?? "N/A")}
                     </p>
                   </div>
                 </div>
@@ -754,14 +893,18 @@ export default function ExamPage() {
         >
           <div className="p-4 border-b border-gray-100 bg-gray-50">
             <h3 className="font-semibold text-gray-700">Danh sách câu hỏi</h3>
-            <div className="flex gap-4 mt-2 text-xs text-gray-500">
+            <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-white border border-gray-300 rounded-sm"></div>
                 <span>Chưa làm</span>
               </div>
               <div className="flex items-center gap-1">
+                <div className="w-3 h-3 bg-amber-400 rounded-sm"></div>
+                <span>Đã chọn, chưa nộp</span>
+              </div>
+              <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-green-600 rounded-sm"></div>
-                <span>Đã làm</span>
+                <span>Đã nộp</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 bg-blue-100 border border-blue-400 rounded-sm"></div>
@@ -773,17 +916,26 @@ export default function ExamPage() {
           <ScrollArea className="flex-1 p-4">
             <div className="grid grid-cols-5 gap-2">
               {questions.map((q, index) => {
-                const isAnswered = !!answers[q.id];
                 const isCurrent = index === currentQuestionIndex;
+                const isQuestionSubmitted = submittedQuestionIds.has(q.id);
+                const answerValue = answers[q.id];
+                const hasLocalAnswer =
+                  answerValue !== undefined &&
+                  answerValue !== "" &&
+                  !(Array.isArray(answerValue) && answerValue.length === 0);
+                const isAnsweredLocally = !isQuestionSubmitted && hasLocalAnswer;
 
                 let bgClass =
                   "bg-white hover:bg-gray-50 border-gray-300 text-gray-700";
                 if (isCurrent) {
                   bgClass =
                     "bg-blue-100 border-blue-500 text-blue-700 font-bold ring-1 ring-blue-500";
-                } else if (isAnswered) {
+                } else if (isQuestionSubmitted) {
                   bgClass =
                     "bg-green-600 border-green-600 text-white hover:bg-green-700";
+                } else if (isAnsweredLocally) {
+                  bgClass =
+                    "bg-amber-400 border-amber-400 text-white hover:bg-amber-500";
                 }
 
                 return (
@@ -805,27 +957,140 @@ export default function ExamPage() {
           <div className="max-w-3xl mx-auto space-y-6">
             <Card className="border-0 shadow-md bg-white">
               <CardContent className="p-6 md:p-8">
-                <div className="mb-6 flex justify-between items-start">
+                <div className="mb-4 flex justify-between items-start">
                   <h2 className="text-xl font-bold text-gray-800">
                     Câu hỏi {currentQuestionIndex + 1}
                   </h2>
                 </div>
 
-                <div className="prose max-w-none mb-8">
-                  {currentImageUrl && (
-                    <div className="mb-4 flex justify-center">
-                      <img
-                        src={currentImageUrl}
-                        alt="Question Image"
-                        className="max-h-96 object-contain rounded-lg shadow-sm"
-                      />
-                    </div>
-                  )}
-                  <div className="text-lg text-gray-800 leading-relaxed">
+                <div className="prose max-w-none mb-4">
+                  <div className="text-lg text-gray-800 leading-relaxed mb-4">
                     <MathRenderer
                       content={currentQuestion?.question_text || ""}
                     />
                   </div>
+                  {/* Question Files (IMAGE, VIDEO, AUDIO, DOCUMENT) */}
+                  {currentResolvedFiles.length > 0 && (
+                    <div className="mb-4 space-y-4 not-prose">
+                      {/* IMAGE Files */}
+                      {currentResolvedFiles.some((f) => f.type === "IMAGE") && (
+                        <div className="flex flex-wrap justify-center gap-4">
+                          {currentResolvedFiles
+                            .filter((f) => f.type === "IMAGE")
+                            .map((file) => (
+                              <div
+                                key={file.id}
+                                className="relative max-w-full"
+                              >
+                                <img
+                                  src={file.url}
+                                  alt={file.name || "Question Image"}
+                                  className="max-h-96 w-auto object-contain rounded-lg shadow-sm border border-gray-200"
+                                />
+                              </div>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* VIDEO Files */}
+                      {currentResolvedFiles.some((f) => f.type === "VIDEO") && (
+                        <div className="space-y-3">
+                          {currentResolvedFiles
+                            .filter((f) => f.type === "VIDEO")
+                            .map((file) => (
+                              <div
+                                key={file.id}
+                                className="rounded-lg overflow-hidden border border-gray-200 bg-black shadow-sm"
+                              >
+                                <div className="px-3 py-1.5 bg-gray-900 text-gray-200 text-xs font-medium flex items-center gap-2">
+                                  <Video className="w-4 h-4 text-blue-400" />
+                                  <span className="truncate">{file.name}</span>
+                                </div>
+                                <video
+                                  controls
+                                  className="w-full max-h-96"
+                                  preload="metadata"
+                                >
+                                  <source src={file.url} />
+                                  Trình duyệt của bạn không hỗ trợ thẻ video.
+                                </video>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* AUDIO Files */}
+                      {currentResolvedFiles.some((f) => f.type === "AUDIO") && (
+                        <div className="space-y-3">
+                          {currentResolvedFiles
+                            .filter((f) => f.type === "AUDIO")
+                            .map((file) => (
+                              <div
+                                key={file.id}
+                                className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-2"
+                              >
+                                <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                                  <Volume2 className="w-4 h-4 text-blue-600" />
+                                  <span className="truncate">
+                                    {file.name || "File âm thanh"}
+                                  </span>
+                                </div>
+                                <audio controls className="w-full">
+                                  <source src={file.url} />
+                                  Trình duyệt của bạn không hỗ trợ thẻ audio.
+                                </audio>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+
+                      {/* DOCUMENT / OTHER Files */}
+                      {currentResolvedFiles.some(
+                        (f) =>
+                          f.type !== "IMAGE" &&
+                          f.type !== "VIDEO" &&
+                          f.type !== "AUDIO",
+                      ) && (
+                        <div className="space-y-2">
+                          {currentResolvedFiles
+                            .filter(
+                              (f) =>
+                                f.type !== "IMAGE" &&
+                                f.type !== "VIDEO" &&
+                                f.type !== "AUDIO",
+                            )
+                            .map((file) => (
+                              <div
+                                key={file.id}
+                                className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                              >
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                  <FileText className="w-5 h-5 text-gray-500 shrink-0" />
+                                  <span className="font-medium text-gray-800 truncate">
+                                    {file.name}
+                                  </span>
+                                </div>
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  className="shrink-0 gap-1"
+                                >
+                                  <a
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                  >
+                                    <ExternalLink className="w-4 h-4" /> Xem /
+                                    Tải về
+                                  </a>
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {currentQuestion.question_type === "SINGLE_CHOICE" && (

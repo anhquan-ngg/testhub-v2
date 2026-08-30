@@ -11,9 +11,12 @@ import {
   ArrowLeft,
   Clock,
   CheckCircle,
+  ExternalLink,
   XCircle,
   FileText,
   Printer,
+  Video,
+  Volume2,
 } from "lucide-react";
 import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
@@ -37,6 +40,18 @@ type SubmissionQuestionOption = {
   isCorrect?: boolean;
 };
 
+type ResultQuestionFile = {
+  id: string;
+  url: string;
+  name: string;
+  type: string;
+};
+
+type ResultSubmissionQuestionFile = {
+  order: number;
+  file: ResultQuestionFile;
+};
+
 type ResultSubmissionQuestion = {
   id: string;
   score: number | string | null;
@@ -49,6 +64,7 @@ type ResultSubmissionQuestion = {
     question_type: string;
     options: string | null;
     correct_answer: string | null;
+    files?: ResultSubmissionQuestionFile[];
   };
 };
 
@@ -99,6 +115,120 @@ function calculateTimeTaken(
   return `${minutes} phút`;
 }
 
+function renderQuestionFiles(files?: ResultSubmissionQuestionFile[]) {
+  if (!files?.length) return null;
+
+  const resolvedFiles = [...files]
+    .sort((left, right) => left.order - right.order)
+    .map((item) => item.file);
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-4 not-prose">
+      {resolvedFiles.some((file) => file.type === "IMAGE") && (
+        <div className="flex flex-wrap justify-center gap-4">
+          {resolvedFiles
+            .filter((file) => file.type === "IMAGE")
+            .map((file) => (
+              <div key={file.id} className="relative max-w-full">
+                <img
+                  src={file.url}
+                  alt={file.name || "Question file"}
+                  className="max-h-80 w-auto object-contain rounded-lg shadow-sm border border-gray-200"
+                />
+              </div>
+            ))}
+        </div>
+      )}
+
+      {resolvedFiles.some((file) => file.type === "VIDEO") && (
+        <div className="w-full max-w-2xl space-y-3">
+          {resolvedFiles
+            .filter((file) => file.type === "VIDEO")
+            .map((file) => (
+              <div
+                key={file.id}
+                className="rounded-lg overflow-hidden border border-gray-200 bg-black shadow-sm"
+              >
+                <div className="px-3 py-1.5 bg-gray-900 text-gray-200 text-xs font-medium flex items-center gap-2">
+                  <Video className="w-4 h-4 text-blue-400" />
+                  <span className="truncate">{file.name}</span>
+                </div>
+                <video controls className="w-full max-h-96" preload="metadata">
+                  <source src={file.url} />
+                  Trình duyệt của bạn không hỗ trợ thẻ video.
+                </video>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {resolvedFiles.some((file) => file.type === "AUDIO") && (
+        <div className="w-full max-w-2xl space-y-3">
+          {resolvedFiles
+            .filter((file) => file.type === "AUDIO")
+            .map((file) => (
+              <div
+                key={file.id}
+                className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-2"
+              >
+                <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                  <Volume2 className="w-4 h-4 text-blue-600" />
+                  <span className="truncate">
+                    {file.name || "File âm thanh"}
+                  </span>
+                </div>
+                <audio controls className="w-full">
+                  <source src={file.url} />
+                  Trình duyệt của bạn không hỗ trợ thẻ audio.
+                </audio>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {resolvedFiles.some(
+        (file) =>
+          file.type !== "IMAGE" &&
+          file.type !== "VIDEO" &&
+          file.type !== "AUDIO",
+      ) && (
+        <div className="w-full max-w-2xl space-y-2">
+          {resolvedFiles
+            .filter(
+              (file) =>
+                file.type !== "IMAGE" &&
+                file.type !== "VIDEO" &&
+                file.type !== "AUDIO",
+            )
+            .map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center justify-between gap-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+              >
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <FileText className="w-5 h-5 text-gray-500 shrink-0" />
+                  <span className="font-medium text-gray-800 truncate">
+                    {file.name}
+                  </span>
+                </div>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1"
+                >
+                  <a href={file.url} target="_blank" rel="noreferrer">
+                    <ExternalLink className="w-4 h-4" /> Xem / Tải về
+                  </a>
+                </Button>
+              </div>
+            ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ResultDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
@@ -145,8 +275,8 @@ export default function ResultDetailPage({ params }: PageProps) {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement("a");
       a.href = url;
-      const safeName = (submission?.student?.full_name ?? "Unknown").trim() ||
-        "Unknown";
+      const safeName =
+        (submission?.student?.full_name ?? "Unknown").trim() || "Unknown";
       const sanitizedName = safeName.replace(/\s+/g, "_");
       a.download = `Ketqua_${sanitizedName}_${id}.pdf`;
       document.body.appendChild(a);
@@ -386,6 +516,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                                   content={sq.question.question_text}
                                 />
                               </div>
+                              {renderQuestionFiles(sq.question.files)}
                             </div>
                             <Badge
                               variant="outline"

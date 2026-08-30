@@ -3,12 +3,24 @@ export interface ExamOption {
   isCorrect: boolean;
 }
 
+export interface QuestionFile {
+  id: string;
+  url: string;
+  name: string;
+  type: "IMAGE" | "VIDEO" | "AUDIO" | "DOCUMENT" | string;
+  order?: number;
+}
+
 export interface ExamQuestion {
   id: string;
   question_text: string;
   image_url: string | null;
+  files?: QuestionFile[];
   options: string | null; // JSON string that needs parsing
   question_type: "ESSAY" | "SINGLE_CHOICE" | "MULTIPLE_CHOICE";
+  submitted_answer?: string | null;
+  submitted_options?: string | null; // JSON string, same shape as `options`
+  answered?: boolean;
 }
 
 export interface ExamData {

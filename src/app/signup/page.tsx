@@ -28,7 +28,7 @@ export default function SignupPage() {
 
   const handleSignup = async () => {
     try {
-      const res = await authServices.signup(form);
+      const res = await authServices.signup(form as any);
       if (res.status === 201) {
         toast.success("Đăng ký tài khoản thành công");
       }
