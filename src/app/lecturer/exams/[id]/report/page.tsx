@@ -28,6 +28,7 @@ import {
   Clock,
   User,
   History,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -45,9 +46,11 @@ import {
 type ReportExam = {
   id: string;
   title: string;
+  practice?: boolean;
 };
 
 type ReportStudent = {
+  id?: string;
   full_name?: string | null;
   email?: string | null;
 };
@@ -86,6 +89,7 @@ export default function ExamReportPage() {
   const [deletingSubmissionId, setDeletingSubmissionId] = useState<
     string | null
   >(null);
+  const [grantingRetryId, setGrantingRetryId] = useState<string | null>(null);
 
   const fetchReportData = useCallback(async () => {
     if (!examId) return;
@@ -170,6 +174,19 @@ export default function ExamReportPage() {
       toast.error("Lỗi khi xóa lịch sử thi.");
     } finally {
       setDeletingSubmissionId(null);
+    }
+  };
+
+  const handleGrantRetry = async (studentId: string) => {
+    setGrantingRetryId(studentId);
+    try {
+      await apiClient.post(ENDPOINTS.EXAM_RUNTIME.GRANT_RETRY(examId, studentId));
+      toast.success("Đã cho phép sinh viên làm lại bài thi.");
+    } catch (error) {
+      console.error("Grant retry error:", error);
+      toast.error("Lỗi khi cho phép làm lại.");
+    } finally {
+      setGrantingRetryId(null);
     }
   };
 
@@ -361,6 +378,24 @@ export default function ExamReportPage() {
                           >
                             <Printer className="h-4 w-4" />
                           </Button>
+                          {!isAdmin && exam.practice === false && sub.student?.id && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-accent-700 hover:cursor-pointer"
+                              title="Cho phép làm lại bài thi"
+                              disabled={grantingRetryId === sub.student.id}
+                              onClick={() =>
+                                void handleGrantRetry(sub.student!.id!)
+                              }
+                            >
+                              {grantingRetryId === sub.student.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <RotateCcw className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
                           {!isAdmin && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

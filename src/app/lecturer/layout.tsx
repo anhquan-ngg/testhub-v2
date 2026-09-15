@@ -2,125 +2,22 @@
 
 import type React from "react";
 
-import { FileText, HelpCircle, ChevronDown, User } from "lucide-react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/hooks/useAuth";
-import NotificationBell from "@/components/NotificationBell";
-import { useAppSelector } from "@/store/hook";
+import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppHeader } from "@/components/layout/app-header";
 
 export default function LecturerLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const full_name = useAppSelector((state) => state.user.full_name);
-  const { handleLogout } = useAuth();
-
   return (
-    <div
-      className="min-h-screen flex"
-      style={{
-        background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
-      }}
-    >
-      {/* Sidebar */}
-      <aside className="w-56 bg-white shadow-lg flex flex-col">
-        <div className="p-6 border-b border-gray-300 flex items-center justify-center">
-          <Link href="/">
-            <h1 className="text-2xl font-bold text-[#0066cc]">TESTHUB</h1>
-            <h2 className="text-sm font-medium text-gray-600">
-              Portal for Lecturers
-            </h2>
-          </Link>
-        </div>
+    <div className="flex min-h-screen bg-neutral-100">
+      <AppSidebar role="lecturer" />
 
-        <nav className="flex-1 p-4 space-y-2">
-          <Link
-            href="/lecturer/exams"
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
-              pathname.includes("/lecturer/exams")
-                ? "bg-blue-50 text-[#0066cc]"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <FileText className="h-5 w-5" />
-            <span className="font-medium">Quản lý bài thi</span>
-          </Link>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <AppHeader role="lecturer" profileHref="/lecturer/profile" />
 
-          <Link
-            href="/lecturer/questions"
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
-              pathname === "/lecturer/questions"
-                ? "bg-blue-50 text-[#0066cc]"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <HelpCircle className="h-5 w-5" />
-            <span className="font-medium">Ngân hàng câu hỏi</span>
-          </Link>
-
-          <Link
-            href="/lecturer/profile"
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:cursor-pointer ${
-              pathname === "/lecturer/profile"
-                ? "bg-blue-50 text-[#0066cc]"
-                : "text-gray-700 hover:bg-gray-50"
-            }`}
-          >
-            <User className="h-5 w-5" />
-            <span className="font-medium">Tài khoản</span>
-          </Link>
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-transparent p-6 flex justify-end items-center gap-3">
-          <NotificationBell />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="flex items-center gap-2 bg-white/50 hover:bg-white/80"
-              >
-                <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-                  <User className="h-5 w-5 text-gray-600" />
-                </div>
-                <span className="font-medium">{full_name}</span>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-48 bg-white border-gray-300"
-            >
-              <DropdownMenuItem
-                className="hover:cursor-pointer"
-                onClick={() => router.push("/lecturer/profile")}
-              >
-                Thông tin cá nhân
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-red-600 hover:cursor-pointer"
-                onClick={() => handleLogout()}
-              >
-                Đăng xuất
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </header>
-
-        <main className="flex-1 px-8 pb-8 overflow-y-auto overflow-x-hidden">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto px-6 pb-10 pt-7 md:px-8">
           {children}
         </main>
       </div>

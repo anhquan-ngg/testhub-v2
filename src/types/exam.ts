@@ -43,4 +43,5 @@ export interface ExamData {
   entered_at?: string | null;
   last_ping?: string | null;
   time_limit_seconds?: number;
+  auto_submit_at?: string | null;
 }

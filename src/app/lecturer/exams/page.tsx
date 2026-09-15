@@ -41,6 +41,7 @@ import {
   UserPlus,
   Loader2,
   BarChart3,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -541,6 +542,17 @@ export default function LecturerExams() {
                           className="h-8 w-8 hover:cursor-pointer"
                         >
                           <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            router.push(`/lecturer/exams/${exam.id}/monitor`)
+                          }
+                          className="h-8 w-8 text-accent-700 hover:text-accent-800 hover:cursor-pointer"
+                          title="Giám sát bài thi"
+                        >
+                          <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"

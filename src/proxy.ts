@@ -18,8 +18,8 @@ const secretKey = new TextEncoder().encode(accessTokenSecret);
 
 const roleBasedRoutes = {
   ADMIN: ["/dashboard"],
-  LECTURER: ["/lecturer/exams", "/lecturer/questions"],
-  STUDENT: ["/home"],
+  LECTURER: ["/lecturer"],
+  STUDENT: ["/home", "/profile", "/result", "/exam"],
 };
 
 function splitSetCookieHeader(header: string): string[] {
@@ -171,7 +171,7 @@ export async function proxy(request: NextRequest) {
         );
       case "LECTURER":
         return withSetCookies(
-          NextResponse.redirect(new URL("/lecturer/exams", request.url)),
+          NextResponse.redirect(new URL("/lecturer", request.url)),
           refreshedSetCookies,
         );
       default:

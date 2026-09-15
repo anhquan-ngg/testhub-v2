@@ -298,7 +298,7 @@ export default function ResultDetailPage({ params }: PageProps) {
 
   if (submission && !isOwner && !isAdmin && !isLecturer) {
     return (
-      <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="flex min-h-screen bg-neutral-100">
         <StudentSideBar />
         <div className="flex-1 flex flex-col">
           <StudentMenu />
@@ -321,7 +321,7 @@ export default function ResultDetailPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="flex min-h-screen bg-neutral-100">
         <StudentSideBar />
         <div className="flex-1 flex flex-col">
           <StudentMenu />
@@ -339,7 +339,7 @@ export default function ResultDetailPage({ params }: PageProps) {
 
   if (error || !submission) {
     return (
-      <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="flex min-h-screen bg-neutral-100">
         <StudentSideBar />
         <div className="flex-1 flex flex-col">
           <StudentMenu />
@@ -367,12 +367,7 @@ export default function ResultDetailPage({ params }: PageProps) {
   );
 
   return (
-    <div
-      className="flex min-h-screen"
-      style={{
-        background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
-      }}
-    >
+    <div className="flex min-h-screen bg-neutral-100">
       <StudentSideBar />
       <div className="flex-1 flex flex-col">
         <StudentMenu />

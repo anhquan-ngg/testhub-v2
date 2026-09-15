@@ -143,12 +143,7 @@ export default function ResultPage() {
 
   if (isLoading) {
     return (
-      <div
-        className="min-h-screen flex"
-        style={{
-          background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
-        }}
-      >
+      <div className="flex min-h-screen bg-neutral-100">
         <StudentSideBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -158,12 +153,7 @@ export default function ResultPage() {
   }
 
   return (
-    <div
-      className="min-h-screen flex"
-      style={{
-        background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
-      }}
-    >
+    <div className="flex min-h-screen bg-neutral-100">
       <StudentSideBar />
 
       <div className="flex-1 flex flex-col">

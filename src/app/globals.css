@@ -1,5 +1,113 @@
 @import "tailwindcss";
 
+/* ============================================================
+   TESTHUB design tokens
+   Ported from the approved Claude Design canvas (Headbar,
+   Sidebar, Student Home, Lecturer Home). Single source of truth
+   for color/typography/radius across every role — replaces the
+   ad-hoc #0066cc / #0b63ce hex values previously scattered
+   across pages.
+   ============================================================ */
+/* Raw palette — registered as real Tailwind theme keys (inside @theme,
+   not :root) so utilities like bg-accent-600 / text-neutral-500 /
+   border-accent-300 actually get generated. A bare :root custom
+   property is invisible to Tailwind's theme scanner: it would still
+   work via var(), but no `bg-accent-*` class would ever be emitted. */
+@theme {
+  /* Accent (brand) scale — steel blue */
+  --color-accent-100: #eef6ff;
+  --color-accent-200: #d6ebff;
+  --color-accent-300: #b5d9fd;
+  --color-accent-400: #94bce3;
+  --color-accent-500: #749dc4;
+  --color-accent-600: #597ea3;
+  --color-accent-700: #416180;
+  --color-accent-800: #2c455d;
+  --color-accent-900: #1d2d3d;
+
+  /* Neutral scale — text / surfaces / borders */
+  --color-neutral-50: #fafafb;
+  --color-neutral-100: #f5f5f8;
+  --color-neutral-200: #e7e7ea;
+  --color-neutral-300: #d4d4d7;
+  --color-neutral-400: #b7b7ba;
+  --color-neutral-500: #98989b;
+  --color-neutral-600: #7a7a7d;
+  --color-neutral-700: #5d5d60;
+  --color-neutral-800: #424244;
+  --color-neutral-900: #2b2b2d;
+}
+
+:root {
+  --radius: 0.6rem;
+
+  /* Semantic tokens consumed by shadcn/ui primitives (Button,
+     Card, Input, Select, DropdownMenu...) — previously undefined,
+     which silently broke their default styling app-wide. */
+  --background: #ffffff;
+  --foreground: var(--color-neutral-900);
+  --card: #ffffff;
+  --card-foreground: var(--color-neutral-900);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-neutral-900);
+  --primary: var(--color-accent-600);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-neutral-100);
+  --secondary-foreground: var(--color-neutral-900);
+  --muted: var(--color-neutral-100);
+  --muted-foreground: var(--color-neutral-600);
+  --accent: var(--color-accent-100);
+  --accent-foreground: var(--color-accent-800);
+  --destructive: #dc2626;
+  --border: var(--color-neutral-200);
+  --input: var(--color-neutral-200);
+  --ring: var(--color-accent-500);
+}
+
+@theme inline {
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+body {
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  background: var(--color-neutral-100);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.font-heading {
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Thêm đoạn code tùy chỉnh cho Sonner toast ở đây */
 @layer components {
   .toaster {

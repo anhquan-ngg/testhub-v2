@@ -45,7 +45,7 @@ export const useAuth = () => {
       if (userRole === "ADMIN") {
         router.push("/dashboard");
       } else if (userRole === "LECTURER") {
-        router.push("/lecturer/exams");
+        router.push("/lecturer");
       } else {
         router.push("/home");
       }

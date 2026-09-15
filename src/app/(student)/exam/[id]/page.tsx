@@ -38,7 +38,6 @@ import apiClient from "@/lib/api-client";
 import { ExamData } from "@/types/exam";
 import { parseOptions } from "@/lib/exam-utils";
 import { ENDPOINTS } from "@/constants/endpoints";
-import { io, Socket } from "socket.io-client";
 
 interface QuestionFile {
   id: string;
@@ -98,7 +97,6 @@ export default function ExamPage() {
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
   const questionsInitialized = useRef(false);
-  const heartbeatSocketRef = useRef<Socket | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const handlePrint = async () => {
     if (!examId) return;
@@ -307,10 +305,13 @@ export default function ExamPage() {
       setAnswers(prefilledAnswers);
       setSubmittedQuestionIds(prefilledSubmittedIds);
 
-      const enteredAt = exam.entered_at
-        ? new Date(exam.entered_at).getTime()
-        : Date.now();
-      const endsAt = enteredAt + exam.duration * 60 * 1000;
+      // Prefer the server's per-attempt deadline (auto_submit_at) — it
+      // reflects any "extend time" grant from the lecturer. Fall back to
+      // entered_at + duration for older sessions that predate the field.
+      const endsAt = exam.auto_submit_at
+        ? new Date(exam.auto_submit_at).getTime()
+        : (exam.entered_at ? new Date(exam.entered_at).getTime() : Date.now()) +
+          exam.duration * 60 * 1000;
       setTimeLeft(Math.max(0, Math.ceil((endsAt - Date.now()) / 1000)));
     }
   }, [exam, testStarted]);
@@ -328,39 +329,147 @@ export default function ExamPage() {
     }
   }, [timeLeft, testStarted]);
 
+  // Presence: a plain REST ping on the same cookie-authenticated axios
+  // client every request on this page already uses. The previous socket.io
+  // heartbeat connected to a namespace that only ever accepted a token via
+  // `handshake.auth`/an Authorization header — this app never sends either
+  // (the access token is httpOnly), so the server disconnected the socket
+  // immediately on every connection and no heartbeat was ever actually
+  // recorded. REST also means a token refresh mid-exam (the access-token
+  // cookie lasts 15 minutes) is handled for free by the existing axios
+  // 401-retry interceptor, unlike a raw WebSocket.
   useEffect(() => {
-    if (!exam?.submissionId || !userId || !testStarted) return;
+    if (!exam?.submissionId || !testStarted) return;
 
-    const apiBaseUrl =
-      process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-    const heartbeatSocket = io(`${apiBaseUrl}/exam-runtime`, {
-      withCredentials: true,
-      query: { userId },
-      transports: ["websocket", "polling"],
-    });
+    const submissionId = exam.submissionId;
+    const PING_INTERVAL_MS = 20_000;
+    const PING_JITTER_MS = 3_000;
+    let stopped = false;
+    let timeoutId: number | undefined;
 
-    heartbeatSocketRef.current = heartbeatSocket;
-
-    const sendHeartbeat = () => {
-      heartbeatSocket.emit("exam:heartbeat", {
-        submissionId: exam.submissionId,
-      });
+    const ping = () => {
+      if (stopped) return;
+      apiClient
+        .post(ENDPOINTS.EXAM_RUNTIME.PING(submissionId))
+        .then((response) => {
+          // Resyncs the countdown from the server's deadline on every ping —
+          // the only way an already-open tab picks up a lecturer's "extend
+          // time" grant without a dedicated push channel.
+          const autoSubmitAt = response?.data?.autoSubmitAt;
+          if (!stopped && autoSubmitAt) {
+            const secondsLeft = Math.max(
+              0,
+              Math.ceil((new Date(autoSubmitAt).getTime() - Date.now()) / 1000),
+            );
+            setTimeLeft(secondsLeft);
+          }
+        })
+        .catch((error) => {
+          // A single failed ping isn't alarming by itself — the lecturer's
+          // monitor judges presence from the *age* of the last successful
+          // ping server-side, not from client retry logic.
+          console.error("Exam ping failed:", error);
+        });
     };
 
-    heartbeatSocket.on("connect", sendHeartbeat);
-    heartbeatSocket.on("exam:heartbeat_error", (payload) => {
-      console.error("Exam heartbeat error:", payload);
-    });
+    const scheduleNext = () => {
+      if (stopped) return;
+      // Jitter keeps 200 students who all pressed "start" in the same
+      // second from pinging in lockstep forever.
+      const jitter = (Math.random() * 2 - 1) * PING_JITTER_MS;
+      timeoutId = window.setTimeout(() => {
+        ping();
+        scheduleNext();
+      }, PING_INTERVAL_MS + jitter);
+    };
 
-    const interval = window.setInterval(sendHeartbeat, 30_000);
+    ping();
+    scheduleNext();
+
+    const handleVisibility = () => {
+      if (!document.hidden) ping();
+    };
+    const handleOnline = () => ping();
+
+    // A suspended laptop's timers just stop dead. Detect the wall-clock
+    // jump on resume and ping immediately, instead of leaving the student
+    // marked OFFLINE for up to a full interval after they wake it back up.
+    let lastTick = Date.now();
+    const clockCheck = window.setInterval(() => {
+      const now = Date.now();
+      if (now - lastTick > 5_000) ping();
+      lastTick = now;
+    }, 1_000);
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("online", handleOnline);
 
     return () => {
-      window.clearInterval(interval);
-      heartbeatSocket.off("connect", sendHeartbeat);
-      heartbeatSocket.disconnect();
-      heartbeatSocketRef.current = null;
+      stopped = true;
+      if (timeoutId) window.clearTimeout(timeoutId);
+      window.clearInterval(clockCheck);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("online", handleOnline);
     };
-  }, [exam?.submissionId, testStarted, userId]);
+  }, [exam?.submissionId, testStarted]);
+
+  // Proctoring signals. Self-reported, client-debounced (the server
+  // debounces and caps independently too — this just avoids firing a
+  // request for every one of the 2-4 events a single alt-tab produces).
+  // Honesty check: any of these listeners can be trivially removed via
+  // devtools, so their absence is not proof of anything — only the
+  // *silence* of pings (judged server-side) is tamper-resistant.
+  useEffect(() => {
+    if (!exam?.submissionId || !testStarted) return;
+
+    const submissionId = exam.submissionId;
+    const DEBOUNCE_MS: Record<string, number> = {
+      TAB_HIDDEN: 10_000,
+      WINDOW_BLUR: 10_000,
+      FULLSCREEN_EXIT: 5_000,
+      COPY: 30_000,
+      PASTE: 30_000,
+    };
+    const lastSentAt: Record<string, number> = {};
+
+    const report = (type: keyof typeof DEBOUNCE_MS) => {
+      const now = Date.now();
+      if (now - (lastSentAt[type] ?? 0) < DEBOUNCE_MS[type]) return;
+      lastSentAt[type] = now;
+      apiClient
+        .post(ENDPOINTS.EXAM_RUNTIME.VIOLATIONS(submissionId), { type })
+        .catch(() => {
+          // Best-effort — the server enforces its own debounce/budget too.
+        });
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) report("TAB_HIDDEN");
+    };
+    const handleBlur = () => report("WINDOW_BLUR");
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) report("FULLSCREEN_EXIT");
+    };
+    const handleCopy = () => report("COPY");
+    const handlePaste = () => report("PASTE");
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("copy", handleCopy);
+    document.addEventListener("paste", handlePaste);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener(
+        "fullscreenchange",
+        handleFullscreenChange,
+      );
+      document.removeEventListener("copy", handleCopy);
+      document.removeEventListener("paste", handlePaste);
+    };
+  }, [exam?.submissionId, testStarted]);
 
   // Auto submit when timer runs out
   useEffect(() => {

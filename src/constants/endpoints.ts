@@ -53,6 +53,18 @@ export const ENDPOINTS = {
   EXAM_RUNTIME: {
     STATUS: (examId: string) => `/exam-runtime/exams/${examId}/status`,
     EVENTS: (examId: string) => `/exam-runtime/exams/${examId}/events`,
+    PING: (submissionId: string) =>
+      `/exam-runtime/submissions/${submissionId}/ping`,
+    VIOLATIONS: (submissionId: string) =>
+      `/exam-runtime/submissions/${submissionId}/violations`,
+    MONITOR_ROSTER: (examId: string) =>
+      `/exam-runtime/monitor/exams/${examId}/roster`,
+    MONITOR_EVENTS: (examId: string) =>
+      `/exam-runtime/monitor/exams/${examId}/events`,
+    GRANT_RETRY: (examId: string, studentId: string) =>
+      `/exam-runtime/monitor/exams/${examId}/students/${studentId}/grant-retry`,
+    EXTEND_TIME: (examId: string, studentId: string) =>
+      `/exam-runtime/monitor/exams/${examId}/students/${studentId}/extend-time`,
   },
   FILES: {
     BASE: "/files",

@@ -262,12 +262,7 @@ export default function StudentProfile() {
   };
 
   return (
-    <div
-      className="min-h-screen flex"
-      style={{
-        background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
-      }}
-    >
+    <div className="flex min-h-screen bg-neutral-100">
       {/* Sidebar */}
       <StudentSideBar />
 
