@@ -39,10 +39,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload } from "lucide-react";
 import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
 
 type EditExamPageProps = {
   params: Promise<{ id: string }>;
@@ -71,8 +72,7 @@ type ExamChapterDistributionConfig = {
 };
 
 type ExamDistributionConfig =
-  | ExamTypeDistributionConfig
-  | ExamChapterDistributionConfig;
+  ExamTypeDistributionConfig | ExamChapterDistributionConfig;
 
 type PageResult<T> = {
   data: T[];
@@ -353,6 +353,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     is_public: false,
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const handleToggleQuestion = (questionId: string) => {
     setSelectedQuestions((prev) =>
@@ -721,7 +722,22 @@ export default function EditExamPage({ params }: EditExamPageProps) {
 
             <div className="space-y-2">
               <Label>Chọn câu hỏi từ ngân hàng</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={exam?.mode !== "MANUAL"}
+                  title={
+                    exam?.mode === "MANUAL"
+                      ? "Import câu hỏi vào đề"
+                      : "Hãy lưu bài thi ở chế độ chọn thủ công trước khi import"
+                  }
+                  onClick={() => setIsImportDialogOpen(true)}
+                  className="border-gray-300"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import Word, Excel
+                </Button>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-[#0066cc] hover:bg-[#0052a3] text-white">
@@ -1110,6 +1126,17 @@ export default function EditExamPage({ params }: EditExamPageProps) {
           </div>
         </CardContent>
       </Card>
+
+      <QuestionImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        topicId={exam?.topic_id}
+        examId={examId}
+        onCompleted={async () => {
+          // The import may have created chapters from names in the file.
+          await Promise.all([fetchQuestions(), fetchChapters(exam?.topic_id)]);
+        }}
+      />
     </div>
   );
 }

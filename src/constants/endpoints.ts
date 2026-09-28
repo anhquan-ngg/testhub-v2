@@ -21,9 +21,19 @@ export const ENDPOINTS = {
     BASE: "/questions",
     DETAIL: (id: string) => `/questions/${id}`,
   },
+  QUESTION_IMPORTS: {
+    BASE: "/question-imports",
+    DETAIL: (id: string) => `/question-imports/${id}`,
+    COMPLETE: (id: string) => `/question-imports/${id}/complete`,
+    ITEMS: (id: string) => `/question-imports/${id}/items`,
+    ITEM: (id: string, itemId: string) =>
+      `/question-imports/${id}/items/${itemId}`,
+    COMMIT: (id: string) => `/question-imports/${id}/commit`,
+  },
   EXAMS: {
     BASE: "/exams",
     DETAIL: (id: string) => `/exams/${id}`,
+    PRINT: (id: string) => `/exams/${id}/print`,
     QUESTIONS: {
       BASE: (id: string) => `/exams/${id}/questions`,
       DETAIL: (id: string, questionId: string) =>
