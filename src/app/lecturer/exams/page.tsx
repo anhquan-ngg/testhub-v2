@@ -67,6 +67,7 @@ import { useAppSelector } from "@/store/hook";
 import { useSocket } from "@/components/providers/SocketProvider";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { PrintExamDialog } from "@/components/exam-print/PrintExamDialog";
 
 type ExamRegistrationWithStudent = {
   id: string;
@@ -565,6 +566,7 @@ export default function LecturerExams() {
                         >
                           <BarChart3 className="h-4 w-4" />
                         </Button>
+                        <PrintExamDialog exam={exam} />
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>

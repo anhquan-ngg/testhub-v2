@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,10 +39,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload } from "lucide-react";
 import { QuestionTypeMap, QuestionFormatMap } from "@/lib/constansts";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
 
 type EditExamPageProps = {
   params: Promise<{ id: string }>;
@@ -71,8 +72,7 @@ type ExamChapterDistributionConfig = {
 };
 
 type ExamDistributionConfig =
-  | ExamTypeDistributionConfig
-  | ExamChapterDistributionConfig;
+  ExamTypeDistributionConfig | ExamChapterDistributionConfig;
 
 type PageResult<T> = {
   data: T[];
@@ -353,6 +353,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     is_public: false,
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const handleToggleQuestion = (questionId: string) => {
     setSelectedQuestions((prev) =>
@@ -445,6 +446,41 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       console.log(error);
     }
   }, []);
+  const existingQuestionIdsRef = useRef(existingQuestionIds);
+  useEffect(() => {
+    existingQuestionIdsRef.current = existingQuestionIds;
+  }, [existingQuestionIds]);
+
+  /**
+   * After an import attached questions on the server, picks up only those
+   * new ids. It deliberately bypasses setExam: that would re-run the effect
+   * that re-initialises the whole form and drop unsaved edits. Ids are added
+   * to both lists so they are selected and not re-POSTed on save (409).
+   * Existing local selections and deselections are left untouched.
+   */
+  const mergeImportedQuestions = useCallback(async () => {
+    try {
+      const response = await apiClient.get<ExamDetail>(
+        ENDPOINTS.EXAMS.DETAIL(examId),
+      );
+      const known = new Set(existingQuestionIdsRef.current);
+      const attached = (response.data.questions ?? [])
+        .map((item) => item.question_id)
+        .filter((id) => Boolean(id) && !known.has(id));
+      if (!attached.length) return;
+
+      const addMissing = (prev: string[]) => [
+        ...prev,
+        ...attached.filter((id) => !prev.includes(id)),
+      ];
+      setExistingQuestionIds(addMissing);
+      setSelectedQuestions(addMissing);
+    } catch (error) {
+      toast.error("Không thể cập nhật danh sách câu hỏi của bài thi.");
+      console.log(error);
+    }
+  }, [examId]);
+
   const syncExamQuestions = async (id: string) => {
     const selectedQuestionSet = new Set(selectedQuestions);
     const existingQuestionSet = new Set(existingQuestionIds);
@@ -558,25 +594,32 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       setConfigRows(configRowsWithIds);
       setNextRowId(configRowsWithIds.length + 1);
       setDistribution(parsedDistribution);
-    } else if (exam.mode === "BY_CHAPTER" && exam.distribution) {
-      const parsedDistribution = JSON.parse(
-        exam.distribution,
-      ) as ExamChapterDistributionConfig[];
-      const configRowsWithIds = parsedDistribution.map((item, index) => {
-        const chapterSelection = resolveChapterSelection(item.chapter_id);
-
-        return {
-          id: index + 1,
-          ...chapterSelection,
-          question_type: "SINGLE_CHOICE" as QuestionType,
-          question_format: "KNOWLEDGE" as QuestionFormat,
-          quantity: item.quantity,
-        };
-      });
-      setConfigRows(configRowsWithIds);
-      setNextRowId(configRowsWithIds.length + 1);
-      setDistribution(parsedDistribution);
     }
+  }, [exam]);
+
+  // Kept apart from the effect above: resolveChapterSelection changes every
+  // time chapters are refetched (e.g. after an import), and that must not
+  // reset the form or the question selection.
+  useEffect(() => {
+    if (!exam || exam.mode !== "BY_CHAPTER" || !exam.distribution) return;
+
+    const parsedDistribution = JSON.parse(
+      exam.distribution,
+    ) as ExamChapterDistributionConfig[];
+    const configRowsWithIds = parsedDistribution.map((item, index) => {
+      const chapterSelection = resolveChapterSelection(item.chapter_id);
+
+      return {
+        id: index + 1,
+        ...chapterSelection,
+        question_type: "SINGLE_CHOICE" as QuestionType,
+        question_format: "KNOWLEDGE" as QuestionFormat,
+        quantity: item.quantity,
+      };
+    });
+    setConfigRows(configRowsWithIds);
+    setNextRowId(configRowsWithIds.length + 1);
+    setDistribution(parsedDistribution);
   }, [exam, resolveChapterSelection]);
 
   return (
@@ -721,7 +764,22 @@ export default function EditExamPage({ params }: EditExamPageProps) {
 
             <div className="space-y-2">
               <Label>Chọn câu hỏi từ ngân hàng</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={exam?.mode !== "MANUAL"}
+                  title={
+                    exam?.mode === "MANUAL"
+                      ? "Import câu hỏi vào đề"
+                      : "Hãy lưu bài thi ở chế độ chọn thủ công trước khi import"
+                  }
+                  onClick={() => setIsImportDialogOpen(true)}
+                  className="border-gray-300"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import Word, Excel
+                </Button>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button className="bg-[#0066cc] hover:bg-[#0052a3] text-white">
@@ -1110,6 +1168,22 @@ export default function EditExamPage({ params }: EditExamPageProps) {
           </div>
         </CardContent>
       </Card>
+
+      <QuestionImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        topicId={exam?.topic_id}
+        examId={examId}
+        onCompleted={async () => {
+          // The import may have created chapters from names in the file, and
+          // the backend has already attached the imported questions.
+          await Promise.all([
+            fetchQuestions(),
+            fetchChapters(exam?.topic_id),
+            mergeImportedQuestions(),
+          ]);
+        }}
+      />
     </div>
   );
 }

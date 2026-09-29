@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/table";
 import { MathInput } from "@/components/MathInput";
 import { MathRenderer } from "@/components/MathRenderer";
+import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
 import { ENDPOINTS } from "@/constants/endpoints";
 import apiClient from "@/lib/api-client";
 
@@ -269,7 +270,9 @@ const getQuestionPreviewText = (questionText: string) => {
     return normalizedText;
   }
 
-  let previewText = normalizedText.slice(0, QUESTION_PREVIEW_MAX_LENGTH).trimEnd();
+  let previewText = normalizedText
+    .slice(0, QUESTION_PREVIEW_MAX_LENGTH)
+    .trimEnd();
 
   const hasUnclosedLatex = (value: string) => {
     const singleDollarCount = (value.match(/(^|[^\\])\$/g) || []).length;
@@ -299,7 +302,9 @@ const getQuestionPreviewText = (questionText: string) => {
     ].filter((index) => index >= 0);
 
     const cutIndex =
-      cutCandidates.length > 0 ? Math.min(...cutCandidates) : previewText.length - 1;
+      cutCandidates.length > 0
+        ? Math.min(...cutCandidates)
+        : previewText.length - 1;
     previewText = previewText.slice(0, Math.max(0, cutIndex)).trimEnd();
   }
 
@@ -322,6 +327,7 @@ export default function LecturerQuestions() {
   const [isTopicDialogOpen, setIsTopicDialogOpen] = useState(false);
   const [isChapterDialogOpen, setIsChapterDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [detailQuestion, setDetailQuestion] = useState<Question | null>(null);
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
@@ -997,6 +1003,14 @@ export default function LecturerQuestions() {
                 />
               </div>
               <Button
+                variant="outline"
+                onClick={() => setIsImportDialogOpen(true)}
+                className="shrink-0 border-gray-300 hover:cursor-pointer"
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Import Word, Excel
+              </Button>
+              <Button
                 onClick={() => setIsTopicDialogOpen(true)}
                 className="shrink-0 bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
               >
@@ -1438,6 +1452,13 @@ export default function LecturerQuestions() {
         onOpenChange={(open) => !open && setDetailQuestion(null)}
         parseQuestionOptions={parseQuestionOptions}
         getQuestionAnswerText={getQuestionAnswerText}
+      />
+
+      <QuestionImportDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        topics={topics}
+        onCompleted={refreshAll}
       />
     </div>
   );
