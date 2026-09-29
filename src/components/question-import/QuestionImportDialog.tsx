@@ -151,6 +151,8 @@ export function QuestionImportDialog({
   const [items, setItems] = useState<QuestionImportItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBusy, setIsBusy] = useState(false);
+  // Bumped when a status poll fails so the polling effect schedules a retry.
+  const [pollTick, setPollTick] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
@@ -243,9 +245,12 @@ export function QuestionImportDialog({
         if (!cancelled) setQuestionImport(response.data);
       } catch (error) {
         if (!cancelled) {
+          // Fixed id: repeated failures update one toast instead of stacking.
           toast.error(
             getErrorMessage(error, "Không thể cập nhật trạng thái import"),
+            { id: "question-import-poll-error" },
           );
+          setPollTick((tick) => tick + 1);
         }
       }
     }, 1500);
@@ -253,7 +258,7 @@ export function QuestionImportDialog({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, questionImport]);
+  }, [open, questionImport, pollTick]);
 
   useEffect(() => {
     if (questionImport?.status !== "REVIEW_REQUIRED" || items.length) return;
@@ -319,6 +324,7 @@ export function QuestionImportDialog({
         : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     setIsBusy(true);
+    let createdImportId: string | null = null;
     try {
       const created = await apiClient.post<{
         import: QuestionImportRecord;
@@ -332,6 +338,7 @@ export function QuestionImportDialog({
         mime_type: mimeType,
         size: file.size,
       });
+      createdImportId = created.data.import.id;
       setQuestionImport(created.data.import);
       await axios.put(created.data.upload_url, file, {
         headers: { "Content-Type": mimeType },
@@ -346,6 +353,18 @@ export function QuestionImportDialog({
         status: completed.data.status,
       });
     } catch (error) {
+      if (createdImportId) {
+        // The import row exists server-side; cancel it so a failed upload
+        // does not leave an orphan until it expires. A cleanup failure must
+        // not mask the original error below.
+        try {
+          await apiClient.delete(
+            ENDPOINTS.QUESTION_IMPORTS.DETAIL(createdImportId),
+          );
+        } catch {
+          // The server-side expiry job removes it eventually.
+        }
+      }
       setQuestionImport(null);
       toast.error(getErrorMessage(error, "Không thể tải và xử lý file import"));
     } finally {
