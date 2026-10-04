@@ -1,0 +1,22 @@
+{
+  "greeting": "Hello, {name}",
+  "statManagedExams": "Managed exams",
+  "statLiveExams": "Open / ongoing",
+  "statPendingRegistrations": "Pending registrations",
+  "statApprovedRegistrations": "Approved registrations",
+  "pendingRegistrations": "{count} registrations are waiting for your approval.",
+  "uncategorized": "Uncategorized",
+  "anErrorOccurredWhileLoadingThe": "An error occurred while loading the overview data.",
+  "overview": "Overview",
+  "friend": "Friend",
+  "thereAreNoRegistrationsPendingApproval": "There are no registrations pending approval.",
+  "theExamIsAboutToTake": "Upcoming and ongoing exams",
+  "youDonTHaveAnyUpcoming": "You don't have any upcoming or open tests yet.",
+  "open": "Open",
+  "waitingForApproval": "waiting for approval",
+  "aboutToOpen": "About to open",
+  "viewReport": "View report",
+  "scoreSpectrumTestBeingAdministered": "Score distribution — managed exams",
+  "official": "Official",
+  "practice": "Practice"
+}

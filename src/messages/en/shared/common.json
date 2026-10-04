@@ -1,0 +1,31 @@
+{
+  "metadata": {
+    "title": "Testhub - Online Test System",
+    "description": "A secure online examination platform for modern education."
+  },
+  "language": {
+    "label": "Language"
+  },
+  "common": {
+    "loading": "Loading...",
+    "logout": "Log out"
+  },
+  "enums": {
+    "userRole": {
+      "ADMIN": "Administrator",
+      "LECTURER": "Lecturer",
+      "STUDENT": "Student"
+    },
+    "questionType": {
+      "SINGLE_CHOICE": "Single choice",
+      "MULTIPLE_CHOICE": "Multiple choice",
+      "ESSAY": "Essay"
+    },
+    "questionFormat": {
+      "KNOWLEDGE": "Knowledge",
+      "UNDERSTANDING": "Understanding",
+      "APPLYING": "Applying",
+      "ADVANCED": "Advanced"
+    }
+  }
+}

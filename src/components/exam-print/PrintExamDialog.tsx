@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import axios from "axios";
 import { FileArchive, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
@@ -42,12 +43,13 @@ const toFileSlug = (value: string) =>
     .replace(/^_+|_+$/g, "") || "exam";
 
 /** With responseType "blob", error bodies arrive as a Blob holding JSON. */
-async function readErrorMessage(error: unknown): Promise<string> {
+type PrintErrorKey = "errorGeneric" | "errorTimeout" | "errorInsufficientQuestions" | "errorNoQuestions" | "errorForbidden" | "errorNotFound";
+async function readErrorMessage(error: unknown, translate: (key: PrintErrorKey) => string): Promise<string> {
   if (!axios.isAxiosError(error)) {
-    return "Không thể tạo đề thi. Vui lòng thử lại.";
+    return translate("errorGeneric");
   }
   if (error.code === "ECONNABORTED") {
-    return "Tạo đề thi quá thời gian chờ. Vui lòng thử lại.";
+    return translate("errorTimeout");
   }
 
   const status = error.response?.status;
@@ -66,14 +68,14 @@ async function readErrorMessage(error: unknown): Promise<string> {
   }
 
   if (status === 400 && message.startsWith("Not enough questions")) {
-    return "Ngân hàng câu hỏi không đủ để tạo đề theo cấu hình phân bố của bài thi.";
+    return translate("errorInsufficientQuestions");
   }
   if (status === 400 && message.startsWith("No questions available")) {
-    return "Bài thi chưa có câu hỏi nào để in.";
+    return translate("errorNoQuestions");
   }
-  if (status === 403) return "Bạn không có quyền in đề của bài thi này.";
-  if (status === 404) return "Không tìm thấy bài thi.";
-  return "Không thể tạo đề thi. Vui lòng thử lại.";
+  if (status === 403) return translate("errorForbidden");
+  if (status === 404) return translate("errorNotFound");
+  return translate("errorGeneric");
 }
 
 /**
@@ -82,6 +84,7 @@ async function readErrorMessage(error: unknown): Promise<string> {
  * variant plus the answer key.
  */
 export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
+  const t = useTranslations("shared.examPrint");
   const [open, setOpen] = useState(false);
   const [variantCount, setVariantCount] = useState<VariantCount>(4);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -106,11 +109,11 @@ export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      toast.success(`Đã tạo ${variantCount} mã đề và file đáp án.`);
+      toast.success(t("generatedVariants", { count: variantCount }));
       setOpen(false);
     } catch (error) {
       console.error("Print exam error:", error);
-      toast.error(await readErrorMessage(error));
+      toast.error(await readErrorMessage(error, (key) => t(key)));
     } finally {
       setIsGenerating(false);
     }
@@ -128,22 +131,22 @@ export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-gray-700 hover:text-gray-900 hover:cursor-pointer"
-          title="In đề thi"
+          title={t("printExamQuestions")}
         >
           <Printer className="h-4 w-4" />
         </Button>
       </DialogTrigger>
       <DialogContent className="bg-white border-gray-300 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>In đề thi</DialogTitle>
+          <DialogTitle>{t("printExamQuestions")}</DialogTitle>
           <DialogDescription>
-            Tạo bộ đề in cho kỳ thi offline: {exam.title}
+            {t("examPrintDescription", { title: exam.title })}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Số lượng mã đề</Label>
+            <Label className="text-sm font-medium">{t("numberOfCodes")}</Label>
             <RadioGroup
               value={String(variantCount)}
               onValueChange={(value) =>
@@ -168,7 +171,7 @@ export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
                     className="sr-only"
                   />
                   <span className="text-2xl font-bold">{count}</span>
-                  <span className="text-xs">mã đề</span>
+                  <span className="text-xs">{t("code")}</span>
                 </Label>
               ))}
             </RadioGroup>
@@ -178,14 +181,10 @@ export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
             <FileArchive className="h-5 w-5 flex-none text-gray-400 mt-0.5" />
             <div className="space-y-1">
               <p>
-                File <strong>.zip</strong> gồm {variantCount} file PDF đề thi và
-                1 file PDF đáp án cho tất cả mã đề.
+                {t("archiveContents", { count: variantCount })}
               </p>
               <p>
-                Thứ tự câu hỏi và phương án được trộn riêng cho từng mã đề. Với
-                bài thi sinh đề ngẫu nhiên, mỗi mã đề được bốc bộ câu hỏi riêng
-                theo cấu hình của bài thi. Mỗi lần in sẽ tạo bộ đề mới.
-              </p>
+                {t("theOrderOfQuestionsAndOptions")}</p>
             </div>
           </div>
         </div>
@@ -197,8 +196,7 @@ export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
             disabled={isGenerating}
             className="hover:cursor-pointer"
           >
-            Huỷ
-          </Button>
+            {t("cancel")}</Button>
           <Button
             onClick={handleGenerate}
             disabled={isGenerating}
@@ -207,13 +205,11 @@ export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
             {isGenerating ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Đang tạo đề...
-              </>
+                {t("creatingTopic")}</>
             ) : (
               <>
                 <Printer className="h-4 w-4 mr-2" />
-                Tạo và tải xuống
-              </>
+                {t("createAndDownload")}</>
             )}
           </Button>
         </DialogFooter>

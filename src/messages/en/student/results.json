@@ -1,0 +1,21 @@
+{
+  "totalExams": "Total exams: {count}",
+  "minutesSeconds": "{minutes} min {seconds} sec",
+  "excellent": "Excellent",
+  "good": "Good",
+  "medium": "Average",
+  "weak": "Needs improvement",
+  "notRatedYet": "Not rated yet",
+  "examResults": "Exam results",
+  "thereAreNoTestResultsYet": "There are no test results yet",
+  "youHaveNotCompletedAnyExams": "You have not completed an exam yet. Start one to see your results here.",
+  "practice": "Practice",
+  "official": "Official",
+  "topic": "Topic:",
+  "point": "Score:",
+  "timeToDoHomework": "Time spent",
+  "status": "Status",
+  "complete": "Complete",
+  "numberOfQuestions": "Number of questions",
+  "seeDetailedAnswer": "View answer details"
+}

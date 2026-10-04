@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useTranslations } from "next-intl";
 import { BlockMath, InlineMath } from "react-katex";
 import "katex/dist/katex.min.css";
 
@@ -10,6 +11,7 @@ interface MathRendererProps {
 }
 
 export function MathRenderer({ content, className = "" }: MathRendererProps) {
+  const t = useTranslations("shared.mathInput");
   if (!content) return null;
 
   try {
@@ -87,7 +89,7 @@ export function MathRenderer({ content, className = "" }: MathRendererProps) {
           <span
             key={key++}
             className="text-red-500"
-            title="Math rendering error"
+            title={t("renderError")}
           >
             {originalText}
           </span>

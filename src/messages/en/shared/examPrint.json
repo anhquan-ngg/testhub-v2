@@ -1,0 +1,18 @@
+{
+  "examPrintDescription": "Generate printable versions for the offline exam: {title}",
+  "archiveContents": "The .zip archive contains {count} exam PDFs and one answer key PDF for all versions.",
+  "errorGeneric": "Could not generate the exam. Please try again.",
+  "errorTimeout": "Exam generation timed out. Please try again.",
+  "errorInsufficientQuestions": "The question bank does not have enough questions for this exam configuration.",
+  "errorNoQuestions": "This exam has no questions to print.",
+  "errorForbidden": "You do not have permission to print this exam.",
+  "errorNotFound": "Exam not found.",
+  "generatedVariants": "Generated {count} exam versions and an answer key.",
+  "printExamQuestions": "Print exam questions",
+  "numberOfCodes": "Number of codes",
+  "code": "code",
+  "theOrderOfQuestionsAndOptions": "Questions and answer options are shuffled for each exam version. For randomly generated exams, each version draws its own questions using the exam configuration. Each print creates a new set.",
+  "cancel": "Cancel",
+  "creatingTopic": "Creating topic...",
+  "createAndDownload": "Create and download"
+}

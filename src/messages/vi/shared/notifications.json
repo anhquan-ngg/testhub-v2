@@ -1,0 +1,11 @@
+{
+  "notifications": {
+    "title": "Thông báo",
+    "markAllRead": "Đọc tất cả",
+    "empty": "Không có thông báo mới",
+    "justNow": "Vừa xong",
+    "minutesAgo": "{count} phút trước",
+    "hoursAgo": "{count} giờ trước",
+    "daysAgo": "{count} ngày trước"
+  }
+}

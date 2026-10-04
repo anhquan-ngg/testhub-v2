@@ -1,0 +1,21 @@
+{
+  "examSummary": "Exam: {title} - Total attempts: {count}",
+  "incorrect": "Incorrect",
+  "anErrorOccurredWhileLoadingReport": "An error occurred while loading report data.",
+  "anErrorOccurredWhileCreatingA": "An error occurred while creating a printout. Please try again later.",
+  "noTestFound": "No test found",
+  "comeBack": "Come back",
+  "reportResultsAdmin": "Report results (Admin)",
+  "preparing": "Preparing...",
+  "printReport": "Print report",
+  "listOfExamResults": "List of exam results",
+  "fullName": "Full name",
+  "point": "Point",
+  "time": "Time",
+  "rating": "Rating",
+  "correct": "Correct",
+  "skip": "Skip",
+  "operation": "Operation",
+  "printExamDetails": "Print exam details",
+  "thereAreNoCompletedAssignmentsYet": "There are no completed assignments yet."
+}

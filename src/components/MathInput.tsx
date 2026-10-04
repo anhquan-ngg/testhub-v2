@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { BlockMath, InlineMath } from "react-katex";
@@ -37,10 +38,11 @@ const MATH_SYMBOLS = [
 export function MathInput({
   value,
   onChange,
-  placeholder = "Nhập văn bản hoặc công thức LaTeX",
+  placeholder,
   className,
   id,
 }: MathInputProps) {
+  const t = useTranslations("shared.mathInput");
   const [showSymbols, setShowSymbols] = useState(false);
 
   const insertSymbol = (latex: string) => {
@@ -141,7 +143,7 @@ export function MathInput({
           }
         } catch (e) {
           parts.push(
-            <span key={key++} className="text-red-500" title="Lỗi render">
+            <span key={key++} className="text-red-500" title={t("renderError")}>
               {processedValue.substring(
                 match.index,
                 match.index + match.length
@@ -162,7 +164,7 @@ export function MathInput({
 
       return parts.length > 0 ? parts : processedValue;
     } catch (error) {
-      return <div className="text-red-500">Lỗi render: {String(error)}</div>;
+      return <div className="text-red-500">{t("renderErrorMessage", { message: String(error) })}</div>;
     }
   };
 
@@ -173,7 +175,7 @@ export function MathInput({
           id={id || "math-input"}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
+        placeholder={placeholder ?? t("enterTextOrLatexFormulas")}
           className={className}
         />
         <Button
@@ -183,8 +185,7 @@ export function MathInput({
           onClick={() => setShowSymbols(!showSymbols)}
           className="text-white border-none bg-[#0066cc] hover:bg-[#0052a3] whitespace-nowrap h-10 px-3"
         >
-          ∑ Ký hiệu
-        </Button>
+          {t("symbol")}</Button>
       </div>
 
       {showSymbols && (
@@ -207,7 +208,7 @@ export function MathInput({
 
       {value && (
         <div className="p-4 bg-white rounded border border-gray-300 shadow-sm">
-          <div className="text-xs font-medium text-gray-700 mb-2">Preview:</div>
+          <div className="text-xs font-medium text-gray-700 mb-2">{t("preview")}</div>
           <div className="text-base leading-relaxed">{renderPreview()}</div>
         </div>
       )}

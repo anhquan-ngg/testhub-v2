@@ -1,0 +1,23 @@
+{
+  "pageOf": "Trang {page} / {total}",
+  "next": "Sau",
+  "anErrorOccurredWhileLoadingData": "Có lỗi xảy ra khi tải dữ liệu. Vui lòng thử lại sau.",
+  "examManagement": "Quản lý bài thi",
+  "listOfAllExams": "Danh sách tất cả bài thi",
+  "seeAListOfAllTests": "Xem danh sách tất cả bài thi trong hệ thống",
+  "searchForExam": "Tìm kiếm bài thi...",
+  "testName": "Tên bài thi",
+  "creator": "Người tạo",
+  "topic": "Chủ đề",
+  "begin": "Bắt đầu",
+  "end": "Kết thúc",
+  "duration": "Thời lượng",
+  "examType": "Loại bài thi",
+  "status": "Trạng thái",
+  "operation": "Thao tác",
+  "minute": "phút",
+  "practice": "Luyện tập",
+  "official": "Chính thức",
+  "viewReport": "Xem báo cáo",
+  "before": "Trước"
+}

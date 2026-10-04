@@ -1,0 +1,22 @@
+{
+  "nav": {
+    "exams": "Bài thi",
+    "results": "Kết quả",
+    "account": "Tài khoản",
+    "overview": "Tổng quan",
+    "examManagement": "Quản lý bài thi",
+    "questionBank": "Ngân hàng câu hỏi"
+  },
+  "layout": {
+    "openNavigation": "Mở menu điều hướng",
+    "closeMenu": "Đóng menu",
+    "expandSidebar": "Mở rộng sidebar",
+    "collapseSidebar": "Thu gọn sidebar",
+    "collapse": "Thu gọn",
+    "studentMenu": "Menu điều hướng học viên",
+    "lecturerMenu": "Menu điều hướng giảng viên",
+    "defaultStudentName": "Học viên",
+    "defaultLecturerName": "Giảng viên",
+    "profile": "Thông tin cá nhân"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "pageOf": "Page {page} / {total}",
+  "next": "Next",
+  "anErrorOccurredWhileLoadingData": "An error occurred while loading data. Please try again later.",
+  "examManagement": "Exam management",
+  "listOfAllExams": "List of all exams",
+  "seeAListOfAllTests": "See a list of all tests in the system",
+  "searchForExam": "Search for exam...",
+  "testName": "Test name",
+  "creator": "Creator",
+  "topic": "Topic",
+  "begin": "Begin",
+  "end": "End",
+  "duration": "Duration",
+  "examType": "Exam type",
+  "status": "Status",
+  "operation": "Operation",
+  "minute": "minute",
+  "practice": "Practice",
+  "official": "Official",
+  "viewReport": "View report",
+  "before": "Previous"
+}

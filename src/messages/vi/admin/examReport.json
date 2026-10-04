@@ -1,0 +1,21 @@
+{
+  "examSummary": "Bài thi: {title} - Tổng số lượt thi: {count}",
+  "incorrect": "Sai",
+  "anErrorOccurredWhileLoadingReport": "Có lỗi xảy ra khi tải dữ liệu báo cáo.",
+  "anErrorOccurredWhileCreatingA": "Có lỗi xảy ra khi tạo bản in. Vui lòng thử lại sau.",
+  "noTestFound": "Không tìm thấy bài thi",
+  "comeBack": "Quay lại",
+  "reportResultsAdmin": "Báo cáo kết quả (Admin)",
+  "preparing": "Đang chuẩn bị...",
+  "printReport": "In báo cáo",
+  "listOfExamResults": "Danh sách kết quả làm bài",
+  "fullName": "Họ tên",
+  "point": "Điểm",
+  "time": "Thời gian",
+  "rating": "Xếp loại",
+  "correct": "Đúng",
+  "skip": "Bỏ qua",
+  "operation": "Thao tác",
+  "printExamDetails": "In chi tiết bài thi",
+  "thereAreNoCompletedAssignmentsYet": "Chưa có lượt làm bài nào hoàn thành."
+}

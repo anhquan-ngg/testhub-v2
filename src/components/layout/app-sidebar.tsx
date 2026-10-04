@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link } from "@/i18n/navigation";
+import { usePathname } from "@/i18n/navigation";
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "./brand-logo";
@@ -21,16 +22,19 @@ function NavLinks({
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
+  const tNav = useTranslations("nav");
+
   return (
     <>
       {items.map((item) => {
         const active = item.match(pathname);
         const Icon = item.icon;
+        const label = tNav(item.labelKey);
         return (
           <Link
             key={item.href}
             href={item.href}
-            aria-label={item.label}
+            aria-label={label}
             onClick={onNavigate}
             className={cn(
               "group relative flex items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2.5 text-sm font-medium transition-colors",
@@ -41,10 +45,10 @@ function NavLinks({
             )}
           >
             <Icon className="h-[18px] w-[18px] shrink-0" />
-            {!collapsed && <span className="truncate">{item.label}</span>}
+            {!collapsed && <span className="truncate">{label}</span>}
             {collapsed && (
               <span className="pointer-events-none absolute left-full z-50 ml-2 hidden whitespace-nowrap rounded-md bg-neutral-900 px-2 py-1 text-xs font-medium text-white group-hover:block">
-                {item.label}
+                {label}
               </span>
             )}
           </Link>
@@ -55,6 +59,7 @@ function NavLinks({
 }
 
 export function AppSidebar({ role }: { role: "student" | "lecturer" }) {
+  const t = useTranslations("layout");
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useSidebarCollapsed();
   const [mobileOpen, setMobileOpen] = useMobileSidebarOpen();
@@ -111,14 +116,14 @@ export function AppSidebar({ role }: { role: "student" | "lecturer" }) {
               "flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900",
               collapsed && "justify-center px-0",
             )}
-            aria-label={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+            aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
           >
             {collapsed ? (
               <PanelLeftOpen className="h-[18px] w-[18px]" />
             ) : (
               <PanelLeftClose className="h-[18px] w-[18px]" />
             )}
-            {!collapsed && <span>Thu gọn</span>}
+            {!collapsed && <span>{t("collapse")}</span>}
           </button>
         </div>
       </aside>
@@ -135,7 +140,7 @@ export function AppSidebar({ role }: { role: "student" | "lecturer" }) {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={role === "student" ? "Menu điều hướng học viên" : "Menu điều hướng giảng viên"}
+            aria-label={role === "student" ? t("studentMenu") : t("lecturerMenu")}
             className="absolute inset-y-0 left-0 flex h-full w-72 max-w-[80vw] flex-col bg-white shadow-xl"
           >
             <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-4">
@@ -143,7 +148,7 @@ export function AppSidebar({ role }: { role: "student" | "lecturer" }) {
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                aria-label="Đóng menu"
+                aria-label={t("closeMenu")}
                 className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
               >
                 <X className="h-[18px] w-[18px]" />

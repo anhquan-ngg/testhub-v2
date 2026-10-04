@@ -1,0 +1,22 @@
+{
+  "avatarAlt": "Profile photo",
+  "emailLabel": "Email:",
+  "updatedProfilePictureSuccessfully": "Updated profile picture successfully!",
+  "errorUploadingPhotoPleaseTryAgain": "Error uploading photo. Please try again.",
+  "instructorNameCannotBeLeftBlank": "Instructor name cannot be left blank",
+  "updatedInstructorInformationSuccessfully": "Updated instructor information successfully!",
+  "errorUpdatingInstructorInformationPleaseTry": "Error updating instructor information. Please try again.",
+  "newPasswordDoesNotMatch": "New password does not match!",
+  "passwordChangeSuccessful": "Password change successful!",
+  "errorWhenChangingPasswordPleaseTry": "Error when changing password. Please try again.",
+  "personalPhoto": "Personal photo",
+  "uploading": "Uploading...",
+  "changePhoto": "Change photo",
+  "personalInformation": "Personal information",
+  "userName": "User name",
+  "updateInformation": "Update information",
+  "changePassword": "Change password",
+  "currentPassword": "Current password:",
+  "newPassword": "New password:",
+  "confirmPassword": "Confirm password:"
+}

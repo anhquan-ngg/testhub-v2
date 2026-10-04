@@ -7,9 +7,18 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+// `labelKey` là key trong namespace `nav` của src/messages/*/shared/navigation.json.
+export type NavLabelKey =
+  | "exams"
+  | "results"
+  | "account"
+  | "overview"
+  | "examManagement"
+  | "questionBank";
+
 export type NavItem = {
   href: string;
-  label: string;
+  labelKey: NavLabelKey;
   icon: LucideIcon;
   match: (pathname: string) => boolean;
 };
@@ -17,19 +26,19 @@ export type NavItem = {
 export const studentNavItems: NavItem[] = [
   {
     href: "/home",
-    label: "Bài thi",
+    labelKey: "exams",
     icon: FileText,
     match: (pathname) => pathname === "/home",
   },
   {
     href: "/result",
-    label: "Kết quả",
+    labelKey: "results",
     icon: ClipboardCheck,
     match: (pathname) => pathname.startsWith("/result"),
   },
   {
     href: "/profile",
-    label: "Tài khoản",
+    labelKey: "account",
     icon: User,
     match: (pathname) => pathname === "/profile",
   },
@@ -38,25 +47,25 @@ export const studentNavItems: NavItem[] = [
 export const lecturerNavItems: NavItem[] = [
   {
     href: "/lecturer",
-    label: "Tổng quan",
+    labelKey: "overview",
     icon: LayoutDashboard,
     match: (pathname) => pathname === "/lecturer",
   },
   {
     href: "/lecturer/exams",
-    label: "Quản lý bài thi",
+    labelKey: "examManagement",
     icon: FileText,
     match: (pathname) => pathname.startsWith("/lecturer/exams"),
   },
   {
     href: "/lecturer/questions",
-    label: "Ngân hàng câu hỏi",
+    labelKey: "questionBank",
     icon: HelpCircle,
     match: (pathname) => pathname.startsWith("/lecturer/questions"),
   },
   {
     href: "/lecturer/profile",
-    label: "Tài khoản",
+    labelKey: "account",
     icon: User,
     match: (pathname) => pathname === "/lecturer/profile",
   },

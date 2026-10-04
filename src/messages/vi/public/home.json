@@ -1,0 +1,163 @@
+{
+  "landing": {
+    "nav": {
+      "features": "Tính năng",
+      "pricing": "Bảng giá",
+      "docs": "Tài liệu",
+      "about": "Về chúng tôi",
+      "login": "Đăng nhập",
+      "signup": "Đăng ký ngay"
+    },
+    "hero": {
+      "eyebrow": "Nền tảng thi trực tuyến bảo mật cho giáo dục hiện đại",
+      "title": "Quản lý và tổ chức thi online",
+      "highlight": "thông minh, chống gian lận.",
+      "description": "Testhub giúp nhà trường, trung tâm và doanh nghiệp tạo đề, mời thí sinh, giám sát phòng thi, chấm điểm và phân tích kết quả trong một hệ thống duy nhất.",
+      "startFree": "Bắt đầu miễn phí",
+      "viewDemo": "Xem Demo"
+    },
+    "stats": {
+      "completion": "tỷ lệ hoàn thành bài thi",
+      "monthlyStudents": "thí sinh mỗi tháng",
+      "setupTime": "12 phút",
+      "toCreate": "để tạo một kỳ thi"
+    },
+    "trustedBy": "Được tin dùng bởi các đơn vị đào tạo và doanh nghiệp",
+    "mockup": {
+      "room": "Phòng thi #A12",
+      "monitored": "Đang giám sát",
+      "overview": "Tổng quan",
+      "students": "Thí sinh",
+      "alerts": "Cảnh báo",
+      "reports": "Báo cáo",
+      "ongoing": "Kỳ thi đang diễn ra",
+      "exam": "Kiểm tra giữa kỳ - Lớp 12A1",
+      "active": "48 đang làm bài",
+      "completed": "Hoàn thành",
+      "remaining": "Còn lại",
+      "scores": "Phổ điểm tạm tính",
+      "newAlerts": "Cảnh báo mới",
+      "tabSwitch": "Chuyển tab 2 lần",
+      "newDevice": "Đăng nhập thiết bị mới",
+      "disconnected": "Mất kết nối 18 giây"
+    },
+    "visual": {
+      "lockTab": "Khóa tab",
+      "oneDevice": "1 thiết bị",
+      "eventLog": "Log sự kiện",
+      "morning": "Ca sáng 08:00",
+      "afternoon": "Ca chiều 14:00",
+      "autoClose": "Tự động đóng đề",
+      "multipleChoice": "Trắc nghiệm",
+      "essay": "Tự luận",
+      "multipleAnswers": "Đáp án nhiều lựa chọn",
+      "importExcel": "Import Excel"
+    },
+    "features": {
+      "eyebrow": "Tính năng cốt lõi",
+      "title": "Một không gian điều hành kỳ thi được thiết kế cho độ tin cậy.",
+      "description": "Bento grid tập trung vào các quy trình quan trọng nhất: ngân hàng câu hỏi, cấu hình ca thi, giám sát và báo cáo.",
+      "library": {
+        "title": "Ngân hàng câu hỏi thông minh",
+        "description": "Quản lý câu hỏi trắc nghiệm, tự luận, câu hỏi nhóm và đáp án nhiều định dạng trong một thư viện tập trung."
+      },
+      "schedule": {
+        "title": "Tổ chức kỳ thi linh hoạt",
+        "description": "Hẹn giờ tự động, chia ca thi, cấu hình thời gian làm bài và luật nộp bài theo từng lớp học."
+      },
+      "security": {
+        "title": "Giám sát phòng thi và chống gian lận",
+        "description": "Khóa màn hình, cảnh báo vi phạm, giới hạn thiết bị đăng nhập và ghi nhận hành vi bất thường theo thời gian thực."
+      },
+      "analytics": {
+        "title": "Thống kê và báo cáo trực quan",
+        "description": "Biểu đồ phổ điểm, tỷ lệ hoàn thành, câu hỏi có độ khó cao và báo cáo xuất file cho giảng viên."
+      }
+    },
+    "steps": {
+      "eyebrow": "Cách thức hoạt động",
+      "title": "Từ đề thi đến báo cáo trong 4 bước rõ ràng.",
+      "description": "Quy trình đơn giản để giáo viên vận hành nhanh, trong khi hệ thống vẫn đảm bảo bảo mật và khả năng theo dõi chi tiết.",
+      "create": {
+        "title": "Tạo đề",
+        "description": "Nhập câu hỏi, trộn đề, gán mức độ và cấu hình thang điểm chỉ trong vài phút."
+      },
+      "invite": {
+        "title": "Mời thí sinh",
+        "description": "Gửi mã phòng thi, import danh sách lớp hoặc chia link truy cập bảo mật."
+      },
+      "take": {
+        "title": "Thi trực tuyến",
+        "description": "Thí sinh làm bài trên trình duyệt, hệ thống tự động giám sát và ghi nhận sự kiện."
+      },
+      "report": {
+        "title": "Chấm điểm và báo cáo",
+        "description": "Tự động chấm bài trắc nghiệm, tổng hợp kết quả và phân tích chất lượng đề thi."
+      }
+    },
+    "plans": {
+      "eyebrow": "Bảng giá minh bạch",
+      "title": "Chọn gói phù hợp với quy mô đào tạo của bạn.",
+      "description": "Bắt đầu miễn phí, nâng cấp khi số lượng kỳ thi và nhu cầu giám sát tăng lên.",
+      "month": "/tháng",
+      "mostPopular": "Phổ biến nhất",
+      "individual": {
+        "name": "Cá nhân / Giáo viên",
+        "price": "0đ",
+        "description": "Phù hợp cho giáo viên bắt đầu số hóa bài kiểm tra.",
+        "cta": "Bắt đầu miễn phí",
+        "feature1": "3 kỳ thi mỗi tháng",
+        "feature2": "100 thí sinh / kỳ thi",
+        "feature3": "Ngân hàng câu hỏi cơ bản",
+        "feature4": "Báo cáo điểm tổng quan"
+      },
+      "center": {
+        "name": "Trung tâm",
+        "price": "799k",
+        "description": "Gói phổ biến cho trung tâm đào tạo và khoa bộ môn.",
+        "cta": "Dùng thử 14 ngày",
+        "feature1": "Không giới hạn kỳ thi",
+        "feature2": "2,000 thí sinh / tháng",
+        "feature3": "Chống gian lận nâng cao",
+        "feature4": "Phân quyền giáo viên",
+        "feature5": "Xuất báo cáo Excel/PDF"
+      },
+      "enterprise": {
+        "name": "Doanh nghiệp",
+        "price": "Liên hệ",
+        "description": "Triển khai riêng cho doanh nghiệp, trường đại học và hệ thống lớn.",
+        "cta": "Liên hệ tư vấn",
+        "feature1": "SSO và tên miền riêng",
+        "feature2": "SLA và hỗ trợ ưu tiên",
+        "feature3": "Tích hợp API/LMS",
+        "feature4": "Lưu trữ và bảo mật tùy chỉnh"
+      }
+    },
+    "cta": {
+      "eyebrow": "Sẵn sàng triển khai?",
+      "title": "Tạo phòng thi đầu tiên của bạn trong hôm nay.",
+      "description": "Dùng thử miễn phí để trải nghiệm tạo đề, mời thí sinh và xem báo cáo mẫu trước khi nâng cấp gói."
+    },
+    "footer": {
+      "email": "Email",
+      "description": "Testhub là nền tảng quản lý thi trực tuyến dành cho nhà trường, trung tâm và doanh nghiệp cần một hệ thống bảo mật, dễ dùng và có khả năng mở rộng.",
+      "product": "Sản phẩm",
+      "resources": "Tài nguyên",
+      "company": "Công ty",
+      "security": "Bảo mật",
+      "roadmap": "Lộ trình",
+      "apiGuide": "Hướng dẫn API",
+      "examTemplates": "Mẫu đề thi",
+      "aboutTesthub": "Về Testhub",
+      "contact": "Liên hệ",
+      "partners": "Đối tác",
+      "careers": "Tuyển dụng",
+      "newsletter": "Nhận bản tin",
+      "newsletterDescription": "Cập nhật tính năng mới, tài liệu vận hành kỳ thi và mẹo chống gian lận.",
+      "subscribe": "Đăng ký nhận bản tin",
+      "rights": "All rights reserved.",
+      "terms": "Điều khoản",
+      "support": "Hỗ trợ"
+    }
+  }
+}

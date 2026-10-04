@@ -1,0 +1,22 @@
+{
+  "greeting": "Xin chào, {name}",
+  "statManagedExams": "Bài thi đang quản lý",
+  "statLiveExams": "Đang mở / diễn ra",
+  "statPendingRegistrations": "Chờ duyệt đăng ký",
+  "statApprovedRegistrations": "Lượt đăng ký đã duyệt",
+  "pendingRegistrations": "{count} lượt đăng ký đang chờ bạn duyệt.",
+  "uncategorized": "Chưa phân loại",
+  "anErrorOccurredWhileLoadingThe": "Có lỗi xảy ra khi tải dữ liệu tổng quan.",
+  "overview": "Tổng quan",
+  "friend": "bạn",
+  "thereAreNoRegistrationsPendingApproval": "Không có lượt đăng ký nào đang chờ duyệt.",
+  "theExamIsAboutToTake": "Bài thi sắp diễn ra &amp; đang mở",
+  "youDonTHaveAnyUpcoming": "Bạn chưa có bài thi nào sắp diễn ra hoặc đang mở.",
+  "open": "Đang mở",
+  "waitingForApproval": "chờ duyệt",
+  "aboutToOpen": "Sắp mở",
+  "viewReport": "Xem báo cáo",
+  "scoreSpectrumTestBeingAdministered": "Phổ điểm — bài thi đang quản lý",
+  "official": "Chính thức",
+  "practice": "Luyện tập"
+}
