@@ -49,7 +49,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "@/types/backend-enums";
 import {
   AlertDialog,
   AlertDialogAction,

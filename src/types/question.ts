@@ -1,4 +1,4 @@
-import { QuestionFormat, QuestionType } from "@prisma/client";
+import type { QuestionFormat, QuestionType } from "@/types/backend-enums";
 
 export interface QuestionOption {
   text: string;
