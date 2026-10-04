@@ -2,7 +2,7 @@
 
 > Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-**Cập nhật lần cuối:** 2026-10-04 — chuyển sang route `src/app/[locale]`, điều hướng theo locale và dời message sang `src/messages`.
+**Cập nhật lần cuối:** 2026-10-05 — form đăng nhập/đăng ký hỗ trợ gửi bằng phím Enter.
 
 ## Cách cập nhật file này
 
@@ -27,6 +27,8 @@
 - State toàn cục bằng Redux Toolkit (`src/store/`); thông tin người dùng nạp bởi `src/components/UserLoader.tsx` qua `GET /auth/me`.
 - Thông báo realtime qua `src/components/providers/SocketProvider.tsx` (namespace `/notifications`); trạng thái phòng thi và giám sát qua SSE (`ENDPOINTS.EXAM_RUNTIME.EVENTS`, `MONITOR_EVENTS`).
 - Upload file theo luồng presigned URL + confirm — `src/hooks/useFiles.ts`.
+- Font chữ nội dung và tiêu đề đều dùng Inter từ `next/font/google` qua `--font-body` trong `src/app/[locale]/layout.tsx`; `src/app/globals.css` ánh xạ biến này cho body, heading và Tailwind. Stylesheet công khai của `https://teencare.co/vn` khai báo Inter cho phần lớn typography; đây là tham chiếu cho thay đổi.
+- Trang `/login` và `/signup` dùng `<form onSubmit>`; nút chính có `type="submit"`, nút đăng nhập Google/Outlook có `type="button"`. Bấm Enter trong ô cuối gửi qua cùng hàm xử lý như khi bấm nút chính.
 
 ## i18n (vi/en) — tiến độ
 
@@ -72,6 +74,17 @@
 | `next build --turbopack` sau chuyển route | Pass; lần đầu lỗi tải Google Font, lần chạy lại thành công |
 | `scripts/smoke-i18n.cjs` sau chuyển route | Pass 10 trường hợp (5 lần tải trang vi/en, 5 chuyển hướng; locale trong URL ưu tiên hơn cookie) |
 | Test | Repo chưa có test |
+
+## Kết quả kiểm tra đã chạy (2026-10-05)
+
+| Lệnh | Kết quả |
+| --- | --- |
+| TypeScript `tsc --noEmit --incremental false` (Node 22 trực tiếp) | Pass |
+| ESLint `src/app/[locale]/layout.tsx` (Node 22 trực tiếp) | Pass |
+| `next build --turbopack` (Node 22 trực tiếp) | Pass, tải và biên dịch font Inter thành công |
+| TypeScript, ESLint layout, `next build --turbopack` sau khi dùng Inter cho tiêu đề | Pass cả ba |
+| TypeScript và `next build --turbopack` sau thay đổi form đăng nhập/đăng ký | Pass cả hai |
+| ESLint `src/app/[locale]/{login,signup}/page.tsx` | Fail do 2 lỗi tồn đọng: `Mail` không dùng trong login (warning), `as any` trong signup (error) |
 
 ## Công việc đang làm
 

@@ -101,99 +101,107 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
-            {/* Email Field */}
-            <div className="space-y-2">
-              <Label
-                htmlFor="email"
-                className="block text-left text-black text-sm font-medium"
-              >
-                {t("email")} <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder=""
-                  className="pl-10 h-12 rounded-full border-gray-300"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-2">
-              <Label
-                htmlFor="password"
-                className="block text-left text-black text-sm font-medium"
-              >
-                {t("password")} <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder=""
-                  className="pl-10 pr-10 h-12 rounded-full border-gray-300"
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 hover:cursor-pointer" />
-                  ) : (
-                    <Eye className="h-5 w-5 hover:cursor-pointer" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Login Button */}
-            <Button
-              className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base"
-              onClick={(e) => {
+          <CardContent>
+            <form
+              className="space-y-6"
+              noValidate
+              onSubmit={(e) => {
                 e.preventDefault();
                 handleLogin({ email, password });
               }}
             >
-              {t("login.title")}
-            </Button>
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="email"
+                  className="block text-left text-black text-sm font-medium"
+                >
+                  {t("email")} <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder=""
+                    className="pl-10 h-12 rounded-full border-gray-300"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+              </div>
 
-            <div className="relative flex items-center gap-2">
-              <Separator className="flex-1 bg-gray-200" />
-              <span className="text-xs text-muted-foreground uppercase px-2">
-                {t("or")}
-              </span>
-              <Separator className="flex-1 bg-gray-200" />
-            </div>
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label
+                  htmlFor="password"
+                  className="block text-left text-black text-sm font-medium"
+                >
+                  {t("password")} <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder=""
+                    className="pl-10 pr-10 h-12 rounded-full border-gray-300"
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 hover:cursor-pointer" />
+                    ) : (
+                      <Eye className="h-5 w-5 hover:cursor-pointer" />
+                    )}
+                  </button>
+                </div>
+              </div>
 
-            <div className="w-full flex flex-col gap-3 justify-center">
-              {/* Gmail Login Button */}
+              {/* Login Button */}
               <Button
-                variant="outline"
-                className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
-                onClick={() => handleGoogleLogin()}
+                type="submit"
+                className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base"
               >
-                <GoogleLogo />
-                {t("login.withGmail")}
+                {t("login.title")}
               </Button>
 
-              {/* Outlook Login Button */}
-              <Button
-                variant="outline"
-                className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
-                onClick={() => handleOutlookLogin()}
-              >
-                <OutlookLogo />
-                {t("login.withOutlook")}
-              </Button>
-            </div>
+              <div className="relative flex items-center gap-2">
+                <Separator className="flex-1 bg-gray-200" />
+                <span className="text-xs text-muted-foreground uppercase px-2">
+                  {t("or")}
+                </span>
+                <Separator className="flex-1 bg-gray-200" />
+              </div>
+
+              <div className="w-full flex flex-col gap-3 justify-center">
+                {/* Gmail Login Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
+                  onClick={() => handleGoogleLogin()}
+                >
+                  <GoogleLogo />
+                  {t("login.withGmail")}
+                </Button>
+
+                {/* Outlook Login Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
+                  onClick={() => handleOutlookLogin()}
+                >
+                  <OutlookLogo />
+                  {t("login.withOutlook")}
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       </div>
