@@ -1,0 +1,163 @@
+{
+  "landing": {
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "docs": "Resources",
+      "about": "About us",
+      "login": "Log in",
+      "signup": "Sign up now"
+    },
+    "hero": {
+      "eyebrow": "A secure online exam platform for modern education",
+      "title": "Manage and run online exams",
+      "highlight": "smarter and more securely.",
+      "description": "Testhub helps schools, training centers, and businesses create exams, invite candidates, monitor sessions, grade submissions, and analyze results in one place.",
+      "startFree": "Get started for free",
+      "viewDemo": "View demo"
+    },
+    "stats": {
+      "completion": "exam completion rate",
+      "monthlyStudents": "candidates each month",
+      "setupTime": "12 min",
+      "toCreate": "to set up an exam"
+    },
+    "trustedBy": "Trusted by education providers and businesses",
+    "mockup": {
+      "room": "Exam room #A12",
+      "monitored": "Under monitoring",
+      "overview": "Overview",
+      "students": "Candidates",
+      "alerts": "Alerts",
+      "reports": "Reports",
+      "ongoing": "EXAM IN PROGRESS",
+      "exam": "Midterm exam - Class 12A1",
+      "active": "48 taking the exam",
+      "completed": "Completed",
+      "remaining": "Time left",
+      "scores": "Preliminary score distribution",
+      "newAlerts": "New alerts",
+      "tabSwitch": "Switched tabs twice",
+      "newDevice": "Signed in on a new device",
+      "disconnected": "Disconnected for 18 seconds"
+    },
+    "visual": {
+      "lockTab": "Tab lock",
+      "oneDevice": "1 device",
+      "eventLog": "Event log",
+      "morning": "Morning 08:00",
+      "afternoon": "Afternoon 14:00",
+      "autoClose": "Automatic closing",
+      "multipleChoice": "Multiple choice",
+      "essay": "Essay",
+      "multipleAnswers": "Multiple answers",
+      "importExcel": "Excel import"
+    },
+    "features": {
+      "eyebrow": "Core features",
+      "title": "An exam workspace built for reliability.",
+      "description": "Manage the essentials in one place: question banks, exam schedules, monitoring, and reports.",
+      "library": {
+        "title": "Smart question bank",
+        "description": "Keep multiple choice, essay, grouped questions, and different answer formats in one central library."
+      },
+      "schedule": {
+        "title": "Flexible exam scheduling",
+        "description": "Set automatic timers, exam sessions, time limits, and submission rules for each class."
+      },
+      "security": {
+        "title": "Monitoring and cheating prevention",
+        "description": "Lock screens, flag violations, limit login devices, and record unusual activity in real time."
+      },
+      "analytics": {
+        "title": "Clear analytics and reports",
+        "description": "Review score distributions, completion rates, difficult questions, and downloadable instructor reports."
+      }
+    },
+    "steps": {
+      "eyebrow": "How it works",
+      "title": "From exam creation to reporting in four clear steps.",
+      "description": "A simple workflow helps teachers get started quickly while keeping exams secure and easy to monitor.",
+      "create": {
+        "title": "Create an exam",
+        "description": "Add questions, shuffle versions, set difficulty levels, and configure scoring in minutes."
+      },
+      "invite": {
+        "title": "Invite candidates",
+        "description": "Share an exam code, import a class list, or send a secure access link."
+      },
+      "take": {
+        "title": "Take the exam online",
+        "description": "Candidates work in their browser while the system monitors and records events."
+      },
+      "report": {
+        "title": "Grade and report",
+        "description": "Grade objective questions automatically, summarize results, and analyze exam quality."
+      }
+    },
+    "plans": {
+      "eyebrow": "Transparent pricing",
+      "title": "Choose a plan that fits your organization.",
+      "description": "Start free and upgrade as your exam volume and monitoring needs grow.",
+      "month": "/month",
+      "mostPopular": "Most popular",
+      "individual": {
+        "name": "Individual / Teacher",
+        "price": "Free",
+        "description": "For teachers starting to move assessments online.",
+        "cta": "Get started for free",
+        "feature1": "3 exams per month",
+        "feature2": "100 candidates per exam",
+        "feature3": "Basic question bank",
+        "feature4": "Score overview reports"
+      },
+      "center": {
+        "name": "Training center",
+        "price": "799k VND",
+        "description": "A popular plan for training centers and academic departments.",
+        "cta": "Try it for 14 days",
+        "feature1": "Unlimited exams",
+        "feature2": "2,000 candidates per month",
+        "feature3": "Advanced cheating prevention",
+        "feature4": "Teacher access controls",
+        "feature5": "Export Excel/PDF reports"
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "price": "Contact us",
+        "description": "A dedicated deployment for businesses, universities, and large organizations.",
+        "cta": "Contact sales",
+        "feature1": "SSO and custom domain",
+        "feature2": "SLA and priority support",
+        "feature3": "API/LMS integration",
+        "feature4": "Custom storage and security"
+      }
+    },
+    "cta": {
+      "eyebrow": "Ready to get started?",
+      "title": "Create your first exam room today.",
+      "description": "Try exam creation, candidate invitations, and sample reports for free before upgrading."
+    },
+    "footer": {
+      "email": "Email",
+      "description": "Testhub is an online exam platform for schools, training centers, and businesses that need a secure, easy to use, and scalable system.",
+      "product": "Product",
+      "resources": "Resources",
+      "company": "Company",
+      "security": "Security",
+      "roadmap": "Roadmap",
+      "apiGuide": "API guide",
+      "examTemplates": "Exam templates",
+      "aboutTesthub": "About Testhub",
+      "contact": "Contact",
+      "partners": "Partners",
+      "careers": "Careers",
+      "newsletter": "Newsletter",
+      "newsletterDescription": "Get product updates, exam guides, and tips for preventing cheating.",
+      "subscribe": "Subscribe to newsletter",
+      "rights": "All rights reserved.",
+      "terms": "Terms",
+      "support": "Support"
+    }
+  }
+}

@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import apiClient from "@/lib/api-client";
 import { useAppDispatch, useAppSelector } from "@/store/hook";
 import { clearAuth, setUser } from "@/store/slices/authSlice";
-import { usePathname } from "next/navigation";
+import { usePathname } from "@/i18n/navigation";
 
 const PUBLIC_PATHS = ["/", "/login", "/signup"];
 

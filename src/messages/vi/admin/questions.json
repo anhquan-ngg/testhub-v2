@@ -1,0 +1,15 @@
+{
+  "pageOf": "Trang {page} / {total}",
+  "next": "Sau",
+  "loadQuestionsError": "Có lỗi xảy ra khi tải dữ liệu câu hỏi: {message}",
+  "questionBank": "Ngân hàng câu hỏi",
+  "seeListOfQuestionsInThe": "Xem danh sách câu hỏi trong hệ thống",
+  "searchQuestions": "Tìm kiếm câu hỏi...",
+  "question": "Câu hỏi",
+  "creator": "Người tạo",
+  "topic": "Chủ đề",
+  "type": "Loại",
+  "format": "Định dạng",
+  "answer": "Đáp án",
+  "before": "Trước"
+}

@@ -1,0 +1,9 @@
+{
+  "fileNotSelected": "File not selected",
+  "creatingUploadUrlFailed": "Creating upload URL failed",
+  "uploadFileFailed": "Upload file failed",
+  "findingAndUploadingUrlFailed": "Finding and uploading URL failed",
+  "unableToGetFileList": "Unable to get file list",
+  "unableToGetDownloadUrl": "Unable to get download URL",
+  "fileDeletionFailed": "File deletion failed"
+}

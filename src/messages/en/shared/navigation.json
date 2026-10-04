@@ -1,0 +1,22 @@
+{
+  "nav": {
+    "exams": "Exams",
+    "results": "Results",
+    "account": "Account",
+    "overview": "Overview",
+    "examManagement": "Exam management",
+    "questionBank": "Question bank"
+  },
+  "layout": {
+    "openNavigation": "Open navigation menu",
+    "closeMenu": "Close menu",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "collapse": "Collapse",
+    "studentMenu": "Student navigation menu",
+    "lecturerMenu": "Lecturer navigation menu",
+    "defaultStudentName": "Student",
+    "defaultLecturerName": "Lecturer",
+    "profile": "Profile"
+  }
+}

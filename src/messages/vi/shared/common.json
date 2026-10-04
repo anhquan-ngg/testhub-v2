@@ -1,0 +1,31 @@
+{
+  "metadata": {
+    "title": "Testhub - Hệ thống thi trực tuyến",
+    "description": "Nền tảng thi trực tuyến bảo mật cho giáo dục hiện đại."
+  },
+  "language": {
+    "label": "Ngôn ngữ"
+  },
+  "common": {
+    "loading": "Đang tải...",
+    "logout": "Đăng xuất"
+  },
+  "enums": {
+    "userRole": {
+      "ADMIN": "Quản trị viên",
+      "LECTURER": "Giảng viên",
+      "STUDENT": "Sinh viên"
+    },
+    "questionType": {
+      "SINGLE_CHOICE": "Trắc nghiệm một đáp án",
+      "MULTIPLE_CHOICE": "Trắc nghiệm nhiều đáp án",
+      "ESSAY": "Tự luận"
+    },
+    "questionFormat": {
+      "KNOWLEDGE": "Nhận biết",
+      "UNDERSTANDING": "Thông hiểu",
+      "APPLYING": "Vận dụng",
+      "ADVANCED": "Nâng cao"
+    }
+  }
+}

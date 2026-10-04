@@ -1,0 +1,21 @@
+{
+  "totalExams": "Tổng số bài: {count}",
+  "minutesSeconds": "{minutes} phút {seconds} giây",
+  "excellent": "Xuất sắc",
+  "good": "Tốt",
+  "medium": "Trung bình",
+  "weak": "Yếu",
+  "notRatedYet": "Chưa đánh giá",
+  "examResults": "Kết quả bài thi",
+  "thereAreNoTestResultsYet": "Chưa có kết quả bài thi",
+  "youHaveNotCompletedAnyExams": "Bạn chưa hoàn thành bài thi nào. Hãy bắt đầu làm bài thi nhé!",
+  "practice": "Luyện tập",
+  "official": "Chính thức",
+  "topic": "Chủ đề:",
+  "point": "Điểm:",
+  "timeToDoHomework": "Thời gian làm bài",
+  "status": "Trạng thái",
+  "complete": "Hoàn thành",
+  "numberOfQuestions": "Số câu hỏi",
+  "seeDetailedAnswer": "Xem chi tiết câu trả lời"
+}

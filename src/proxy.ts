@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify, JWTPayload } from "jose";
+import createMiddleware from "next-intl/middleware";
+import { isLocale } from "@/i18n/config";
+import { routing } from "@/i18n/routing";
+
+const handleI18n = createMiddleware(routing);
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 const ACCESS_COOKIE_KEY = "access_token";
@@ -126,11 +131,17 @@ async function refreshAuth(request: NextRequest): Promise<{
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const [, segment, ...rest] = pathname.split("/");
+  const locale = isLocale(segment) ? segment : null;
+  if (!locale) return handleI18n(request);
+
+  const localPath = `/${rest.join("/")}`;
+  const localized = (path: string) => `/${locale}${path}`;
   const isPublicPath =
-    pathname === "/login" || pathname === "/signup" || pathname === "/";
+    localPath === "/login" || localPath === "/signup" || localPath === "/";
   const protectedPaths = Object.values(roleBasedRoutes).flat();
   const isProtectedPath = protectedPaths.some((path) =>
-    pathname.startsWith(path),
+    localPath === path || localPath.startsWith(`${path}/`),
   );
 
   const accessToken = request.cookies.get(ACCESS_COOKIE_KEY)?.value;
@@ -148,11 +159,11 @@ export async function proxy(request: NextRequest) {
   if (!payload) {
     if (isProtectedPath) {
       return clearAuthCookies(
-        NextResponse.redirect(new URL("/login", request.url)),
+        NextResponse.redirect(new URL(localized("/login"), request.url)),
       );
     }
 
-    return NextResponse.next();
+    return handleI18n(request);
   }
 
   const userRole = payload.role as keyof typeof roleBasedRoutes;
@@ -161,22 +172,22 @@ export async function proxy(request: NextRequest) {
     switch (userRole) {
       case "ADMIN":
         return withSetCookies(
-          NextResponse.redirect(new URL("/dashboard", request.url)),
+          NextResponse.redirect(new URL(localized("/dashboard"), request.url)),
           refreshedSetCookies,
         );
       case "STUDENT":
         return withSetCookies(
-          NextResponse.redirect(new URL("/home", request.url)),
+          NextResponse.redirect(new URL(localized("/home"), request.url)),
           refreshedSetCookies,
         );
       case "LECTURER":
         return withSetCookies(
-          NextResponse.redirect(new URL("/lecturer", request.url)),
+          NextResponse.redirect(new URL(localized("/lecturer"), request.url)),
           refreshedSetCookies,
         );
       default:
         return withSetCookies(
-          NextResponse.redirect(new URL("/login", request.url)),
+          NextResponse.redirect(new URL(localized("/login"), request.url)),
           refreshedSetCookies,
         );
     }
@@ -185,20 +196,20 @@ export async function proxy(request: NextRequest) {
   if (isProtectedPath) {
     const allowedRoutes = roleBasedRoutes[userRole] || [];
     const isAuthorized = allowedRoutes.some((route) =>
-      pathname.startsWith(route),
+      localPath === route || localPath.startsWith(`${route}/`),
     );
 
     if (!isAuthorized) {
       return withSetCookies(
-        NextResponse.redirect(new URL("/unauthorized", request.url)),
+        NextResponse.redirect(new URL(localized("/unauthorized"), request.url)),
         refreshedSetCookies,
       );
     }
   }
 
-  return withSetCookies(NextResponse.next(), refreshedSetCookies);
+  return withSetCookies(handleI18n(request), refreshedSetCookies);
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
 };

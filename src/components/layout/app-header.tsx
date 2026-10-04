@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { ChevronDown, Menu, PanelLeftClose, PanelLeftOpen, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSelector } from "@/store/hook";
 import NotificationBell from "@/components/NotificationBell";
+import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { useSidebarCollapsed, useMobileSidebarOpen } from "./sidebar-store";
 import { lecturerNavItems, studentNavItems } from "./nav-items";
 
@@ -34,6 +36,9 @@ export function AppHeader({
   role: "student" | "lecturer";
   profileHref: string;
 }) {
+  const t = useTranslations("layout");
+  const tNav = useTranslations("nav");
+  const tCommon = useTranslations("common");
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useSidebarCollapsed();
@@ -51,7 +56,7 @@ export function AppHeader({
         type="button"
         onClick={() => setMobileSidebarOpen(true)}
         className="flex shrink-0 cursor-pointer items-center justify-center rounded-md p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 md:hidden"
-        aria-label="Mở menu điều hướng"
+        aria-label={t("openNavigation")}
       >
         <Menu className="h-[18px] w-[18px]" />
       </button>
@@ -59,7 +64,7 @@ export function AppHeader({
         type="button"
         onClick={() => setCollapsed(!collapsed)}
         className="hidden shrink-0 cursor-pointer items-center justify-center rounded-md p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 md:flex"
-        aria-label={collapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+        aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
       >
         {collapsed ? (
           <PanelLeftOpen className="h-[18px] w-[18px]" />
@@ -69,10 +74,11 @@ export function AppHeader({
       </button>
 
       <span className="truncate text-sm font-medium text-neutral-500">
-        {activeItem?.label ?? "TESTHUB"}
+        {activeItem ? tNav(activeItem.labelKey) : "TESTHUB"}
       </span>
 
       <div className="ml-auto flex items-center gap-2">
+        <LanguageSwitcher />
         <NotificationBell />
         <div className="hidden h-6 w-px bg-neutral-200 sm:block" />
         <DropdownMenu>
@@ -85,7 +91,10 @@ export function AppHeader({
                 {initials}
               </span>
               <span className="hidden max-w-[140px] truncate text-sm font-medium text-neutral-800 sm:inline">
-                {fullName || (role === "student" ? "Học viên" : "Giảng viên")}
+                {fullName ||
+                  (role === "student"
+                    ? t("defaultStudentName")
+                    : t("defaultLecturerName"))}
               </span>
               <ChevronDown className="hidden h-4 w-4 text-neutral-400 sm:inline" />
             </Button>
@@ -96,7 +105,7 @@ export function AppHeader({
               onClick={() => router.push(profileHref)}
             >
               <UserIcon className="mr-1 h-4 w-4" />
-              Thông tin cá nhân
+              {t("profile")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -104,7 +113,7 @@ export function AppHeader({
               className="cursor-pointer"
               onClick={() => handleLogout()}
             >
-              Đăng xuất
+              {tCommon("logout")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

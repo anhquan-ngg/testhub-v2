@@ -3,13 +3,17 @@
 import { useState, useRef, useEffect } from "react";
 import { Bell, Check, CheckCheck, ExternalLink } from "lucide-react";
 import { useSocket } from "@/components/providers/SocketProvider";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useLocale, useTranslations } from "next-intl";
+import { intlLocales, isLocale, defaultLocale } from "@/i18n/config";
 
 export default function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useSocket();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const t = useTranslations("notifications");
+  const locale = useLocale();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -43,11 +47,13 @@ export default function NotificationBell() {
     const diffHour = Math.floor(diffMs / 3600000);
     const diffDay = Math.floor(diffMs / 86400000);
 
-    if (diffMin < 1) return "Vừa xong";
-    if (diffMin < 60) return `${diffMin} phút trước`;
-    if (diffHour < 24) return `${diffHour} giờ trước`;
-    if (diffDay < 7) return `${diffDay} ngày trước`;
-    return date.toLocaleDateString("vi-VN");
+    if (diffMin < 1) return t("justNow");
+    if (diffMin < 60) return t("minutesAgo", { count: diffMin });
+    if (diffHour < 24) return t("hoursAgo", { count: diffHour });
+    if (diffDay < 7) return t("daysAgo", { count: diffDay });
+    return date.toLocaleDateString(
+      intlLocales[isLocale(locale) ? locale : defaultLocale],
+    );
   };
 
   const getTypeColor = (type: string) => {
@@ -70,7 +76,7 @@ export default function NotificationBell() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-full hover:bg-white/30 transition-colors cursor-pointer"
-        title="Thông báo"
+        title={t("title")}
       >
         <Bell className="h-5 w-5 text-gray-700" />
         {unreadCount > 0 && (
@@ -85,14 +91,14 @@ export default function NotificationBell() {
         <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 overflow-hidden">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white">
-            <h3 className="font-semibold text-gray-800 text-sm">Thông báo</h3>
+            <h3 className="font-semibold text-gray-800 text-sm">{t("title")}</h3>
             {unreadCount > 0 && (
               <button
                 onClick={() => markAllAsRead()}
                 className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium cursor-pointer"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Đọc tất cả
+                {t("markAllRead")}
               </button>
             )}
           </div>
@@ -102,7 +108,7 @@ export default function NotificationBell() {
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-gray-400 text-sm">
                 <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                Không có thông báo mới
+                {t("empty")}
               </div>
             ) : (
               notifications.slice(0, 20).map((notif) => (

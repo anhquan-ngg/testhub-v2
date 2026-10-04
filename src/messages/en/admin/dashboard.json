@@ -1,0 +1,14 @@
+{
+  "brandTitle": "TESTHUB Admin",
+  "anErrorOccurredWhileLoadingStatistical": "An error occurred while loading statistical data. Please try again later.",
+  "dashboardDataHasBeenUpdatedAutomatically": "Dashboard data has been updated automatically.",
+  "adminConsole": "Admin console",
+  "totalUsers": "Total users",
+  "test": "Exams",
+  "questionBank": "Question bank",
+  "examTurn": "Exam attempts",
+  "scoreAnalysis": "Score analysis",
+  "averageScoreSpectrum": "Average score distribution",
+  "numberOfOfficialExams": "Number of official exams",
+  "numberOfPracticeTests": "Number of practice tests"
+}

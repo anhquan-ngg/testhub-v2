@@ -1,0 +1,9 @@
+{
+  "fileNotSelected": "Chưa chọn file",
+  "creatingUploadUrlFailed": "Tạo upload URL thất bại",
+  "uploadFileFailed": "Upload file thất bại",
+  "findingAndUploadingUrlFailed": "Tìm và upload URL thất bại",
+  "unableToGetFileList": "Không thể lấy danh sách file",
+  "unableToGetDownloadUrl": "Không thể lấy download URL",
+  "fileDeletionFailed": "Xoá file thất bại"
+}

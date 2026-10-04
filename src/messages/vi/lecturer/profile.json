@@ -1,0 +1,22 @@
+{
+  "avatarAlt": "Ảnh đại diện",
+  "emailLabel": "Email:",
+  "updatedProfilePictureSuccessfully": "Cập nhật ảnh đại diện thành công!",
+  "errorUploadingPhotoPleaseTryAgain": "Lỗi khi tải ảnh lên. Vui lòng thử lại.",
+  "instructorNameCannotBeLeftBlank": "Tên giảng viên không được để trống",
+  "updatedInstructorInformationSuccessfully": "Cập nhật thông tin giảng viên thành công!",
+  "errorUpdatingInstructorInformationPleaseTry": "Lỗi khi cập nhật thông tin giảng viên. Vui lòng thử lại.",
+  "newPasswordDoesNotMatch": "Mật khẩu mới không khớp!",
+  "passwordChangeSuccessful": "Thay đổi mật khẩu thành công!",
+  "errorWhenChangingPasswordPleaseTry": "Lỗi khi thay đổi mật khẩu. Vui lòng thử lại.",
+  "personalPhoto": "Ảnh cá nhân",
+  "uploading": "Đang tải lên...",
+  "changePhoto": "Thay đổi ảnh",
+  "personalInformation": "Thông tin cá nhân",
+  "userName": "Tên người dùng",
+  "updateInformation": "Cập nhật thông tin",
+  "changePassword": "Thay đổi mật khẩu",
+  "currentPassword": "Mật khẩu hiện tại :",
+  "newPassword": "Mật khẩu mới :",
+  "confirmPassword": "Xác nhận mật khẩu :"
+}

@@ -1,11 +1,13 @@
 import authServices from "@/services/authServices";
-import { useRouter } from "next/navigation";
+import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
+import { useTranslations } from "next-intl";
 import { useAppDispatch } from "@/store/hook";
 import { LoginPayload } from "@/types/auth.types";
 import { clearAuth, setUser } from "@/store/slices/authSlice";
 
 export const useAuth = () => {
+  const t = useTranslations("auth");
   const router = useRouter();
   const dispatch = useAppDispatch();
 
@@ -14,9 +16,7 @@ export const useAuth = () => {
       const loginResponse = await authServices.login(payload);
 
       if (loginResponse.status !== 200) {
-        toast.error(
-          "Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập.",
-        );
+        toast.error(t("login.failed"));
         return;
       }
 
@@ -38,7 +38,7 @@ export const useAuth = () => {
         }),
       );
 
-      toast.success("Đăng nhập thành công", {
+      toast.success(t("login.success"), {
         className: "bg-green-600 text-white border-none",
       });
 
@@ -51,7 +51,7 @@ export const useAuth = () => {
       }
     } catch (error) {
       console.error("Error when login:", error);
-      toast.error("Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập.");
+      toast.error(t("login.failed"));
     }
   };
   const handleGoogleLogin = async () => {
@@ -67,15 +67,15 @@ export const useAuth = () => {
       const res = await authServices.logout();
       if (res.status === 200) {
         dispatch(clearAuth());
-        toast.success("Đăng xuất thành công");
+        toast.success(t("logout.success"));
         router.push("/login");
       } else {
-        toast.error("Đăng xuất thất bại");
+        toast.error(t("logout.failed"));
       }
     } catch (error) {
       console.error("Error when logout:", error);
       dispatch(clearAuth());
-      toast.error("Đăng xuất thất bại");
+      toast.error(t("logout.failed"));
       router.push("/login");
     }
   };

@@ -1,15 +1,17 @@
+import { useTranslations } from "next-intl";
 import apiClient from "@/lib/api-client";
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
 
 export const useS3 = (bucket: string) => {
+  const t = useTranslations("shared.fileUpload");
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Upload file lên S3
   const uploadFile = async (file: File) => {
     if (!file) {
-      throw new Error("Chưa chọn file");
+      throw new Error(t("fileNotSelected"));
     }
     setLoading(true);
     try {
@@ -18,7 +20,7 @@ export const useS3 = (bucket: string) => {
         path: `${bucket}/${file.name}`,
       });
       if (res.status !== 201) {
-        throw new Error("Tạo upload URL thất bại");
+        throw new Error(t("creatingUploadUrlFailed"));
       }
       const url = res.data.url;
       // Upload file lên S3 qua presigned URL
@@ -28,14 +30,14 @@ export const useS3 = (bucket: string) => {
         },
       });
       if (uploadRes.status !== 200 && uploadRes.status !== 201) {
-        toast.error("Upload file thất bại");
-        throw new Error("Upload file thất bại");
+        toast.error(t("uploadFileFailed"));
+        throw new Error(t("uploadFileFailed"));
       }
 
       await fetchList(); // reload danh sách
       return true;
     } catch (error) {
-      toast.error("Upload file thất bại");
+      toast.error(t("uploadFileFailed"));
       return false;
     } finally {
       setLoading(false);
@@ -44,7 +46,7 @@ export const useS3 = (bucket: string) => {
 
   const checkAndUpload = async (file: File) => {
     if (!file) {
-      throw new Error("Chưa chọn file");
+      throw new Error(t("fileNotSelected"));
     }
     setLoading(true);
     try {
@@ -53,7 +55,7 @@ export const useS3 = (bucket: string) => {
       });
 
       if (res.status !== 201) {
-        throw new Error("Tìm và upload URL thất bại");
+        throw new Error(t("findingAndUploadingUrlFailed"));
       }
 
       if (res.data.exists) {
@@ -66,13 +68,13 @@ export const useS3 = (bucket: string) => {
         },
       });
       if (uploadRes.status !== 200 && uploadRes.status !== 201) {
-        throw new Error("Upload file thất bại");
+        throw new Error(t("uploadFileFailed"));
       }
 
       await fetchList(); // reload danh sách
       return true;
     } catch (error) {
-      toast.error("Upload file thất bại");
+      toast.error(t("uploadFileFailed"));
       return false;
     } finally {
       setLoading(false);
@@ -82,7 +84,7 @@ export const useS3 = (bucket: string) => {
   // Lấy danh sách file
   const fetchList = async () => {
     const res = await apiClient.get(`/s3/list?path=${bucket}`);
-    if (res.status !== 200) throw new Error("Không thể lấy danh sách file");
+    if (res.status !== 200) throw new Error(t("unableToGetFileList"));
     const data = res.data;
     setList(data);
     return data;
@@ -93,7 +95,7 @@ export const useS3 = (bucket: string) => {
     const res = await apiClient.get(
       `s3/create-download-url?objectName=${bucket}/${objectName}`,
     );
-    if (res.status !== 200) throw new Error("Không thể lấy download URL");
+    if (res.status !== 200) throw new Error(t("unableToGetDownloadUrl"));
     const { url } = res.data;
     return url;
   };
@@ -102,7 +104,7 @@ export const useS3 = (bucket: string) => {
     const res = await apiClient.delete(
       `s3/remove?objectName=${bucket}/${objectName}`,
     );
-    if (res.status !== 200) throw new Error("Xoá file thất bại");
+    if (res.status !== 200) throw new Error(t("fileDeletionFailed"));
     await fetchList(); // reload danh sách
   };
 

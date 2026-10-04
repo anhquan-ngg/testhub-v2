@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import axios from "axios";
 import Image from "next/image";
 import {
@@ -113,17 +114,6 @@ const buildChapterPaths = (chapters: ChapterOption[]) => {
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const optionKeys = ["A", "B", "C", "D", "E", "F"];
 
-const statusLabels: Record<QuestionImportRecord["status"], string> = {
-  UPLOADING: "Đang tải file",
-  QUEUED: "Đang chờ xử lý",
-  PARSING: "Đang phân tích",
-  REVIEW_REQUIRED: "Chờ duyệt",
-  COMMITTING: "Đang tạo câu hỏi",
-  COMPLETED: "Hoàn tất",
-  FAILED: "Xử lý thất bại",
-  CANCELLED: "Đã hủy",
-};
-
 const getErrorMessage = (error: unknown, fallback: string) => {
   if (axios.isAxiosError(error)) {
     const message = error.response?.data?.message;
@@ -141,6 +131,17 @@ export function QuestionImportDialog({
   examId,
   onCompleted,
 }: Props) {
+  const t = useTranslations("shared.questionImport");
+  const statusLabels: Record<QuestionImportRecord["status"], string> = {
+    UPLOADING: t("statusUploading"),
+    QUEUED: t("statusQueued"),
+    PARSING: t("statusParsing"),
+    REVIEW_REQUIRED: t("statusReviewRequired"),
+    COMMITTING: t("statusCommitting"),
+    COMPLETED: t("statusCompleted"),
+    FAILED: t("statusFailed"),
+    CANCELLED: t("statusCancelled"),
+  };
   const [file, setFile] = useState<File | null>(null);
   const [selectedTopicId, setSelectedTopicId] = useState(topicId ?? "");
   const [chapters, setChapters] = useState<ChapterOption[]>([]);
@@ -220,7 +221,7 @@ export function QuestionImportDialog({
         }
       } catch (error) {
         if (!cancelled) {
-          toast.error(getErrorMessage(error, "Không thể tải danh sách chapter"));
+          toast.error(getErrorMessage(error, t("unableToLoadChapterList")));
         }
       } finally {
         if (!cancelled) setIsLoadingChapters(false);
@@ -229,7 +230,7 @@ export function QuestionImportDialog({
     return () => {
       cancelled = true;
     };
-  }, [activeTopicId, open]);
+  }, [activeTopicId, open, t]);
 
   useEffect(() => {
     if (!open || !questionImport) return;
@@ -247,7 +248,7 @@ export function QuestionImportDialog({
         if (!cancelled) {
           // Fixed id: repeated failures update one toast instead of stacking.
           toast.error(
-            getErrorMessage(error, "Không thể cập nhật trạng thái import"),
+            getErrorMessage(error, t("unableToUpdateImportStatus")),
             { id: "question-import-poll-error" },
           );
           setPollTick((tick) => tick + 1);
@@ -258,7 +259,7 @@ export function QuestionImportDialog({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, questionImport, pollTick]);
+  }, [open, questionImport, pollTick, t]);
 
   useEffect(() => {
     if (questionImport?.status !== "REVIEW_REQUIRED" || items.length) return;
@@ -296,7 +297,7 @@ export function QuestionImportDialog({
         ),
       );
     } catch (error) {
-      toast.error(getErrorMessage(error, "Không thể tải dữ liệu review"));
+      toast.error(getErrorMessage(error, t("unableToDownloadReviewData")));
     } finally {
       setIsBusy(false);
     }
@@ -304,18 +305,18 @@ export function QuestionImportDialog({
 
   const handleUpload = async () => {
     if (!activeTopicId || !file) {
-      toast.error("Vui lòng chọn file và Topic");
+      toast.error(t("pleaseSelectFileAndTopic"));
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
-      toast.error("File import không được vượt quá 20 MB");
+      toast.error(t("importFilesMustNotExceed20"));
       return;
     }
     const extension = file.name.toLowerCase().split(".").pop();
     const sourceType: QuestionImportSourceType | null =
       extension === "docx" ? "DOCX" : extension === "xlsx" ? "XLSX" : null;
     if (!sourceType) {
-      toast.error("Chỉ hỗ trợ template .docx và .xlsx");
+      toast.error(t("onlyDocxAndXlsxTemplatesAre"));
       return;
     }
     const mimeType =
@@ -366,7 +367,7 @@ export function QuestionImportDialog({
         }
       }
       setQuestionImport(null);
-      toast.error(getErrorMessage(error, "Không thể tải và xử lý file import"));
+      toast.error(getErrorMessage(error, t("unableToLoadAndProcessImport")));
     } finally {
       setIsBusy(false);
     }
@@ -395,7 +396,7 @@ export function QuestionImportDialog({
     if (item.data.chapterPath?.length) {
       return (
         <div className="space-y-1">
-          <Badge className="bg-amber-100 text-amber-800">Tạo mới</Badge>
+          <Badge className="bg-amber-100 text-amber-800">{t("createNew")}</Badge>
           <div className="text-xs">
             {item.data.chapterPath.join(PATH_SEPARATOR)}
           </div>
@@ -407,7 +408,7 @@ export function QuestionImportDialog({
         chapterPaths.get(item.chapter_id) ?? item.chapter?.name ?? "Chapter"
       );
     }
-    return <span className="text-gray-500">Chưa xác định</span>;
+    return <span className="text-gray-500">{t("notDetermined")}</span>;
   };
 
   const updateOption = (
@@ -459,9 +460,9 @@ export function QuestionImportDialog({
       });
       setEditingItemId(null);
       setEditForm(null);
-      toast.success("Đã kiểm tra lại dòng import");
+      toast.success(t("checkedTheImportLineAgain"));
     } catch (error) {
-      toast.error(getErrorMessage(error, "Không thể cập nhật dòng import"));
+      toast.error(getErrorMessage(error, t("unableToUpdateImportLine")));
     } finally {
       setIsBusy(false);
     }
@@ -479,11 +480,11 @@ export function QuestionImportDialog({
       await onCompleted();
       toast.success(
         examId
-          ? "Đã import và gắn câu hỏi vào bài thi"
-          : "Đã import câu hỏi vào ngân hàng",
+          ? t("importedAndAttachedQuestionsToThe")
+          : t("importedQuestionsIntoTheBank"),
       );
     } catch (error) {
-      toast.error(getErrorMessage(error, "Không thể hoàn tất import"));
+      toast.error(getErrorMessage(error, t("unableToCompleteImport")));
     } finally {
       setIsBusy(false);
     }
@@ -529,11 +530,10 @@ export function QuestionImportDialog({
       <DialogContent className="max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-6xl overflow-y-auto border-gray-300 bg-white">
         <DialogHeader>
           <DialogTitle>
-            {examId ? "Import câu hỏi vào bài thi" : "Import ngân hàng câu hỏi"}
+            {examId ? t("importQuestionsIntoTheTest") : t("importQuestionBank")}
           </DialogTitle>
           <DialogDescription>
-            Dùng template cố định, kiểm tra các dòng hợp lệ rồi mới tạo câu hỏi.
-          </DialogDescription>
+            {t("useAFixedTemplateCheckFor")}</DialogDescription>
         </DialogHeader>
 
         {!questionImport && (
@@ -542,14 +542,14 @@ export function QuestionImportDialog({
               <Button variant="outline" asChild>
                 <a href="/templates/question-import-template.docx" download>
                   <FileText className="mr-2 h-4 w-4" />
-                  Template Word
+                  {t("wordTemplate")}
                   <Download className="ml-2 h-4 w-4" />
                 </a>
               </Button>
               <Button variant="outline" asChild>
                 <a href="/templates/question-import-template.xlsx" download>
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
-                  Template Excel
+                  {t("excelTemplate")}
                   <Download className="ml-2 h-4 w-4" />
                 </a>
               </Button>
@@ -557,7 +557,7 @@ export function QuestionImportDialog({
 
             {!topicId && (
               <div className="space-y-2">
-                <Label>Topic</Label>
+                <Label>{t("topic")}</Label>
                 <Select
                   value={selectedTopicId}
                   disabled={isBusy}
@@ -568,7 +568,7 @@ export function QuestionImportDialog({
                   }}
                 >
                   <SelectTrigger className="border-gray-300 bg-white">
-                    <SelectValue placeholder="Chọn Topic nhận câu hỏi" />
+                    <SelectValue placeholder={t("selectTopicToReceiveQuestions")} />
                   </SelectTrigger>
                   <SelectContent className="border-gray-300 bg-white">
                     {(topics ?? []).map((topic) => (
@@ -584,8 +584,7 @@ export function QuestionImportDialog({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="question-import-file">
-                  File .docx hoặc .xlsx
-                </Label>
+                  {t("fileDocxOrXlsx")}</Label>
                 <Input
                   id="question-import-file"
                   type="file"
@@ -594,11 +593,10 @@ export function QuestionImportDialog({
                   className="border-gray-300 bg-white"
                 />
                 <p className="text-xs text-gray-500">
-                  Tối đa 20 MB, hỗ trợ ảnh nhúng.
-                </p>
+                  {t("maximum20MbSupportsEmbeddedImages")}</p>
               </div>
               <div className="space-y-2">
-                <Label>Chapter mặc định</Label>
+                <Label>{t("defaultChapter")}</Label>
                 <Select
                   value={chapterId}
                   onValueChange={setChapterId}
@@ -609,8 +607,7 @@ export function QuestionImportDialog({
                   </SelectTrigger>
                   <SelectContent className="border-gray-300 bg-white">
                     <SelectItem value={FROM_FILE}>
-                      Không dùng (chỉ đọc cột chapter)
-                    </SelectItem>
+                      {t("notUsedOnlyReadsChapterColumn")}</SelectItem>
                     {sortedChapters.map((chapter) => (
                       <SelectItem key={chapter.id} value={chapter.id}>
                         {chapterPaths.get(chapter.id)}
@@ -619,19 +616,12 @@ export function QuestionImportDialog({
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500">
-                  Dùng cho các dòng để trống cột chapter.
-                </p>
+                  {t("usedForLinesThatLeaveThe")}</p>
               </div>
             </div>
 
             <div className="rounded-md border border-blue-100 bg-blue-50 p-3 text-xs leading-relaxed text-gray-700">
-              Cột <code className="font-semibold">chapter</code> ghi tên
-              Chapter, ví dụ <code>Hàm số</code>, hoặc đường dẫn Chapter cha
-              &gt; Chapter con, ví dụ <code>Chương 1 &gt; Hàm số</code>. Hệ
-              thống tìm theo tên (không phân biệt hoa thường) trong các Chapter
-              và Chapter con của Topic; Chapter chưa có sẽ được tạo mới khi bạn
-              xác nhận import. Nếu một tên trùng ở nhiều nơi, hãy ghi rõ đường
-              dẫn.
+              {t("chapterGuidance")}
             </div>
           </div>
         )}
@@ -655,8 +645,7 @@ export function QuestionImportDialog({
             )}
             {questionImport.status === "COMPLETED" && (
               <p className="text-sm text-gray-600">
-                Đã tạo {questionImport.committed_items} câu hỏi, bỏ qua{" "}
-                {questionImport.skipped_items} câu trùng.
+                {t("importSummary", { created: questionImport.committed_items, skipped: questionImport.skipped_items })}
               </p>
             )}
           </div>
@@ -665,16 +654,15 @@ export function QuestionImportDialog({
         {questionImport?.status === "REVIEW_REQUIRED" && (
           <div className="space-y-4">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Badge variant="outline">Tổng {questionImport.total_items}</Badge>
+              <Badge variant="outline">{t("totalCount", { count: questionImport.total_items })}</Badge>
               <Badge className="bg-emerald-100 text-emerald-800">
-                Hợp lệ {validItems.length}
+                {t("validCount", { count: validItems.length })}
               </Badge>
               <Badge className="bg-red-100 text-red-800">
-                Cần sửa{" "}
-                {items.filter((item) => item.status === "INVALID").length}
+                {t("invalidCount", { count: items.filter((item) => item.status === "INVALID").length })}
               </Badge>
               <span className="ml-auto text-gray-600">
-                Đã chọn {selectedIds.size}
+                {t("selectedCount", { count: selectedIds.size })}
               </span>
             </div>
 
@@ -697,11 +685,11 @@ export function QuestionImportDialog({
                         }
                       />
                     </TableHead>
-                    <TableHead className="w-20">Dòng</TableHead>
-                    <TableHead>Nội dung</TableHead>
-                    <TableHead className="w-40">Chapter</TableHead>
-                    <TableHead className="w-28">Ảnh</TableHead>
-                    <TableHead className="w-56">Kiểm tra</TableHead>
+                    <TableHead className="w-20">{t("current")}</TableHead>
+                    <TableHead>{t("content")}</TableHead>
+                    <TableHead className="w-40">{t("chapter")}</TableHead>
+                    <TableHead className="w-28">{t("image")}</TableHead>
+                    <TableHead className="w-56">{t("check")}</TableHead>
                     <TableHead className="w-16" />
                   </TableRow>
                 </TableHeader>
@@ -725,7 +713,7 @@ export function QuestionImportDialog({
                       <TableCell>{item.source_index}</TableCell>
                       <TableCell>
                         <div className="max-w-xl truncate font-medium">
-                          {item.data.questionText || "Chưa có nội dung"}
+                          {item.data.questionText || t("noContentYet")}
                         </div>
                         <div className="mt-1 text-xs text-gray-500">
                           {item.data.questionType} · {item.data.questionFormat}
@@ -763,8 +751,7 @@ export function QuestionImportDialog({
                           </ul>
                         ) : (
                           <span className="text-xs text-emerald-700">
-                            Hợp lệ
-                          </span>
+                            {t("valid")}</span>
                         )}
                         {item.warnings.map((warning) => (
                           <div
@@ -779,7 +766,7 @@ export function QuestionImportDialog({
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="Sửa dòng"
+                          title={t("editLines")}
                           onClick={() => startEditing(item)}
                         >
                           <Pencil className="h-4 w-4" />
@@ -794,7 +781,7 @@ export function QuestionImportDialog({
             {editingItemId && editForm && (
               <div className="space-y-4 border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Sửa dòng import</h3>
+                  <h3 className="font-semibold">{t("editImportLine")}</h3>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -803,12 +790,11 @@ export function QuestionImportDialog({
                       setEditForm(null);
                     }}
                   >
-                    Đóng
-                  </Button>
+                    {t("close")}</Button>
                 </div>
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2 md:col-span-3">
-                    <Label>Nội dung câu hỏi</Label>
+                    <Label>{t("questionContent")}</Label>
                     <Textarea
                       value={editForm.questionText}
                       onChange={(event) =>
@@ -820,7 +806,7 @@ export function QuestionImportDialog({
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Chapter</Label>
+                    <Label>{t("chapter")}</Label>
                     <Select
                       value={editForm.chapterId}
                       onValueChange={(value) =>
@@ -828,12 +814,11 @@ export function QuestionImportDialog({
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Chọn Chapter" />
+                        <SelectValue placeholder={t("selectChapter")} />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
                         <SelectItem value={NEW_CHAPTER}>
-                          + Nhập tên Chapter mới
-                        </SelectItem>
+                          {t("enterTheNewChapterName")}</SelectItem>
                         {sortedChapters.map((chapter) => (
                           <SelectItem key={chapter.id} value={chapter.id}>
                             {chapterPaths.get(chapter.id)}
@@ -844,7 +829,7 @@ export function QuestionImportDialog({
                     {editForm.chapterId === NEW_CHAPTER && (
                       <Input
                         value={editForm.chapterName}
-                        placeholder="Chương 1 > Hàm số"
+                        placeholder={t("chapter1Functions2")}
                         onChange={(event) =>
                           setEditForm({
                             ...editForm,
@@ -855,7 +840,7 @@ export function QuestionImportDialog({
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Label>Loại câu hỏi</Label>
+                    <Label>{t("questionType")}</Label>
                     <Select
                       value={editForm.questionType}
                       onValueChange={(value) =>
@@ -870,17 +855,15 @@ export function QuestionImportDialog({
                       </SelectTrigger>
                       <SelectContent className="bg-white">
                         <SelectItem value="SINGLE_CHOICE">
-                          Một đáp án
-                        </SelectItem>
+                          {t("oneAnswer")}</SelectItem>
                         <SelectItem value="MULTIPLE_CHOICE">
-                          Nhiều đáp án
-                        </SelectItem>
-                        <SelectItem value="ESSAY">Tự luận</SelectItem>
+                          {t("manyAnswers")}</SelectItem>
+                        <SelectItem value="ESSAY">{t("essay")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Định dạng</Label>
+                    <Label>{t("format")}</Label>
                     <Select
                       value={editForm.questionFormat}
                       onValueChange={(value) =>
@@ -894,12 +877,11 @@ export function QuestionImportDialog({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        <SelectItem value="KNOWLEDGE">Nhận biết</SelectItem>
+                        <SelectItem value="KNOWLEDGE">{t("recognize")}</SelectItem>
                         <SelectItem value="UNDERSTANDING">
-                          Thông hiểu
-                        </SelectItem>
-                        <SelectItem value="APPLYING">Vận dụng</SelectItem>
-                        <SelectItem value="ADVANCED">Vận dụng cao</SelectItem>
+                          {t("understanding")}</SelectItem>
+                        <SelectItem value="APPLYING">{t("manipulate")}</SelectItem>
+                        <SelectItem value="ADVANCED">{t("highlyApplicable")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -907,7 +889,7 @@ export function QuestionImportDialog({
 
                 {editForm.questionType === "ESSAY" ? (
                   <div className="space-y-2">
-                    <Label>Đáp án tự luận</Label>
+                    <Label>{t("essayAnswers")}</Label>
                     <Textarea
                       value={editForm.correctAnswer ?? ""}
                       onChange={(event) =>
@@ -920,7 +902,7 @@ export function QuestionImportDialog({
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <Label>Lựa chọn và đáp án đúng</Label>
+                    <Label>{t("chooseAndAnswerCorrectly")}</Label>
                     {editForm.options.map((option, index) => (
                       <div
                         key={`${option.key}-${index}`}
@@ -944,7 +926,7 @@ export function QuestionImportDialog({
                         <Button
                           variant="ghost"
                           size="icon"
-                          title="Xóa lựa chọn"
+                          title={t("deleteSelection")}
                           disabled={editForm.options.length <= 2}
                           onClick={() =>
                             setEditForm({
@@ -983,15 +965,13 @@ export function QuestionImportDialog({
                         }
                       >
                         <Plus className="mr-2 h-4 w-4" />
-                        Thêm lựa chọn
-                      </Button>
+                        {t("moreOptions")}</Button>
                     )}
                   </div>
                 )}
                 <div className="flex justify-end">
                   <Button onClick={saveItem} disabled={isBusy}>
-                    Lưu và kiểm tra lại
-                  </Button>
+                    {t("saveAndCheckAgain")}</Button>
                 </div>
               </div>
             )}
@@ -1004,7 +984,7 @@ export function QuestionImportDialog({
             onClick={() => void handleCancel()}
             disabled={isBusy}
           >
-            {questionImport?.status === "COMPLETED" ? "Đóng" : "Hủy"}
+            {questionImport?.status === "COMPLETED" ? t("close") : t("cancel")}
           </Button>
           {!questionImport && (
             <Button
@@ -1016,8 +996,7 @@ export function QuestionImportDialog({
               ) : (
                 <Upload className="mr-2 h-4 w-4" />
               )}
-              Tải lên và kiểm tra
-            </Button>
+              {t("uploadAndCheck")}</Button>
           )}
           {questionImport?.status === "REVIEW_REQUIRED" && (
             <Button
@@ -1027,11 +1006,10 @@ export function QuestionImportDialog({
               }
             >
               {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Import {selectedIds.size} câu hỏi
-            </Button>
+              {t("importQuestionCount", { count: selectedIds.size })}</Button>
           )}
           {questionImport?.status === "FAILED" && (
-            <Button onClick={reset}>Chọn file khác</Button>
+            <Button onClick={reset}>{t("selectAnotherFile")}</Button>
           )}
         </DialogFooter>
       </DialogContent>

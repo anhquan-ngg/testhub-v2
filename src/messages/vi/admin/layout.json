@@ -1,0 +1,10 @@
+{
+  "adminLayout": {
+    "administrator": "Quản trị viên",
+    "subtitle": "Admin Dashboard",
+    "scoreAnalytics": "Phân tích điểm",
+    "userManagement": "Quản lý người dùng",
+    "examManagement": "Quản lý bài thi",
+    "questionBank": "Ngân hàng câu hỏi"
+  }
+}

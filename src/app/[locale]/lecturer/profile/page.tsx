@@ -1,0 +1,400 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Camera, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useAppDispatch, useAppSelector } from "@/store/hook";
+import { useS3 } from "@/hooks/useS3";
+import { useFiles } from "@/hooks/useFiles";
+import { toast } from "sonner";
+import { setUser } from "@/store/slices/authSlice";
+import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
+
+export default function LecturerProfile() {
+  const t = useTranslations("lecturer.profile");
+  const user = useAppSelector((state) => state.user);
+  const dispatch = useAppDispatch();
+  const { getViewUrl: getLegacyAvatarViewUrl } = useS3("avatars");
+  const { uploadAvatar, markFileDeletedByUrl } = useFiles();
+
+  const [formData, setFormData] = useState({
+    email: "lecturer@email.com",
+    username: "",
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordData({
+      ...passwordData,
+      [name]: value,
+    });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!user.id) return;
+
+    try {
+      setIsUploading(true);
+      const oldAvatarUrl = user.avatar_url;
+
+      // 1. Hiển thị preview ảnh
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setProfileImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
+      // 2. Upload file lên S3
+      const uploadedFile = await uploadAvatar(file, user.id);
+      await markFileDeletedByUrl(oldAvatarUrl, user.id);
+      setProfileImage(uploadedFile.url);
+
+      // 3. Cập nhật avatar_url trong Redux store (chỉ lưu file.name)
+      dispatch(
+        setUser({
+          id: user.id,
+          full_name: user.full_name,
+          email: user.email,
+          school: user.school,
+          phone: user.phone,
+          address: user.address,
+          avatar_url: uploadedFile.url,
+          role: user.role ?? "LECTURER",
+        }),
+      );
+      toast.success(t("updatedProfilePictureSuccessfully"));
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error(t("errorUploadingPhotoPleaseTryAgain"));
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.username) {
+      toast.error(t("instructorNameCannotBeLeftBlank"));
+      return;
+    }
+
+    try {
+      await apiClient.patch(ENDPOINTS.USERS.DETAIL(user.id), {
+        full_name: formData.username,
+      });
+      toast.success(t("updatedInstructorInformationSuccessfully"));
+      dispatch(
+        setUser({
+          id: user.id,
+          email: user.email,
+          school: user.school,
+          phone: user.phone,
+          address: user.address,
+          avatar_url: user.avatar_url,
+          role: user.role ?? "LECTURER",
+          full_name: formData.username,
+        }),
+      );
+    } catch (error) {
+      toast.error(t("errorUpdatingInstructorInformationPleaseTry"));
+      console.log(error);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error(t("newPasswordDoesNotMatch"));
+      return;
+    }
+
+    try {
+      const response = await apiClient.post("/auth/change-password", {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      if (response.status === 200) {
+        toast.success(t("passwordChangeSuccessful"));
+      }
+    } catch (error) {
+      toast.error(t("errorWhenChangingPasswordPleaseTry"));
+      console.log(error);
+    } finally {
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    }
+  };
+
+  useEffect(() => {
+    const loadAvatarUrl = async () => {
+      // Chỉ load avatar nếu user đã login VÀ có avatar_url
+      if (!user.id || !user.isLoggedIn) {
+        return;
+      }
+
+      if (user.avatar_url?.startsWith("http")) {
+        setProfileImage(user.avatar_url);
+      } else if (user.avatar_url) {
+        const legacyAvatarUrl = await getLegacyAvatarViewUrl(user.avatar_url);
+        setProfileImage(legacyAvatarUrl ?? user.avatar_url);
+      } else {
+        console.log("User has no avatar_url (null/empty)");
+      }
+    };
+
+    loadAvatarUrl();
+  }, [getLegacyAvatarViewUrl, user.avatar_url, user.id, user.isLoggedIn]);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        email: user.email,
+        username: user.full_name,
+      });
+    }
+  }, [user]);
+
+  return (
+    <div className="space-y-6">
+      {/* Profile Picture Card */}
+      <Card className="shadow-lg bg-white border-gray-300">
+        <CardContent className="p-6">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">
+            {t("personalPhoto")}</h3>
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative">
+              <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300 overflow-hidden">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt={t("avatarAlt")}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Camera className="h-12 w-12 text-gray-400" />
+                )}
+              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 bg-[#0066cc] text-white rounded-full p-3 shadow-lg hover:bg-[#0052a3] transition-colors"
+              >
+                <Camera className="h-5 w-5" />
+              </button>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("uploading")}</>
+              ) : (
+                t("changePhoto")
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Personal Information Form */}
+        <Card className="shadow-lg bg-white border-gray-300">
+          <CardContent className="p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6">
+              {t("personalInformation")}</h3>
+            <form onSubmit={handleProfileSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">{t("emailLabel")}</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  disabled
+                  className="bg-gray-200 border-gray-300 cursor-not-allowed "
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="username">
+                  {t("userName")}<span className="text-red-500">*</span> :
+                </Label>
+                <Input
+                  id="username"
+                  name="username"
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  className="bg-white border-gray-300"
+                  required
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer"
+              >
+                {t("updateInformation")}</Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Change Password Form */}
+        <Card className="shadow-lg bg-white border-gray-300">
+          <CardContent className="p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6">
+              {t("changePassword")}</h3>
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">{t("currentPassword")}</Label>
+                <div className="relative">
+                  <Input
+                    id="currentPassword"
+                    name="currentPassword"
+                    type={showPasswords.current ? "text" : "password"}
+                    value={passwordData.currentPassword}
+                    onChange={handlePasswordChange}
+                    className="bg-white border-gray-300"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPasswords({
+                        ...showPasswords,
+                        current: !showPasswords.current,
+                      })
+                    }
+                    className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPasswords.current ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">{t("newPassword")}</Label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    name="newPassword"
+                    type={showPasswords.new ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    className="bg-white border-gray-300"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPasswords({
+                        ...showPasswords,
+                        new: !showPasswords.new,
+                      })
+                    }
+                    className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPasswords.new ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showPasswords.confirm ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    className="bg-white border-gray-300"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPasswords({
+                        ...showPasswords,
+                        confirm: !showPasswords.confirm,
+                      })
+                    }
+                    className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPasswords.confirm ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer"
+              >
+                {t("changePassword")}</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

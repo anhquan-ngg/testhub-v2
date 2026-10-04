@@ -1,0 +1,18 @@
+{
+  "examPrintDescription": "Tạo bộ đề in cho kỳ thi offline: {title}",
+  "archiveContents": "File .zip gồm {count} file PDF đề thi và 1 file PDF đáp án cho tất cả mã đề.",
+  "errorGeneric": "Không thể tạo đề thi. Vui lòng thử lại.",
+  "errorTimeout": "Tạo đề thi quá thời gian chờ. Vui lòng thử lại.",
+  "errorInsufficientQuestions": "Ngân hàng câu hỏi không đủ để tạo đề theo cấu hình phân bố của bài thi.",
+  "errorNoQuestions": "Bài thi chưa có câu hỏi nào để in.",
+  "errorForbidden": "Bạn không có quyền in đề của bài thi này.",
+  "errorNotFound": "Không tìm thấy bài thi.",
+  "generatedVariants": "Đã tạo {count} mã đề và file đáp án.",
+  "printExamQuestions": "In đề thi",
+  "numberOfCodes": "Số lượng mã đề",
+  "code": "mã đề",
+  "theOrderOfQuestionsAndOptions": "Thứ tự câu hỏi và phương án được trộn riêng cho từng mã đề. Với bài thi sinh đề ngẫu nhiên, mỗi mã đề được bốc bộ câu hỏi riêng theo cấu hình của bài thi. Mỗi lần in sẽ tạo bộ đề mới.",
+  "cancel": "Huỷ",
+  "creatingTopic": "Đang tạo đề...",
+  "createAndDownload": "Tạo và tải xuống"
+}

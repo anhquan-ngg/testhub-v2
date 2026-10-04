@@ -1,0 +1,10 @@
+{
+  "adminLayout": {
+    "administrator": "Administrator",
+    "subtitle": "Admin Dashboard",
+    "scoreAnalytics": "Score analytics",
+    "userManagement": "User management",
+    "examManagement": "Exam management",
+    "questionBank": "Question bank"
+  }
+}

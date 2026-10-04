@@ -1,0 +1,15 @@
+{
+  "pageOf": "Page {page} / {total}",
+  "next": "Next",
+  "loadQuestionsError": "Could not load questions: {message}",
+  "questionBank": "Question bank",
+  "seeListOfQuestionsInThe": "See list of questions in the system",
+  "searchQuestions": "Search questions...",
+  "question": "Question",
+  "creator": "Creator",
+  "topic": "Topic",
+  "type": "Type",
+  "format": "Format",
+  "answer": "Answer",
+  "before": "Previous"
+}

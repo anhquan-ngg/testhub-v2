@@ -1,0 +1,14 @@
+{
+  "brandTitle": "TESTHUB Quản trị",
+  "anErrorOccurredWhileLoadingStatistical": "Có lỗi xảy ra khi tải dữ liệu thống kê. Vui lòng thử lại sau.",
+  "dashboardDataHasBeenUpdatedAutomatically": "Dữ liệu dashboard đã được cập nhật tự động.",
+  "adminConsole": "Bảng điều khiển quản trị viên",
+  "totalUsers": "Tổng người dùng",
+  "test": "Bài kiểm tra",
+  "questionBank": "Ngân hàng câu hỏi",
+  "examTurn": "Lượt thi",
+  "scoreAnalysis": "Phân tích điểm",
+  "averageScoreSpectrum": "Phổ điểm trung bình",
+  "numberOfOfficialExams": "Số lượng bài thi chính thức",
+  "numberOfPracticeTests": "Số lượng bài thi luyện tập"
+}

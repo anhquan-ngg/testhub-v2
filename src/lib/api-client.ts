@@ -1,6 +1,7 @@
 import axios from "axios";
 import { ROUTES } from "@/constants/routes";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { defaultLocale, isLocale } from "@/i18n/config";
 
 // Lấy API base URL từ biến môi trường
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -30,8 +31,11 @@ const resolveFailedQueue = () => {
 
 const redirectToLogin = () => {
   if (typeof window === "undefined") return;
-  if (window.location.pathname !== ROUTES.LOGIN) {
-    window.location.href = ROUTES.LOGIN;
+  const localeSegment = window.location.pathname.split("/")[1];
+  const locale = isLocale(localeSegment) ? localeSegment : defaultLocale;
+  const loginPath = `/${locale}${ROUTES.LOGIN}`;
+  if (window.location.pathname !== loginPath) {
+    window.location.href = loginPath;
   }
 };
 
