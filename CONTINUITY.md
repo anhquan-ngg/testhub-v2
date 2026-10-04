@@ -2,7 +2,7 @@
 
 > Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-**Cập nhật lần cuối:** 2026-10-05 — form đăng nhập/đăng ký hỗ trợ gửi bằng phím Enter.
+**Cập nhật lần cuối:** 2026-10-05 — sửa entity HTML hiển thị nguyên văn trong nhãn dashboard giảng viên.
 
 ## Cách cập nhật file này
 
@@ -36,6 +36,7 @@
 - Đã chuyển text UI của các trang public, admin, student, lecturer, dialog import/in đề, MathInput/MathRenderer, UI dialog/spinner và `useS3`. Nhãn trạng thái/enum và ngày giờ cũng chọn theo locale. Audit AST không còn chuỗi tiếng Việt hiển thị cố định trong `src`; ký hiệu toán và tên locale vẫn là dữ liệu kỹ thuật.
 - `scripts/check-i18n.cjs` kiểm tra cặp file, key, cú pháp ICU và placeholder; `scripts/i18n-audit.cjs` và `scripts/audit-remaining-ui.cjs` giúp tìm text mới hardcode. Smoke test `/en`, `/vi`, `/en/login`, `/en/signup`, link nội bộ và chuyển hướng `/`/route cần đăng nhập đã pass trên production server local.
 - Thông báo lỗi/nội dung do backend trả về (notification title/content, message lỗi API) vẫn phụ thuộc backend; `api-client` chưa gửi `Accept-Language`. Chưa kiểm tra thủ công các trang cần đăng nhập trên trình duyệt.
+- Message JSON là text đầu vào cho `next-intl`; nhãn `theExamIsAboutToTake` dùng dấu `&` trực tiếp, không dùng `&amp;` vì sẽ hiển thị nguyên văn. Đã rà `src/messages`, `src/app`, `src/components`: không còn `&amp;`.
 
 ## Vấn đề / TODO đã xác minh
 
@@ -85,6 +86,7 @@
 | TypeScript, ESLint layout, `next build --turbopack` sau khi dùng Inter cho tiêu đề | Pass cả ba |
 | TypeScript và `next build --turbopack` sau thay đổi form đăng nhập/đăng ký | Pass cả hai |
 | ESLint `src/app/[locale]/{login,signup}/page.tsx` | Fail do 2 lỗi tồn đọng: `Mail` không dùng trong login (warning), `as any` trong signup (error) |
+| `node scripts/check-i18n.cjs` sau sửa nhãn dashboard giảng viên | Pass: 30 cặp message và cú pháp ICU hợp lệ |
 
 ## Công việc đang làm
 
