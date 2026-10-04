@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Barlow, Barlow_Condensed } from "next/font/google";
+import { Inter } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -9,16 +9,10 @@ import "../globals.css";
 import Providers from "@/components/providers/Providers";
 import { Toaster } from "sonner";
 
-const barlow = Barlow({
+const inter = Inter({
   variable: "--font-body",
   subsets: ["latin", "vietnamese"],
   weight: ["400", "500", "600", "700"],
-});
-
-const barlowCondensed = Barlow_Condensed({
-  variable: "--font-display",
-  subsets: ["latin", "vietnamese"],
-  weight: ["500", "600", "700"],
 });
 
 export async function generateMetadata({
@@ -47,7 +41,7 @@ export default async function RootLayout({
 
   return (
     <html lang={locale}>
-      <body className={`${barlow.variable} ${barlowCondensed.variable} antialiased`}>
+      <body className={`${inter.variable} antialiased`}>
         <NextIntlClientProvider>
           <Providers>{children}</Providers>
           <Toaster position="bottom-right" />

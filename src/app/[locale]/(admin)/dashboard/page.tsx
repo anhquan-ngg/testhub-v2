@@ -16,7 +16,7 @@ import {
 } from "recharts";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { SubmissionStatus } from "@prisma/client";
+import { SubmissionStatus } from "@/types/backend-enums";
 import { useSocket } from "@/components/providers/SocketProvider";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";

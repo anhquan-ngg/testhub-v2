@@ -2,7 +2,7 @@
 
 > Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-**Cập nhật lần cuối:** 2026-10-04 — chuyển sang route `src/app/[locale]`, điều hướng theo locale và dời message sang `src/messages`.
+**Cập nhật lần cuối:** 2026-10-05 — bỏ bước ZenStack khỏi CI/Vercel và bỏ import Prisma Client trong frontend.
 
 ## Cách cập nhật file này
 
@@ -27,6 +27,10 @@
 - State toàn cục bằng Redux Toolkit (`src/store/`); thông tin người dùng nạp bởi `src/components/UserLoader.tsx` qua `GET /auth/me`.
 - Thông báo realtime qua `src/components/providers/SocketProvider.tsx` (namespace `/notifications`); trạng thái phòng thi và giám sát qua SSE (`ENDPOINTS.EXAM_RUNTIME.EVENTS`, `MONITOR_EVENTS`).
 - Upload file theo luồng presigned URL + confirm — `src/hooks/useFiles.ts`.
+- Font chữ nội dung và tiêu đề đều dùng Inter từ `next/font/google` qua `--font-body` trong `src/app/[locale]/layout.tsx`; `src/app/globals.css` ánh xạ biến này cho body, heading và Tailwind. Stylesheet công khai của `https://teencare.co/vn` khai báo Inter cho phần lớn typography; đây là tham chiếu cho thay đổi.
+- Trang `/login` và `/signup` dùng `<form onSubmit>`; nút chính có `type="submit"`, nút đăng nhập Google/Outlook có `type="button"`. Bấm Enter trong ô cuối gửi qua cùng hàm xử lý như khi bấm nút chính.
+- `vercel.json` override Build Command thành `npm run build`, thay lệnh ZenStack cũ trong Vercel Project Settings. GitHub Actions chạy trên `master`/`dev`, dùng `npm ci`, Node 22 và build với giá trị JWT chỉ dùng để kiểm tra build; lint còn lỗi tồn đọng nên tạm không chặn build.
+- Các enum API mà frontend cần nằm tại `src/types/backend-enums.ts`, đối chiếu với `../testhub-v2-backend/prisma/schema.prisma`; `src/` không còn import Prisma Client.
 
 ## i18n (vi/en) — tiến độ
 
@@ -34,26 +38,25 @@
 - Đã chuyển text UI của các trang public, admin, student, lecturer, dialog import/in đề, MathInput/MathRenderer, UI dialog/spinner và `useS3`. Nhãn trạng thái/enum và ngày giờ cũng chọn theo locale. Audit AST không còn chuỗi tiếng Việt hiển thị cố định trong `src`; ký hiệu toán và tên locale vẫn là dữ liệu kỹ thuật.
 - `scripts/check-i18n.cjs` kiểm tra cặp file, key, cú pháp ICU và placeholder; `scripts/i18n-audit.cjs` và `scripts/audit-remaining-ui.cjs` giúp tìm text mới hardcode. Smoke test `/en`, `/vi`, `/en/login`, `/en/signup`, link nội bộ và chuyển hướng `/`/route cần đăng nhập đã pass trên production server local.
 - Thông báo lỗi/nội dung do backend trả về (notification title/content, message lỗi API) vẫn phụ thuộc backend; `api-client` chưa gửi `Accept-Language`. Chưa kiểm tra thủ công các trang cần đăng nhập trên trình duyệt.
+- Message JSON là text đầu vào cho `next-intl`; nhãn `theExamIsAboutToTake` dùng dấu `&` trực tiếp, không dùng `&amp;` vì sẽ hiển thị nguyên văn. Đã rà `src/messages`, `src/app`, `src/components`: không còn `&amp;`.
 
 ## Vấn đề / TODO đã xác minh
 
-1. `npx eslint .`: 91 problem (53 error, 38 warning) — 52 `@typescript-eslint/no-explicit-any`, 1 `prefer-const`, 29 `no-unused-vars`, 5 `@next/next/no-img-element`, 3 `react-hooks/exhaustive-deps`.
-2. `schema.zmodel`, `prisma/schema.prisma`, `generated/hooks/*` đã bị xóa ở commit `edc1f7e`, nhưng 5 file vẫn import enum từ `@prisma/client` (danh sách ở `AGENTS.md` mục 9). Typecheck hiện pass nhờ Prisma Client cũ trong `node_modules/.prisma/client`.
-3. `.github/workflows/ci.yml` chỉ trigger trên nhánh `main`, trong khi repo dùng `master` và `dev` ⇒ CI không chạy. Workflow còn có bước `npx zenstack generate` với khối `env:` rỗng và không có schema.
-4. `src/proxy.ts` chuyển hướng sai vai trò tới `/unauthorized`, nhưng không có trang này.
-5. `src/hooks/useFiles.ts` (`markFileDeletedByUrl`) gọi `POST /model/File/updateMany`, backend không có route `/model/*`.
-6. `src/constants/routes.ts` khai báo `/register`, `/forgot-password` không tồn tại (trang đăng ký là `/signup`); `PUBLIC_ROUTES`, `AUTH_COOKIE_KEY`, `REFRESH_COOKIE_KEY` không được dùng.
-7. `useAuth.handleOutlookLogin` là hàm rỗng, trong khi backend có `GET /auth/outlook`.
-8. `src/lib/socket.ts` export một socket không được import ở đâu; `src/types/next-auth.d.ts` khai báo module `next-auth` dù package này không được cài.
-9. Không thấy import trong `src/` của các dependency: `@react-oauth/google`, `js-cookie`, `zod`, `react-to-print`, `dotenv`.
-10. Không có test và không có `.env.example`; `README.md` lỗi thời (Next.js 15, TanStack Query, `prisma/`, `generated/`, các bước `prisma migrate`/`zenstack generate`).
+1. `eslint .`: 99 problem (62 error, 37 warning) tại lần kiểm tra gần nhất; GitHub Actions vẫn chạy lint để hiển thị lỗi nhưng tạm `continue-on-error` cho đến khi xử lý các lỗi tồn đọng.
+2. `src/proxy.ts` chuyển hướng sai vai trò tới `/unauthorized`, nhưng không có trang này.
+3. `src/hooks/useFiles.ts` (`markFileDeletedByUrl`) gọi `POST /model/File/updateMany`, backend không có route `/model/*`.
+4. `src/constants/routes.ts` khai báo `/register`, `/forgot-password` không tồn tại (trang đăng ký là `/signup`); `PUBLIC_ROUTES`, `AUTH_COOKIE_KEY`, `REFRESH_COOKIE_KEY` không được dùng.
+5. `useAuth.handleOutlookLogin` là hàm rỗng, trong khi backend có `GET /auth/outlook`.
+6. `src/lib/socket.ts` export một socket không được import ở đâu; `src/types/next-auth.d.ts` khai báo module `next-auth` dù package này không được cài.
+7. Không thấy import trong `src/` của các dependency: `@react-oauth/google`, `js-cookie`, `zod`, `react-to-print`, `dotenv`.
+8. Không có test và không có `.env.example`; `README.md` lỗi thời (Next.js 15, TanStack Query, `prisma/`, `generated/`, các bước `prisma migrate`/`zenstack generate`).
 
 ## Chưa xác minh
 
-- Sau khi cài mới (`npm ci` sạch, không còn client cũ), các import enum từ `@prisma/client` có làm typecheck/build thất bại hay không.
+- Chưa chạy `npm ci` trong môi trường sạch hay xác minh deployment Vercel sau thay đổi; `@prisma/client` và `prisma` vẫn nằm trong dependencies dù `src/` không dùng chúng.
 - Nhánh refresh trong `src/proxy.ts`: backend đặt `refresh_token` với `path: /auth/refresh`, nên trình duyệt có thể không gửi cookie này khi điều hướng tới các trang khác ⇒ refresh ở edge có thể không bao giờ chạy. Chưa kiểm tra thực tế.
 - Production (frontend và API khác subdomain, cookie không đặt `domain`): `src/proxy.ts` có đọc được `access_token` hay không.
-- Quy trình deploy frontend: repo không có cấu hình deploy; có nhánh remote `vercel/react-server-components-cve-vu-05bla1` gợi ý Vercel nhưng chưa xác nhận.
+- Người dùng cung cấp log build Vercel với Build Command cũ `npx zenstack generate && next build`; chưa xác minh nhánh production hoặc biến môi trường Vercel.
 
 ## Kết quả kiểm tra đã chạy (2026-10-04)
 
@@ -73,16 +76,31 @@
 | `scripts/smoke-i18n.cjs` sau chuyển route | Pass 10 trường hợp (5 lần tải trang vi/en, 5 chuyển hướng; locale trong URL ưu tiên hơn cookie) |
 | Test | Repo chưa có test |
 
+## Kết quả kiểm tra đã chạy (2026-10-05)
+
+| Lệnh | Kết quả |
+| --- | --- |
+| TypeScript `tsc --noEmit --incremental false` (Node 22 trực tiếp) | Pass |
+| ESLint `src/app/[locale]/layout.tsx` (Node 22 trực tiếp) | Pass |
+| `next build --turbopack` (Node 22 trực tiếp) | Pass, tải và biên dịch font Inter thành công |
+| TypeScript, ESLint layout, `next build --turbopack` sau khi dùng Inter cho tiêu đề | Pass cả ba |
+| TypeScript và `next build --turbopack` sau thay đổi form đăng nhập/đăng ký | Pass cả hai |
+| ESLint `src/app/[locale]/{login,signup}/page.tsx` | Fail do 2 lỗi tồn đọng: `Mail` không dùng trong login (warning), `as any` trong signup (error) |
+| `node scripts/check-i18n.cjs` sau sửa nhãn dashboard giảng viên | Pass: 30 cặp message và cú pháp ICU hợp lệ |
+| TypeScript, `next build --turbopack` sau sửa CI/Vercel và enum | Pass cả hai với `node_modules` hiện có |
+| ESLint `src/types/backend-enums.ts src/types/question.ts` | Pass |
+| `eslint .` sau sửa CI/Vercel | Fail: 62 error, 37 warning tồn đọng; CI tạm không chặn build |
+| Kiểm tra cú pháp `ci.yml`/`vercel.json` và `git diff --check` với CRLF hợp lệ | Pass |
+
 ## Công việc đang làm
 
 Chưa có thông tin.
 
 ## Bước tiếp theo đề xuất
 
-Các ứng viên khác dựa trên vấn đề đã xác minh: thay import enum `@prisma/client` bằng type cục bộ; sửa trigger CI sang `master`/`dev` và bỏ bước ZenStack; thêm trang `/unauthorized` hoặc đổi đích chuyển hướng; xử lý lời gọi `/model/File/updateMany`; thêm `.env.example` chỉ chứa tên biến; cập nhật README.
+Các ứng viên khác dựa trên vấn đề đã xác minh: xử lý lỗi lint tồn đọng rồi bật lại lint bắt buộc trong CI; thêm trang `/unauthorized` hoặc đổi đích chuyển hướng; xử lý lời gọi `/model/File/updateMany`; thêm `.env.example` chỉ chứa tên biến; cập nhật README; cân nhắc gỡ dependency Prisma không còn dùng ở frontend.
 
 ## Điểm cần làm rõ với người dùng
 
-- Enum dùng chung nên lấy từ đâu sau khi bỏ Prisma/ZenStack ở frontend (type cục bộ, package dùng chung, hay sinh từ Swagger backend)?
 - Có cần đưa test (unit/E2E) vào frontend không, và dùng công cụ nào?
-- Frontend được deploy ở đâu và từ nhánh nào?
+- Vercel dùng nhánh nào cho production và đã cấu hình `NEXT_JWT_ACCESS_SECRET` trùng backend chưa?

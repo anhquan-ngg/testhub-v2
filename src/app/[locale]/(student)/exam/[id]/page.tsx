@@ -30,7 +30,7 @@ import {
 import { Link } from "@/i18n/navigation";
 import { useParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
-import { QuestionType } from "@prisma/client";
+import type { QuestionType } from "@/types/backend-enums";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useSelector, useDispatch } from "react-redux";
 import { RootState } from "@/store";

@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { QuestionFormat, QuestionType } from "@prisma/client";
+import type { QuestionFormat, QuestionType } from "@/types/backend-enums";
 import { toast } from "sonner";
 // ... (skip lines)
 import {

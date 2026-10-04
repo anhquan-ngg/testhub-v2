@@ -27,7 +27,7 @@ Giao diện web của hệ thống thi trực tuyến TestHub cho ba vai trò `A
 | Auth phía edge | `jose` verify JWT trong `src/proxy.ts` (quy ước `proxy` của Next 16, thay cho `middleware`) |
 | i18n | `next-intl` (vi/en, URL có tiền tố `/vi` hoặc `/en`, cookie `NEXT_LOCALE` để chọn locale cho URL chưa có tiền tố) — xem mục 4a |
 | Khác | `recharts` (biểu đồ), `katex`/`react-katex` (công thức), `next-themes` |
-| Enum dùng chung | Import từ `@prisma/client` (xem cảnh báo ở mục 9) |
+| Enum dùng chung | `src/types/backend-enums.ts`, đồng bộ giá trị với schema Prisma ở backend |
 | Package manager | npm (`package-lock.json`) |
 
 Chưa có framework test (không có Jest/Vitest/Playwright, không có file test).
@@ -58,9 +58,10 @@ src/
   hooks/                     # useAuth, useFiles (presigned upload), useS3 (API /s3 cũ)
   services/authServices.ts   # gọi /auth/*
   store/                     # Redux store, slices (authSlice → state.user, examSlice → state.exam), typed hooks
-  types/                     # kiểu dữ liệu (exam, question, question-import, auth)
+  types/                     # kiểu dữ liệu (backend-enums, exam, question, question-import, auth)
 public/                      # static assets
-.github/workflows/ci.yml     # CI: install → zenstack generate → lint → build (chỉ trigger trên nhánh main)
+.github/workflows/ci.yml     # CI trên master/dev: npm ci → lint (chưa chặn) → build
+vercel.json                  # override Build Command của Vercel thành npm run build
 ```
 
 ## 3. Lệnh thường dùng
@@ -149,4 +150,4 @@ Lint toàn repo hiện đang có lỗi tồn đọng (xem `CONTINUITY.md`); đá
 - `.next/`, `node_modules/`, `tsconfig.tsbuildinfo`, `next-env.d.ts` — sinh tự động (đều gitignored).
 - `package-lock.json` — chỉ thay đổi qua `npm install`.
 - `src/components/ui/*` — sinh từ mẫu shadcn; có thể chỉnh khi cần nhưng ưu tiên tái sử dụng thay vì viết lại.
-- **Cảnh báo `@prisma/client`:** các file `src/app/[locale]/(admin)/dashboard/page.tsx`, `src/app/[locale]/(admin)/dashboard/users/page.tsx`, `src/app/[locale]/(student)/exam/[id]/page.tsx`, `src/app/[locale]/lecturer/exams/edit/[id]/page.tsx`, `src/types/question.ts` import enum từ `@prisma/client`, nhưng `schema.zmodel`, `prisma/` và `generated/` đã bị xóa khỏi repo (commit `edc1f7e`). Enum hiện đến từ Prisma Client cũ còn trong `node_modules/.prisma/client`. Không sửa thư mục đó và tránh thêm import mới từ `@prisma/client` cho tới khi người dùng chọn cách xử lý (xem "Điểm cần làm rõ" trong `CONTINUITY.md`).
+- Frontend không còn import `@prisma/client` trong `src/`. Khi backend thay đổi các enum `UserRole`, `QuestionType`, `QuestionFormat`, `SubmissionStatus`, cập nhật `src/types/backend-enums.ts` theo `../testhub-v2-backend/prisma/schema.prisma`; không sửa Prisma Client sinh trong `node_modules/`.
