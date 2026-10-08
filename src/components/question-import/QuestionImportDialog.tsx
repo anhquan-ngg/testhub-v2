@@ -527,7 +527,7 @@ export function QuestionImportDialog({
         else if (nextOpen) onOpenChange(true);
       }}
     >
-      <DialogContent className="max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] max-w-6xl overflow-y-auto border-gray-300 bg-white">
+      <DialogContent className="max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] sm:max-w-6xl overflow-y-auto border-gray-300 bg-white">
         <DialogHeader>
           <DialogTitle>
             {examId ? t("importQuestionsIntoTheTest") : t("importQuestionBank")}
