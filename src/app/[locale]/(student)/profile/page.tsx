@@ -271,7 +271,7 @@ export default function StudentProfile() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
         <StudentMenu />
-        <main className="flex-1 px-8 pb-8">
+        <main className="flex-1 px-6 pb-10 pt-7 md:px-8">
           <div className="space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

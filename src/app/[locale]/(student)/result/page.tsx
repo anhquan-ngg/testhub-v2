@@ -161,7 +161,7 @@ export default function ResultPage() {
       <div className="flex-1 flex flex-col">
         <StudentMenu />
 
-        <main className="flex-1 px-8 pb-8">
+        <main className="flex-1 px-6 pb-10 pt-7 md:px-8">
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-3xl font-bold text-gray-900">

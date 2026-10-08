@@ -200,7 +200,7 @@ function StudentManagementDialog({
   };
 
   return (
-    <DialogContent className="bg-white border-gray-300 max-w-2xl">
+    <DialogContent className="bg-white border-gray-300 sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>{t("studentManagement")}</DialogTitle>
         <DialogDescription>
@@ -208,9 +208,9 @@ function StudentManagementDialog({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-4 py-4">
+      <div className="min-w-0 space-y-4 py-4">
         <div className="flex gap-2">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <Label htmlFor="email" className="sr-only">
               {t("studentEmail")}</Label>
             <Input
@@ -224,7 +224,7 @@ function StudentManagementDialog({
           <Button
             onClick={handleManualAdd}
             disabled={isAdding}
-            className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+            className="shrink-0 bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
           >
             {isAdding ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -234,7 +234,7 @@ function StudentManagementDialog({
             {t("more")}</Button>
         </div>
 
-        <div className="border rounded-md border-gray-300 overflow-hidden">
+        <div className="border rounded-md border-gray-300 overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50">
               <TableRow className="border-gray-300">
