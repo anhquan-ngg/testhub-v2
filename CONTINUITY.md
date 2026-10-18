@@ -2,7 +2,7 @@
 
 > Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-**Cập nhật lần cuối:** 2026-10-05 — bỏ bước ZenStack khỏi CI/Vercel và bỏ import Prisma Client trong frontend.
+**Cập nhật lần cuối:** 2026-10-05 — bắt buộc toàn màn hình khi làm bài thi chính thức (trang thi của học viên).
 
 ## Cách cập nhật file này
 
@@ -30,6 +30,7 @@
 - Font chữ nội dung và tiêu đề đều dùng Inter từ `next/font/google` qua `--font-body` trong `src/app/[locale]/layout.tsx`; `src/app/globals.css` ánh xạ biến này cho body, heading và Tailwind. Stylesheet công khai của `https://teencare.co/vn` khai báo Inter cho phần lớn typography; đây là tham chiếu cho thay đổi.
 - Trang `/login` và `/signup` dùng `<form onSubmit>`; nút chính có `type="submit"`, nút đăng nhập Google/Outlook có `type="button"`. Bấm Enter trong ô cuối gửi qua cùng hàm xử lý như khi bấm nút chính.
 - `vercel.json` override Build Command thành `npm run build`, thay lệnh ZenStack cũ trong Vercel Project Settings. GitHub Actions chạy trên `master`/`dev`, dùng `npm ci`, Node 22 và build với giá trị JWT chỉ dùng để kiểm tra build; lint còn lỗi tồn đọng nên tạm không chặn build.
+- Trang thi `src/app/[locale]/(student)/exam/[id]/page.tsx`: bài thi chính thức (`practice === false`) bấm "Làm bài ngay" sẽ mở dialog yêu cầu toàn màn hình; chỉ bắt đầu khi `requestFullscreen` thành công. Trong lúc làm bài, nếu không ở toàn màn hình (thoát bằng Esc, hoặc tải lại trang khi đang có bài làm dở) thì đề bị ẩn (`invisible`) sau một dialog không đóng được, cho tới khi học viên bật lại; đồng hồ vẫn chạy. Mỗi lần thoát gửi `POST /exam-runtime/submissions/:id/violations` với `FULLSCREEN_EXIT` (debounce 5 giây ở client và ở backend); backend phát SSE `EXAM_MONITOR_VIOLATION` và trang giám sát giảng viên hiện toast cùng số vi phạm (đã có sẵn, không đổi backend). Lần thoát do trang tự thực hiện sau khi nộp bài không bị tính (ref `intentionalFullscreenExit`). Bài luyện tập và trình duyệt không hỗ trợ Fullscreen API (`document.fullscreenEnabled === false`, ví dụ Safari trên iPhone) không bị yêu cầu toàn màn hình.
 - Các enum API mà frontend cần nằm tại `src/types/backend-enums.ts`, đối chiếu với `../testhub-v2-backend/prisma/schema.prisma`; `src/` không còn import Prisma Client.
 
 ## i18n (vi/en) — tiến độ
@@ -53,6 +54,7 @@
 
 ## Chưa xác minh
 
+- Luồng toàn màn hình của trang thi mới kiểm tra bằng typecheck/lint; chưa thử thủ công trên trình duyệt với backend local (vào bài, Esc, tải lại trang, nộp bài, toast bên trang giám sát).
 - Chưa chạy `npm ci` trong môi trường sạch hay xác minh deployment Vercel sau thay đổi; `@prisma/client` và `prisma` vẫn nằm trong dependencies dù `src/` không dùng chúng.
 - Nhánh refresh trong `src/proxy.ts`: backend đặt `refresh_token` với `path: /auth/refresh`, nên trình duyệt có thể không gửi cookie này khi điều hướng tới các trang khác ⇒ refresh ở edge có thể không bao giờ chạy. Chưa kiểm tra thực tế.
 - Production (frontend và API khác subdomain, cookie không đặt `domain`): `src/proxy.ts` có đọc được `access_token` hay không.
@@ -91,6 +93,9 @@
 | ESLint `src/types/backend-enums.ts src/types/question.ts` | Pass |
 | `eslint .` sau sửa CI/Vercel | Fail: 62 error, 37 warning tồn đọng; CI tạm không chặn build |
 | Kiểm tra cú pháp `ci.yml`/`vercel.json` và `git diff --check` với CRLF hợp lệ | Pass |
+| TypeScript sau thay đổi toàn màn hình trang thi | Pass |
+| ESLint `src/app/[locale]/(student)/exam/[id]/page.tsx` | Fail: 21 problem (14 error, 7 warning), đúng bằng bản ở HEAD; không có lỗi nào trong phần code mới |
+| `node scripts/check-i18n.cjs` sau khi thêm key `fullscreen*` vào `student/exam.json` | Pass |
 
 ## Công việc đang làm
 

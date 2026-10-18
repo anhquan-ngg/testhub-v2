@@ -786,7 +786,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                     <Button className="bg-[#0066cc] hover:bg-[#0052a3] text-white">
                       {t("selectQuestion")}</Button>
                   </DialogTrigger>
-                  <DialogContent className="w-[calc(100vw-2rem)] max-w-4xl max-h-[calc(100vh-4rem)] overflow-y-auto bg-white border-gray-300">
+                  <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[calc(100vh-4rem)] overflow-y-auto bg-white border-gray-300">
                     <DialogHeader>
                       <DialogTitle>{t("selectQuestion")}</DialogTitle>
                       <DialogDescription>

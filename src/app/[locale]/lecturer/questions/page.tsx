@@ -1696,7 +1696,7 @@ function QuestionDialog({
   const t = useTranslations("lecturer.questions");
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto bg-white border-gray-300">
+      <DialogContent className="max-h-[90vh] sm:max-w-4xl overflow-y-auto bg-white border-gray-300">
         <DialogHeader>
           <DialogTitle>
             {mode === "edit" ? t("updateQuestion") : t("createQuestions")}
@@ -2008,7 +2008,7 @@ function QuestionDetailDialog({
   const t = useTranslations("lecturer.questions");
   return (
     <Dialog open={Boolean(question)} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] max-w-3xl overflow-y-auto overflow-x-hidden bg-white border-gray-300">
+      <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] sm:max-w-3xl overflow-y-auto overflow-x-hidden bg-white border-gray-300">
         <DialogHeader>
           <DialogTitle>{t("questionDetails")}</DialogTitle>
         </DialogHeader>

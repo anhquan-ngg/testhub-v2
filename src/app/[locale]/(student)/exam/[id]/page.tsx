@@ -2,9 +2,17 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { intlLocales } from "@/i18n/config";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -26,6 +34,7 @@ import {
   Video,
   Volume2,
   ExternalLink,
+  Maximize,
 } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { useParams } from "next/navigation";
@@ -71,6 +80,18 @@ interface ResolvedQuestionFile {
 
 import { useS3 } from "@/hooks/useS3";
 
+// Fullscreen state read straight from the DOM so the UI can never drift from
+// what the browser actually shows (Esc / F11 exit without any React handler).
+const subscribeFullscreen = (onChange: () => void) => {
+  document.addEventListener("fullscreenchange", onChange);
+  return () => document.removeEventListener("fullscreenchange", onChange);
+};
+const subscribeNoop = () => () => {};
+const getIsFullscreen = () => Boolean(document.fullscreenElement);
+// Browsers without the Fullscreen API (e.g. iPhone Safari) skip the
+// requirement instead of locking the student out of the exam.
+const getFullscreenSupported = () => Boolean(document.fullscreenEnabled);
+
 export default function ExamPage() {
   const t = useTranslations("student.exam");
   const locale = useLocale();
@@ -102,6 +123,21 @@ export default function ExamPage() {
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
   const questionsInitialized = useRef(false);
+  const isFullscreen = useSyncExternalStore(
+    subscribeFullscreen,
+    getIsFullscreen,
+    () => false,
+  );
+  const fullscreenSupported = useSyncExternalStore(
+    subscribeNoop,
+    getFullscreenSupported,
+    () => true,
+  );
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [hasExitedFullscreen, setHasExitedFullscreen] = useState(false);
+  // Set right before the page itself leaves fullscreen (after submitting), so
+  // that exit is not reported to the lecturer as a violation.
+  const intentionalFullscreenExit = useRef(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const handlePrint = async () => {
     if (!examId) return;
@@ -453,7 +489,13 @@ export default function ExamPage() {
     };
     const handleBlur = () => report("WINDOW_BLUR");
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) report("FULLSCREEN_EXIT");
+      if (document.fullscreenElement) return;
+      if (intentionalFullscreenExit.current) {
+        intentionalFullscreenExit.current = false;
+        return;
+      }
+      setHasExitedFullscreen(true);
+      report("FULLSCREEN_EXIT");
     };
     const handleCopy = () => report("COPY");
     const handlePaste = () => report("PASTE");
@@ -659,6 +701,7 @@ export default function ExamPage() {
     try {
       await apiClient.post(ENDPOINTS.SUBMISSIONS.SUBMIT_EXAM, payload);
       toast.success(t("submittedSuccessfully"));
+      leaveFullscreen();
       dispatch(endTest());
       setIsSubmitted(true);
       // router.push("/home");
@@ -668,9 +711,49 @@ export default function ExamPage() {
     }
   };
 
-  const handleStartTest = () => {
+  // Only official exams are proctored server-side (practice violations are
+  // dropped), so only they require fullscreen.
+  const requiresFullscreen = !!exam && !exam.practice && fullscreenSupported;
+
+  // Must be called synchronously from a click handler: browsers only grant
+  // fullscreen in response to a user gesture.
+  const enterFullscreen = async () => {
+    try {
+      intentionalFullscreenExit.current = false;
+      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      return true;
+    } catch (error) {
+      console.error("Fullscreen request failed:", error);
+      toast.error(t("fullscreenRequestFailed"));
+      return false;
+    }
+  };
+
+  const leaveFullscreen = () => {
+    if (!document.fullscreenElement) return;
+    intentionalFullscreenExit.current = true;
+    document.exitFullscreen().catch(() => {
+      intentionalFullscreenExit.current = false;
+    });
+  };
+
+  const beginTest = () => {
     setStartTime((current) => current ?? new Date());
     dispatch(startTest());
+  };
+
+  const handleStartTest = () => {
+    if (requiresFullscreen && !document.fullscreenElement) {
+      setShowFullscreenPrompt(true);
+      return;
+    }
+    beginTest();
+  };
+
+  const handleConfirmFullscreenStart = async () => {
+    if (!(await enterFullscreen())) return;
+    setShowFullscreenPrompt(false);
+    beginTest();
   };
 
   if (isLoading) {
@@ -880,6 +963,12 @@ export default function ExamPage() {
                       <p className="text-gray-700">
                         {t("ensureAStableInternetConnectionThroughout")}</p>
                     </div>
+                    {requiresFullscreen && (
+                      <div className="flex items-start gap-3">
+                        <Maximize className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <p className="text-gray-700">{t("fullscreenRule")}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -916,6 +1005,37 @@ export default function ExamPage() {
         </div>
 
         {/* Hidden Printable Content Removed (Now using Backend) */}
+
+        <Dialog
+          open={showFullscreenPrompt}
+          onOpenChange={setShowFullscreenPrompt}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Maximize className="w-5 h-5 text-blue-600" />
+                {t("fullscreenPromptTitle")}
+              </DialogTitle>
+              <DialogDescription>
+                {t("fullscreenPromptDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowFullscreenPrompt(false)}
+              >
+                {t("fullscreenPromptCancel")}
+              </Button>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
+                onClick={handleConfirmFullscreenStart}
+              >
+                {t("fullscreenPromptConfirm")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -931,8 +1051,17 @@ export default function ExamPage() {
     );
   }
 
+  // Official exam outside fullscreen: hide the questions behind a dialog the
+  // student can only leave by going back to fullscreen. The timer keeps running.
+  const fullscreenBlocked = requiresFullscreen && !isFullscreen;
+
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div
+      className={`min-h-screen flex flex-col bg-gray-50 ${
+        fullscreenBlocked ? "invisible" : ""
+      }`}
+      aria-hidden={fullscreenBlocked}
+    >
       {/* Header */}
       <header className="bg-white border-b border-gray-200 h-16 px-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
@@ -1317,6 +1446,45 @@ export default function ExamPage() {
           </div>
         </main>
       </div>
+
+      <Dialog open={fullscreenBlocked}>
+        <DialogContent
+          showCloseButton={false}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle
+                className={`w-5 h-5 ${
+                  hasExitedFullscreen ? "text-red-600" : "text-blue-600"
+                }`}
+              />
+              {hasExitedFullscreen
+                ? t("fullscreenExitedTitle")
+                : t("fullscreenRequiredTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {hasExitedFullscreen
+                ? t("fullscreenExitedDescription")
+                : t("fullscreenRequiredDescription")}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <Clock className="w-4 h-4" />
+            {t("fullscreenTimeLeft", { time: formatTime(Math.max(0, timeLeft)) })}
+          </p>
+          <DialogFooter>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
+              onClick={enterFullscreen}
+            >
+              <Maximize className="w-4 h-4 mr-2" />
+              {t("fullscreenResume")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
