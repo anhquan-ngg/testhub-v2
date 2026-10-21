@@ -30,6 +30,14 @@ export const ENDPOINTS = {
       `/question-imports/${id}/items/${itemId}`,
     COMMIT: (id: string) => `/question-imports/${id}/commit`,
   },
+  QUESTION_GENERATION: {
+    BASE: "/question-generation-batches",
+    DETAIL: (id: string) => `/question-generation-batches/${id}`,
+    ITEMS: (id: string) => `/question-generation-batches/${id}/items`,
+    ITEM: (id: string, itemId: string) => `/question-generation-batches/${id}/items/${itemId}`,
+    REVIEW: (id: string, itemId: string) => `/question-generation-batches/${id}/items/${itemId}/review`,
+    COMMIT: (id: string) => `/question-generation-batches/${id}/commit`,
+  },
   EXAMS: {
     BASE: "/exams",
     DETAIL: (id: string) => `/exams/${id}`,

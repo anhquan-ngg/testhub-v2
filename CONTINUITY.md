@@ -2,7 +2,7 @@
 
 > Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-**Cập nhật lần cuối:** 2026-10-05 — bắt buộc toàn màn hình khi làm bài thi chính thức (trang thi của học viên).
+**Cập nhật lần cuối:** 2026-10-20 — sửa đường mở câu hỏi của chương cha trong ngân hàng giảng viên.
 
 ## Cách cập nhật file này
 
@@ -32,6 +32,7 @@
 - `vercel.json` override Build Command thành `npm run build`, thay lệnh ZenStack cũ trong Vercel Project Settings. GitHub Actions chạy trên `master`/`dev`, dùng `npm ci`, Node 22 và build với giá trị JWT chỉ dùng để kiểm tra build; lint còn lỗi tồn đọng nên tạm không chặn build.
 - Trang thi `src/app/[locale]/(student)/exam/[id]/page.tsx`: bài thi chính thức (`practice === false`) bấm "Làm bài ngay" sẽ mở dialog yêu cầu toàn màn hình; chỉ bắt đầu khi `requestFullscreen` thành công. Trong lúc làm bài, nếu không ở toàn màn hình (thoát bằng Esc, hoặc tải lại trang khi đang có bài làm dở) thì đề bị ẩn (`invisible`) sau một dialog không đóng được, cho tới khi học viên bật lại; đồng hồ vẫn chạy. Mỗi lần thoát gửi `POST /exam-runtime/submissions/:id/violations` với `FULLSCREEN_EXIT` (debounce 5 giây ở client và ở backend); backend phát SSE `EXAM_MONITOR_VIOLATION` và trang giám sát giảng viên hiện toast cùng số vi phạm (đã có sẵn, không đổi backend). Lần thoát do trang tự thực hiện sau khi nộp bài không bị tính (ref `intentionalFullscreenExit`). Bài luyện tập và trình duyệt không hỗ trợ Fullscreen API (`document.fullscreenEnabled === false`, ví dụ Safari trên iPhone) không bị yêu cầu toàn màn hình.
 - Các enum API mà frontend cần nằm tại `src/types/backend-enums.ts`, đối chiếu với `../testhub-v2-backend/prisma/schema.prisma`; `src/` không còn import Prisma Client.
+- `src/types/question-generation.ts` cố định command văn bản (môn/chương, source text, SINGLE_CHOICE, bốn mức nhận thức, count, vi, consent true), câu trả về và các trạng thái batch/draft dành cho bước sau. Backend đã có schema/service/client FastAPI; chưa đăng ký endpoint frontend hoặc thêm UI. Type không chứa token/URL nội bộ; xem `../testhub-v2-backend/docs/ai-question-generation.md`.
 
 ## i18n (vi/en) — tiến độ
 
@@ -50,13 +51,17 @@
 5. `useAuth.handleOutlookLogin` là hàm rỗng, trong khi backend có `GET /auth/outlook`.
 6. `src/lib/socket.ts` export một socket không được import ở đâu; `src/types/next-auth.d.ts` khai báo module `next-auth` dù package này không được cài.
 7. Không thấy import trong `src/` của các dependency: `@react-oauth/google`, `js-cookie`, `zod`, `react-to-print`, `dotenv`.
-8. Không có test và không có `.env.example`; `README.md` lỗi thời (Next.js 15, TanStack Query, `prisma/`, `generated/`, các bước `prisma migrate`/`zenstack generate`).
+8. Tự đăng xuất (phân tích từ code ngày 2026-10-08, chưa sửa):
+   - `src/proxy.ts` không bao giờ refresh được: backend đặt `refresh_token` với `path: /auth/refresh` nên request tới `/{locale}/...` không mang cookie này. Khi cookie `access_token` hết hạn (`maxAge` 15 phút), mọi lần tải trang hoặc điều hướng tới route bảo vệ đều bị chuyển về `/login`, dù refresh token còn hạn 7 ngày. Chỉ request axios gửi tới backend mới refresh được.
+   - Backend lưu một hash refresh token cho mỗi user (`generateAndSaveTokens` gọi `updateMany` trên mọi account) và đổi token mới ở mỗi lần refresh ⇒ đăng nhập ở trình duyệt/thiết bị khác hoặc hai tab cùng refresh sẽ làm phiên còn lại hỏng.
+   - `jwt-refresh.strategy.ts` chỉ tìm account `provider: 'local'` ⇒ user chỉ đăng nhập bằng Google/Outlook luôn refresh thất bại.
+   - `api-client.ts` coi mọi lỗi refresh (kể cả lỗi mạng hay backend đang khởi động lại) là hết phiên và chuyển về login.
+9. Không có test và không có `.env.example`; `README.md` lỗi thời (Next.js 15, TanStack Query, `prisma/`, `generated/`, các bước `prisma migrate`/`zenstack generate`).
 
 ## Chưa xác minh
 
 - Luồng toàn màn hình của trang thi mới kiểm tra bằng typecheck/lint; chưa thử thủ công trên trình duyệt với backend local (vào bài, Esc, tải lại trang, nộp bài, toast bên trang giám sát).
 - Chưa chạy `npm ci` trong môi trường sạch hay xác minh deployment Vercel sau thay đổi; `@prisma/client` và `prisma` vẫn nằm trong dependencies dù `src/` không dùng chúng.
-- Nhánh refresh trong `src/proxy.ts`: backend đặt `refresh_token` với `path: /auth/refresh`, nên trình duyệt có thể không gửi cookie này khi điều hướng tới các trang khác ⇒ refresh ở edge có thể không bao giờ chạy. Chưa kiểm tra thực tế.
 - Production (frontend và API khác subdomain, cookie không đặt `domain`): `src/proxy.ts` có đọc được `access_token` hay không.
 - Người dùng cung cấp log build Vercel với Build Command cũ `npx zenstack generate && next build`; chưa xác minh nhánh production hoặc biến môi trường Vercel.
 
@@ -100,6 +105,56 @@
 ## Công việc đang làm
 
 Chưa có thông tin.
+
+## Kiểm tra contract AI (2026-10-16)
+
+- TypeScript `tsc --noEmit --incremental false` toàn frontend và ESLint `src/types/question-generation.ts` qua Node 22.22.0: pass.
+- Type command/câu trả về dùng đúng enum hiện tại; backend/Python có fixture contract và test HTTP liên repo. Chưa thêm API caller, endpoint constants hoặc giao diện; không build lại frontend vì thay đổi chỉ là type chưa được import vào runtime.
+
+## AI workspace (2026-10-19)
+
+- Route `/[locale]/lecturer/questions/generate`, có nút từ ngân hàng câu hỏi.
+  Tạo lô text với consent/target/count/level, polling và lịch sử lô phân trang,
+  mở lại bằng `?batch=UUID`. Không lưu văn bản/token nội bộ vào local storage.
+- Editor SINGLE_CHOICE sửa text/4 options/đáp án đúng/level, kiểm tra Zod,
+  gửi exact revision. Duyệt/từ chối là thao tác riêng; VALID không phải APPROVED.
+  Chỉ chọn câu APPROVED và xác nhận danh sách trước commit. Có bank IDs sau lưu.
+  Chặn commit khi đang sửa chưa lưu và bỏ chọn khi revision thay đổi.
+- API caller tại `src/services/questionGenerationService.ts`, endpoint constants
+  và types cập nhật theo backend; sử dụng Axios cookie/refresh hiện có. Key tạo lô
+  giữ trong memory cho retries cùng nội dung; reload mất key nên kiểm tra lịch sử
+  trước khi gửi lại nếu kết quả tạo lô chưa rõ. Conflict reload dữ liệu hiện tại.
+- Nhãn vi/en tại shared/questionGeneration.json, đăng ký cả hai index message.
+  Route đã nằm dưới quyền `/lecturer`, không thêm exception vào proxy.
+- Kiểm tra: TypeScript pass; ESLint feature + trang ngân hàng pass; script i18n
+  31 cặp JSON/ICU pass; `next build --turbopack` pass (route mới được build).
+  Lint toàn repo vẫn có **62 lỗi/37 cảnh báo tồn đọng**, ngoài phần AI mới và
+  trang ngân hàng đã sửa (các file này lint riêng sạch); không mở rộng sửa ngoài phạm vi.
+  Build cần escalation cho native SWC cache do sandbox owner SID, không cài dependency.
+  HTTP SSR localhost với JWT giả riêng: vi/en 200 và form/nhãn đúng. CUA không có
+  browser provider (iab unavailable), chưa kiểm thử click-through/visual.
+- Backend integration (PostgreSQL/Redis thật tạm + fake AI HTTP) đã kiểm tra sửa,
+  duyệt/revision, commit/replay/rollback/quyền sở hữu. Không dùng database hiện có,
+  Gemini hoặc tài khoản thật trong các kiểm tra này. Hướng dẫn demo tại
+  `../testhub-v2-backend/docs/ai-question-generation.md`.
+
+## Câu hỏi AI không thấy trong ngân hàng giảng viên (2026-10-20)
+
+- Người dùng xác nhận đã commit thành công nhưng chưa thấy hai câu trên giao diện.
+  CSV cũ chỉ thể hiện thời điểm APPROVED/question_id null, không phải bằng chứng
+  trạng thái DB sau commit. Đã yêu cầu kết quả SELECT chỉ đọc để xác minh mapping,
+  chapter, is_deleted và has_children của hai item; chưa kết nối DB hiện có.
+- Phát hiện bug UI chắc chắn từ code: `childCount > 0` chỉ mở danh sách chương con;
+  chỉ leaf chapter có đường mở câu hỏi, trong khi AI commit cho phép lưu vào mọi
+  chapter active thuộc topic. Vì vậy câu trực tiếp của chương cha không truy cập
+  được từ danh sách chương, dù API GET questions theo chapter_id vẫn trả chúng.
+- Sửa trang lecturer/questions: chương có con có cả nút Quản lý Chapter con và
+  Quản lý Câu hỏi; chương lá vẫn có nút Quản lý Câu hỏi. Truy vấn dùng chapter_id
+  của chính chương, không gộp câu của các chương con. Reuse nhãn vi/en hiện có.
+- Cần đối chiếu kết quả truy vấn mới để xác nhận đây chính là nguyên nhân của
+  hai ID người dùng đang xem. Không thay đổi DB hoặc tự commit lại bản nháp.
+- Kiểm tra bản sửa: ESLint riêng trang ngân hàng, TypeScript `--noEmit` và
+  production build Next.js đều thành công. Chưa kiểm tra giao diện bằng trình duyệt.
 
 ## Bước tiếp theo đề xuất
 

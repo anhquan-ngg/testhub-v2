@@ -1,5 +1,17 @@
 # TESTHUB - Hệ thống Thi trực tuyến
 
+## AI generation và review
+
+Trong tài khoản giảng viên, mở **Ngân hàng câu hỏi → Sinh câu hỏi bằng AI**
+(`/{locale}/lecturer/questions/generate`). Tạo lô từ văn bản với consent, chờ sinh,
+sửa bản nháp, duyệt từng câu, chọn câu đã duyệt và xác nhận lưu vào ngân hàng.
+Có lịch sử lô và URL để tiếp tục review; sửa sau duyệt cần duyệt lại phiên bản mới.
+Nhãn hỗ trợ vi/en; nội dung sinh hiện là trắc nghiệm một đáp án bằng tiếng Việt.
+
+Backend cần áp dụng hai migration AI trên DB local, chạy API, Redis, FastAPI và
+worker riêng. Xem [hướng dẫn tích hợp/demo](../testhub-v2-backend/docs/ai-question-generation.md).
+Frontend dùng session cookie hiện có, không cần Gemini key hoặc internal token.
+
 TESTHUB là một nền tảng thi trực tuyến hiện đại được xây dựng bằng Next.js 15, cho phép các tổ chức giáo dục tạo, quản lý và triển khai các bài kiểm tra một cách hiệu quả.
 
 ## 🚀 Tính năng chính

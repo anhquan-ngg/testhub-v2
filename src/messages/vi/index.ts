@@ -24,6 +24,7 @@ import lecturerMonitor from "./lecturer/monitor.json";
 import lecturerExamReport from "./lecturer/examReport.json";
 import lecturerProfile from "./lecturer/profile.json";
 import questionImport from "./shared/questionImport.json";
+import questionGeneration from "./shared/questionGeneration.json";
 import examPrint from "./shared/examPrint.json";
 import mathInput from "./shared/mathInput.json";
 import fileUpload from "./shared/fileUpload.json";
@@ -39,7 +40,7 @@ const messages = {
   admin: { dashboard: adminDashboard, users: adminUsers, questions: adminQuestions, exams: adminExams, examReport: adminExamReport, submissionReport: adminSubmissionReport },
   student: { home: studentHome, exam: studentExam, results: studentResults, resultDetail: studentResultDetail, profile: studentProfile },
   lecturer: { dashboard: lecturerDashboard, questions: lecturerQuestions, exams: lecturerExams, createExam: lecturerCreateExam, editExam: lecturerEditExam, monitor: lecturerMonitor, examReport: lecturerExamReport, profile: lecturerProfile },
-  shared: { questionImport, examPrint, mathInput, fileUpload, ui },
+  shared: { questionImport, questionGeneration, examPrint, mathInput, fileUpload, ui },
 };
 
 export default messages;

@@ -70,6 +70,7 @@ import {
 import { MathInput } from "@/components/MathInput";
 import { MathRenderer } from "@/components/MathRenderer";
 import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
+import { Link } from "@/i18n/navigation";
 import { ENDPOINTS } from "@/constants/endpoints";
 import apiClient from "@/lib/api-client";
 
@@ -307,6 +308,7 @@ const getQuestionPreviewText = (questionText: string) => {
 
 export default function LecturerQuestions() {
   const t = useTranslations("lecturer.questions");
+  const generationText = useTranslations("shared.questionGeneration");
   const locale = useLocale();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -939,6 +941,10 @@ export default function LecturerQuestions() {
         <div className="space-y-3">
           <h2 className="text-3xl font-bold text-gray-900">
             {t("questionBank")}</h2>
+          <Button asChild variant="outline"><Link href={{ pathname: "/lecturer/questions/generate", query: {
+            ...(selectedTopic ? { topic: selectedTopic.id } : {}),
+            ...(currentChapter ? { chapter: currentChapter.id } : {}),
+          } }}>{generationText("title")}</Link></Button>
           {viewMode !== "topics" && (
             <Button
               variant="ghost"
@@ -1117,22 +1123,28 @@ export default function LecturerQuestions() {
                             {formatDate(chapter.updated_at, intlLocales[locale])}
                           </TableCell>
                           <TableCell className="text-center">
-                            <div className="flex justify-center gap-1">
+                            <div className="flex flex-wrap justify-center gap-1">
+                              {childCount > 0 && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
+                                  onClick={() => openChapterChildren(chapter)}
+                                >
+                                  {t("manageSubChapters")}
+                                </Button>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
                                 onClick={() =>
-                                  childCount > 0
-                                    ? openChapterChildren(chapter)
-                                    : openChapterQuestions(chapter).catch(() =>
-                                        toast.error(t("unableToLoadQuestion")),
-                                      )
+                                  openChapterQuestions(chapter).catch(() =>
+                                    toast.error(t("unableToLoadQuestion")),
+                                  )
                                 }
                               >
-                                {childCount > 0
-                                  ? t("manageSubChapters")
-                                  : t("questionManagement2")}
+                                {t("questionManagement2")}
                               </Button>
                               <Button
                                 size="icon"

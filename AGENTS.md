@@ -151,3 +151,23 @@ Lint toàn repo hiện đang có lỗi tồn đọng (xem `CONTINUITY.md`); đá
 - `package-lock.json` — chỉ thay đổi qua `npm install`.
 - `src/components/ui/*` — sinh từ mẫu shadcn; có thể chỉnh khi cần nhưng ưu tiên tái sử dụng thay vì viết lại.
 - Frontend không còn import `@prisma/client` trong `src/`. Khi backend thay đổi các enum `UserRole`, `QuestionType`, `QuestionFormat`, `SubmissionStatus`, cập nhật `src/types/backend-enums.ts` theo `../testhub-v2-backend/prisma/schema.prisma`; không sửa Prisma Client sinh trong `node_modules/`.
+
+## 10. AI generation and review workspace
+
+- `/{locale}/lecturer/questions/generate` is linked from the lecturer question
+  bank and already covered by `/lecturer` route authorization. It supports text
+  generation, batch history/polling, edits, explicit approval/rejection and selected
+  bank commit; localized messages are in shared/questionGeneration.json (vi/en).
+- Call APIs through `questionGenerationService` and ENDPOINTS.QUESTION_GENERATION.
+  Keep runtime types aligned with backend persisted enums; VALID is not APPROVED.
+- Active parent chapters can also own AI/bank questions. Keep question management
+  available alongside subchapter management; never make these mutually exclusive.
+- Send the displayed revision on edit/review and exact approved item/revision
+  references on commit. Edits reset approval; stale revisions return 409. Never
+  auto-approve an edit or auto-commit generation output. Preserve replay safety.
+- Source text and internal provider keys/tokens must not enter URL/local storage.
+  Only the business batch ID is retained in the resumable URL. Check history after
+  an ambiguous creation across reload (the idempotency key is only in memory).
+- Block commit while unsaved edits are open, discard selection after a revision
+  changes, and reload current state after ambiguous mutations. No new form/query
+  library or dependency is required for this workflow.
