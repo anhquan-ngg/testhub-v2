@@ -72,19 +72,13 @@ import { MathRenderer } from "@/components/MathRenderer";
 import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
 import { Link } from "@/i18n/navigation";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
 
 type ViewMode = "topics" | "chapters" | "questions";
 type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "ESSAY";
 type QuestionFormat = "KNOWLEDGE" | "UNDERSTANDING" | "APPLYING" | "ADVANCED";
 type FileType = "AUDIO" | "IMAGE" | "VIDEO";
-
-type PageResult<T> = {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-};
 
 type Topic = {
   id: string;
@@ -309,6 +303,7 @@ const getQuestionPreviewText = (questionText: string) => {
 export default function LecturerQuestions() {
   const t = useTranslations("lecturer.questions");
   const generationText = useTranslations("shared.questionGeneration");
+  const documentText = useTranslations("shared.learningDocuments");
   const locale = useLocale();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -352,34 +347,13 @@ export default function LecturerQuestions() {
   const currentChapter = chapterStack[chapterStack.length - 1] ?? null;
 
   const fetchTopics = useCallback(async () => {
-    const res = await apiClient.get<PageResult<Topic>>(ENDPOINTS.TOPICS.BASE, {
-      params: { page: 1, limit: 100 },
-    });
-    setTopics(res.data.data);
+    setTopics(await fetchAllPages<Topic>(ENDPOINTS.TOPICS.BASE, {}));
   }, []);
-
   const fetchChapters = useCallback(async (topicId?: string) => {
-    const res = await apiClient.get<PageResult<Chapter>>(
-      ENDPOINTS.CHAPTERS.BASE,
-      {
-        params: { page: 1, limit: 100, ...(topicId && { topic_id: topicId }) },
-      },
-    );
-    setChapters(res.data.data);
+    setChapters(await fetchAllPages<Chapter>(ENDPOINTS.CHAPTERS.BASE, { ...(topicId && { topic_id: topicId }) }));
   }, []);
-
   const fetchQuestions = useCallback(async (chapterId?: string) => {
-    const res = await apiClient.get<PageResult<Question>>(
-      ENDPOINTS.QUESTIONS.BASE,
-      {
-        params: {
-          page: 1,
-          limit: 100,
-          ...(chapterId && { chapter_id: chapterId }),
-        },
-      },
-    );
-    setQuestions(res.data.data);
+    setQuestions(await fetchAllPages<Question>(ENDPOINTS.QUESTIONS.BASE, { ...(chapterId && { chapter_id: chapterId }) }));
   }, []);
 
   const refreshAll = useCallback(async () => {
@@ -416,7 +390,7 @@ export default function LecturerQuestions() {
   const chapterRows = useMemo(() => {
     const parentId = currentChapter?.id ?? null;
     return chapters
-      .filter((chapter) => chapter.parent_id === parentId)
+      .filter((chapter) => (chapter.parent_id ?? null) === parentId)
       .sort((a, b) => a.order - b.order);
   }, [chapters, currentChapter?.id]);
 
@@ -634,7 +608,7 @@ export default function LecturerQuestions() {
 
     const payload = {
       topic_id: chapterForm.topic_id,
-      parent_id: chapterForm.parent_id || undefined,
+      parent_id: chapterForm.parent_id || (editingChapterId ? null : undefined),
       name: chapterForm.name.trim(),
       order: Number(chapterForm.order) || 0,
     };
@@ -945,6 +919,7 @@ export default function LecturerQuestions() {
             ...(selectedTopic ? { topic: selectedTopic.id } : {}),
             ...(currentChapter ? { chapter: currentChapter.id } : {}),
           } }}>{generationText("title")}</Link></Button>
+          <Button asChild variant="outline"><Link href="/lecturer/questions/documents">{documentText('title')}</Link></Button>
           {viewMode !== "topics" && (
             <Button
               variant="ghost"
@@ -1367,7 +1342,7 @@ export default function LecturerQuestions() {
                     .filter(
                       (chapter) =>
                         chapter.topic_id === selectedTopic?.id &&
-                        chapter.id !== editingChapterId,
+                        (!editingChapterId || !getDescendantChapterIds(editingChapterId).has(chapter.id)),
                     )
                     .map((chapter) => (
                       <SelectItem key={chapter.id} value={chapter.id}>
@@ -1736,7 +1711,9 @@ function QuestionDialog({
                   setQuestionForm((prev) => ({
                     ...prev,
                     question_type: value as QuestionType,
-                    options: value === "ESSAY" ? emptyOptions() : prev.options,
+                    options: value === "ESSAY" ? emptyOptions() : value === "SINGLE_CHOICE"
+                      ? prev.options.map((option, index) => ({ ...option, isCorrect: option.isCorrect && index === prev.options.findIndex((item) => item.isCorrect) }))
+                      : prev.options,
                   }))
                 }
               >

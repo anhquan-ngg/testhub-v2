@@ -42,6 +42,7 @@ export function GenerationDraftCard({
   onEditingChange,
 }: Props) {
   const t = useTranslations("shared.questionGeneration");
+  const documentText = useTranslations("shared.learningDocuments");
   const { questionFormat } = useEnumLabels();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.data);
@@ -99,6 +100,33 @@ export function GenerationDraftCard({
         </span>
       </CardHeader>
       <CardContent className="space-y-4">
+        {item.provenance && (
+          <details className="rounded border p-3 text-sm">
+            <summary className="cursor-pointer font-medium">
+              {t("citationsTitle")}
+            </summary>
+            <p className="my-2 text-muted-foreground">{t("citationsHint")}</p>
+            {item.warnings.includes("AI_SOURCE_RECHECK_AFTER_EDIT") && (
+              <p className="my-2 text-amber-700">{t("citationsEdited")}</p>
+            )}
+            {item.provenance.citations.map((citation, index) => (
+              <section
+                key={`${citation.chunk.chunk_id}-${index}`}
+                className="my-2 rounded border p-2"
+              >
+                <h4 className="font-medium">
+                  {documentText(`kind.${citation.chunk.kind}`, {
+                    position: citation.chunk.position,
+                  })}
+                </h4>
+                <blockquote className="mt-1 whitespace-pre-wrap break-words">
+                  {citation.quote}
+                </blockquote>
+              </section>
+            ))}
+          </details>
+        )}
+
         {editing ? (
           <div className="space-y-4">
             <Label htmlFor={`question-${item.id}`}>{t("questionText")}</Label>

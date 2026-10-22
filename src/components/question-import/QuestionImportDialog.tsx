@@ -326,6 +326,7 @@ export function QuestionImportDialog({
 
     setIsBusy(true);
     let createdImportId: string | null = null;
+    let uploadFinished = false;
     try {
       const created = await apiClient.post<{
         import: QuestionImportRecord;
@@ -346,6 +347,7 @@ export function QuestionImportDialog({
         timeout: 120_000,
         withCredentials: false,
       });
+      uploadFinished = true;
       const completed = await apiClient.post<{
         status: QuestionImportRecord["status"];
       }>(ENDPOINTS.QUESTION_IMPORTS.COMPLETE(created.data.import.id));
@@ -354,7 +356,7 @@ export function QuestionImportDialog({
         status: completed.data.status,
       });
     } catch (error) {
-      if (createdImportId) {
+      if (createdImportId && !uploadFinished) {
         // The import row exists server-side; cancel it so a failed upload
         // does not leave an orphan until it expires. A cleanup failure must
         // not mask the original error below.
@@ -366,7 +368,15 @@ export function QuestionImportDialog({
           // The server-side expiry job removes it eventually.
         }
       }
-      setQuestionImport(null);
+      if (!uploadFinished) setQuestionImport(null);
+      else if (createdImportId) {
+        try {
+          const current = await apiClient.get<QuestionImportRecord>(ENDPOINTS.QUESTION_IMPORTS.DETAIL(createdImportId));
+          setQuestionImport(current.data);
+        } catch {
+          // Preserve the uploaded import even if status recovery is unavailable.
+        }
+      }
       toast.error(getErrorMessage(error, t("unableToLoadAndProcessImport")));
     } finally {
       setIsBusy(false);

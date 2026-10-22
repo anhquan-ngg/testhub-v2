@@ -233,18 +233,8 @@ export default function ExamPage() {
         return;
       }
 
-      const response = await apiClient.post(
-        ENDPOINTS.SUBMISSIONS.START_EXAM(examId),
-      );
-
-      if (response.status === 200) {
-        setExam(response.data.data);
-        setStartTime(
-          response.data.data.entered_at
-            ? new Date(response.data.data.entered_at)
-            : new Date(),
-        );
-      }
+      const response = await apiClient.get<ExamData>(ENDPOINTS.EXAMS.DETAIL(examId));
+      setExam(response.data);
     } catch (error) {
       const errorReason =
         (error as any)?.response?.data?.reason ??
@@ -737,9 +727,21 @@ export default function ExamPage() {
     });
   };
 
-  const beginTest = () => {
-    setStartTime((current) => current ?? new Date());
-    dispatch(startTest());
+  const startingRef = useRef(false);
+  const beginTest = async () => {
+    if (startingRef.current) return;
+    startingRef.current = true;
+    try {
+      const response = await apiClient.post<{ data: ExamData }>(ENDPOINTS.SUBMISSIONS.START_EXAM(examId));
+      const session = response.data.data;
+      setExam(session);
+      setStartTime(session.entered_at ? new Date(session.entered_at) : new Date());
+      dispatch(startTest());
+    } catch {
+      toast.error(t("errorLoadingTestData"));
+    } finally {
+      startingRef.current = false;
+    }
   };
 
   const handleStartTest = () => {
@@ -747,13 +749,13 @@ export default function ExamPage() {
       setShowFullscreenPrompt(true);
       return;
     }
-    beginTest();
+    void beginTest();
   };
 
   const handleConfirmFullscreenStart = async () => {
     if (!(await enterFullscreen())) return;
     setShowFullscreenPrompt(false);
-    beginTest();
+    void beginTest();
   };
 
   if (isLoading) {
@@ -842,7 +844,7 @@ export default function ExamPage() {
               <p>
                 {t("theSystemHasRecordedYourResults")}{" "}
                 <Link
-                  href={`/result/${examId}`}
+                  href={exam.practice && exam.submissionId ? `/result/${exam.submissionId}` : "/result"}
                   className="font-semibold text-blue-600 hover:underline"
                 >
                   {t("examResults")}</Link>{" "}

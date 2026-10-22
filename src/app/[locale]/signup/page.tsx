@@ -31,20 +31,11 @@ export default function SignupPage() {
 
   const handleSignup = async () => {
     try {
-      const res = await authServices.signup(form as any);
-      if (res.status === 201) {
-        toast.success(t("signup.success"));
-      }
-    } catch (error) {
+      await authServices.signup(form);
+      toast.success(t("signup.success"));
+      setForm({ full_name: "", email: "", password: "", confirmPassword: "" });
+    } catch {
       toast.error(t("signup.failed"));
-      console.error("Error when sign up:", error);
-    } finally {
-      setForm({
-        full_name: "",
-        email: "",
-        password: "",
-        confirmPassword: "",
-      });
     }
   };
 

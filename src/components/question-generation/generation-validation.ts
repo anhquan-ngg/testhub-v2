@@ -35,9 +35,16 @@ export const generationCommandSchema = z
   .object({
     topic_id: z.uuid(),
     chapter_id: z.uuid(),
-    source: z
-      .object({ mode: z.literal("text"), text: text(20_000, 20) })
-      .strict(),
+    source: z.discriminatedUnion("mode", [
+      z.object({ mode: z.literal("text"), text: text(20_000, 20) }).strict(),
+      z
+        .object({
+          mode: z.literal("document"),
+          version_id: z.uuid(),
+          query: text(400, 0).default(""),
+        })
+        .strict(),
+    ]),
     question_type: z.literal("SINGLE_CHOICE"),
     question_format: z.enum([
       "KNOWLEDGE",
@@ -50,3 +57,7 @@ export const generationCommandSchema = z
     external_processing_consent: z.literal(true),
   })
   .strict();
+
+export const documentGenerationSettingsSchema = generationCommandSchema
+  .omit({ source: true })
+  .extend({ query: text(400, 0) });

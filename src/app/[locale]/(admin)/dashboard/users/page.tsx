@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,9 +77,16 @@ export default function UsersPage() {
   const enumLabel = useEnumLabels();
   const [users, setUsers] = useState([] as any);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const requestId = useRef(0);
   const [error, setError] = useState<unknown>(null);
   const [totalCount, setTotalCount] = useState(0);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => { setDebouncedSearch(searchTerm); setCurrentPage(1); }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
   const [showPassword, setShowPassword] = useState(false);
   const [userForm, setUserForm] = useState<{
     full_name: string;
@@ -105,7 +112,8 @@ export default function UsersPage() {
   const [itemsPerPage] = useState(10);
 
   const fetchUsers = useCallback(
-    async (page = currentPage, limit = itemsPerPage, search = searchTerm) => {
+    async (page = currentPage, limit = itemsPerPage, search = debouncedSearch) => {
+      const id = ++requestId.current;
       setIsLoading(true);
       try {
         const response = await apiClient.get<PageResult<any>>(
@@ -119,16 +127,17 @@ export default function UsersPage() {
             },
           },
         );
+        if (id !== requestId.current) return;
         setUsers(response.data.data ?? []);
         setTotalCount(response.data.total ?? 0);
         setError(null);
       } catch (err) {
-        setError(err);
+        if (id === requestId.current) setError(err);
       } finally {
-        setIsLoading(false);
+        if (id === requestId.current) { setIsLoading(false); setHasLoaded(true); }
       }
     },
-    [currentPage, itemsPerPage, roleFilter, searchTerm],
+    [currentPage, itemsPerPage, roleFilter, debouncedSearch],
   );
 
   const handleAddUser = async () => {
@@ -186,7 +195,7 @@ export default function UsersPage() {
     }
   }, [error, t]);
 
-  if (isLoading) {
+  if (isLoading && !hasLoaded) {
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner />
@@ -196,15 +205,7 @@ export default function UsersPage() {
 
   const filteredUsers =
     users
-      ?.filter((user: any) => {
-        const matchesSearch =
-          (user.full_name || "")
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-          (user.email || "").toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesRole = roleFilter === "ALL" || user.role === roleFilter;
-        return matchesSearch && matchesRole;
-      })
+      ?.slice()
       .sort((a: any, b: any) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
@@ -212,10 +213,7 @@ export default function UsersPage() {
       }) || [];
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
-  const paginatedUsers = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const paginatedUsers = filteredUsers;
 
   return (
     <div className="space-y-6">
@@ -357,7 +355,6 @@ export default function UsersPage() {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1);
                 }}
               />
             </div>
@@ -397,6 +394,7 @@ export default function UsersPage() {
               </Select>
             </div>
           </div>
+          {isLoading && <div className="flex justify-center py-4"><Spinner /></div>}
           <Table>
             <TableHeader>
               <TableRow className="border-gray-300">

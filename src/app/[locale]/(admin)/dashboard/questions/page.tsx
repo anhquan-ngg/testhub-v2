@@ -25,6 +25,7 @@ import { IQuestion, QuestionOption } from "@/types/question";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
 import { MathRenderer } from "@/components/MathRenderer";
 import { toast } from "sonner";
+import { parseOptions } from "@/lib/exam-utils";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 
@@ -170,9 +171,7 @@ export default function QuestionsPage() {
                           />
                         ) : question.options ? (
                           <MathRenderer
-                            content={JSON.parse(
-                              question.options as unknown as string,
-                            )
+                            content={(parseOptions(question.options as unknown as string).filter((option): option is QuestionOption => typeof option === "object" && option !== null && "text" in option && "isCorrect" in option))
                               .filter(
                                 (option: QuestionOption) => option.isCorrect,
                               )

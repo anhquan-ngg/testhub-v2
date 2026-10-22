@@ -1,5 +1,49 @@
 # AGENTS.md — testhub-v2 (frontend)
 
+## Attached-file question generation (2026-10-22)
+
+- QuestionGenerationScreen now attaches one text-layer PDF/PPTX <=20 MiB instead
+  of pasted source text. Reuse learningDocumentService upload/confirm, then create
+  source.mode=document with version_id and optional knowledge focus. Notes opt in.
+- Explicit consent covers source content and query sent to Google. In-memory upload
+  checkpoints avoid reuploading confirmed bytes on same-page retries. Do not put
+  reservations/signed URLs/source bodies in browser URL/localStorage.
+- Poll WAITING_SOURCE/QUEUED/GENERATING and display preparation stage/source file.
+  Accepted batches resume by business batch ID/history; server workers prepare
+  sources after navigation. Pre-batch upload checkpoints do not survive reload.
+- GenerationDraftCard shows original evidence quotes/pages/slides with UNASSESSED
+  quality guidance. Edits retain evidence and display a recheck warning. Continue
+  using explicit revision approval and selected commit; no automatic bank writes.
+- vi/en labels, cookie API client and document size/types match backend. Text API
+  compatibility is retained for existing consumers/history. Setup requires the
+  additional migration and BOTH workers; see backend docs/rag-indexing.md section 4.
+
+## Current RAG workspace (2026-10-21)
+
+- DocumentRagPanel adds explicit index start/retry, checkpoint progress and retrieval
+  preview to the document screen. Poll while extraction OR indexing is pending.
+- Use learningDocumentService/ENDPOINTS.LEARNING_DOCUMENTS, cookie auth, vi/en labels.
+  Query bodies remain in memory, never URLs/localStorage. Cancel retrieval on unmount
+  or version change and discard stale results. Render source text as plain text.
+- Explain Google transmission for indexed content AND queries. Similarity is not a
+  calibrated quality result: show UNASSESSED. Retrieval does not create questions
+  or write the bank. Current UI searches one selected version; API supports ten.
+- Setup and demo: ../testhub-v2-backend/docs/rag-indexing.md. Older extraction-only
+  snapshots below describe the preceding implementation stage.
+
+## Learning documents workspace (2026-10-21)
+
+- `/{locale}/lecturer/questions/documents` is lecturer protected and linked from
+  question bank/AI workspace. Use learningDocumentService/ENDPOINTS.LEARNING_DOCUMENTS.
+- Business APIs use apiClient cookies. PUT signed upload URLs with separate Axios
+  and withCredentials=false; never store signed URLs, source text or internal
+  tokens in URL/local storage. Resume finished uploads via complete, not create.
+- Require consent, PDF/PPTX <=20 MiB and explicit notes opt-in. New versions retain
+  old source identities; version selection controls extraction preview.
+- Render PAGE/SLIDE/NOTES as plain text. Show OCR_REQUIRED separately; EXTRACTED
+  is not READY and no document RAG generation action exists yet. Labels use
+  shared/learningDocuments.json in vi/en. Revoke is not physical file deletion.
+
 Hướng dẫn chung cho mọi AI agent (Claude Code, Codex, Cursor, Copilot…) làm việc trong repo này. Nội dung dựa trên code và cấu hình thực tế tại thời điểm viết; khi thấy tài liệu lệch với code, tin code và cập nhật lại file này.
 
 ## 0. Trước khi làm việc
@@ -11,7 +55,7 @@ Hướng dẫn chung cho mọi AI agent (Claude Code, Codex, Cursor, Copilot…)
 **Thứ tự ưu tiên khi hướng dẫn mâu thuẫn:** yêu cầu trực tiếp của người dùng → file này → `README.md`.
 File `../../AGENTS.md` (thư mục `testhub/` bên ngoài repo) mô tả một kiến trúc monorepo khác (`apps/web`, pnpm, Zustand, TanStack Query, `react-hook-form`, `/api/v1/`…) **không khớp** với repo này. Không áp dụng các lệnh và đường dẫn trong file đó cho repo này.
 
-`README.md` cũng đã lỗi thời ở một số điểm (Next.js 15, TanStack Query, thư mục `prisma/`, `generated/`, `src/app/api/`, bước `npx prisma migrate dev`) — xem mục "Vấn đề đã xác minh" trong `CONTINUITY.md`.
+`README.md` mô tả thiết lập frontend Next.js 16; migration và ORM thuộc repository backend.
 
 ## 1. Vai trò và stack
 
@@ -36,7 +80,7 @@ Chưa có framework test (không có Jest/Vitest/Playwright, không có file tes
 
 ```
 src/
-  proxy.ts                   # verify cookie access_token, tự refresh, chặn route theo role
+  proxy.ts                   # verify access_token, chỉ thử refresh, chặn route theo role
   app/
     [locale]/layout.tsx      # root layout, <Providers>, <Toaster>
     [locale]/page.tsx, login/, signup/, auth/callback/   # trang public + callback OAuth
@@ -114,6 +158,7 @@ Chạy tại thư mục gốc repo.
   - `access_token` (15 phút) và `refresh_token` (7 ngày, `path: /auth/refresh`) — tên cookie khai báo ở `src/constants/routes.ts` và `src/proxy.ts`.
   - `src/lib/api-client.ts`: khi 401 gọi `POST /auth/refresh` một lần rồi retry; thất bại → chuyển về `/login`.
   - `src/proxy.ts`: verify `access_token` bằng `NEXT_JWT_ACCESS_SECRET` (fallback `NEXT_JWT_SECRET`), giá trị phải trùng `JWT_ACCESS_SECRET` của backend; đọc `role` trong payload để chuyển hướng `ADMIN → /dashboard`, `LECTURER → /lecturer`, `STUDENT → /home`.
+  - Proxy chỉ thử refresh: cookie `refresh_token` có `path=/auth/refresh` nên không được gửi khi điều hướng tới `/{locale}/...`; access token hết hạn có thể chuyển người dùng về `/login`.
   - OAuth: `useAuth.handleGoogleLogin` chuyển trang tới `${NEXT_PUBLIC_API_URL}/auth/google`; backend redirect về `FRONTEND_URL`.
 - **Socket.IO:** `${NEXT_PUBLIC_API_URL}/notifications`, gửi `userId`, `userRole` qua query. Sự kiện: `notification:unread`, `notification:new`, `notification:unread_count`, `notification:mark_read`, `notification:mark_all_read`, `dashboard:update`, `exam:registration_approved`, `exam:student_added`, `exam:registration_requested`.
 - **SSE:** `ENDPOINTS.EXAM_RUNTIME.EVENTS` (sinh viên) và `MONITOR_EVENTS` (giảng viên giám sát).
@@ -155,8 +200,8 @@ Lint toàn repo hiện đang có lỗi tồn đọng (xem `CONTINUITY.md`); đá
 ## 10. AI generation and review workspace
 
 - `/{locale}/lecturer/questions/generate` is linked from the lecturer question
-  bank and already covered by `/lecturer` route authorization. It supports text
-  generation, batch history/polling, edits, explicit approval/rejection and selected
+  bank and already covered by `/lecturer` route authorization. It supports uploaded
+  PDF/PPTX RAG generation, batch history/polling, edits, explicit approval/rejection and selected
   bank commit; localized messages are in shared/questionGeneration.json (vi/en).
 - Call APIs through `questionGenerationService` and ENDPOINTS.QUESTION_GENERATION.
   Keep runtime types aligned with backend persisted enums; VALID is not APPROVED.

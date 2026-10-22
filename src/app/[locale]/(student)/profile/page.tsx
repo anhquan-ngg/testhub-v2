@@ -92,17 +92,11 @@ export default function StudentProfile() {
   }, [getLegacyAvatarViewUrl, student.avatar_url]);
 
   //Filter for official (non-practice) exams
-  const officialExamIds =
-    userRegistrations
-      ?.filter((reg: any) => reg.exam?.practice === false)
-      .map((reg: any) => reg.exam_id) || [];
-
-  // Calculate pending exams (registered but not completed)
-  const pendingExamsCount =
-    officialExamIds.length -
-    completedSubmissions.filter((submission: any) =>
-      officialExamIds.includes(submission.exam_id),
-    ).length;
+  const officialExamIds = new Set<string>(userRegistrations
+    .filter((reg: { status?: string; exam?: { practice?: boolean } }) => reg.status === "APPROVED" && reg.exam?.practice === false)
+    .map((reg: { exam_id: string }) => reg.exam_id));
+  const completedExamIds = new Set<string>(completedSubmissions.map((submission: { exam_id: string }) => submission.exam_id));
+  const pendingExamsCount = [...officialExamIds].filter((id) => !completedExamIds.has(id)).length;
 
   const [formData, setFormData] = useState({
     email: student.email || "",
@@ -209,9 +203,8 @@ export default function StudentProfile() {
       if (response.status === 200) {
         toast.success(t("passwordChangeSuccessful"));
       }
-    } catch (error) {
+    } catch {
       toast.error(t("errorWhenChangingPasswordPleaseTry"));
-      console.log(error);
     } finally {
       setPasswordData({
         currentPassword: "",
@@ -236,7 +229,6 @@ export default function StudentProfile() {
       reader.readAsDataURL(file);
 
       const uploadedFile = await uploadAvatar(file, student.id);
-      await markFileDeletedByUrl(oldAvatarUrl, student.id);
       setAvatarUrl(uploadedFile.url);
 
       dispatch(
@@ -252,6 +244,11 @@ export default function StudentProfile() {
         }),
       );
       toast.success(t("updatedProfilePictureSuccessfully"));
+      if (oldAvatarUrl && oldAvatarUrl !== uploadedFile.url) {
+        try { await markFileDeletedByUrl(oldAvatarUrl, student.id); } catch {
+          console.warn("Unable to clean up previous avatar");
+        }
+      }
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error(t("errorUploadingPhotoPleaseTryAgain"));

@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2, Upload } from "lucide-react";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
+import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
@@ -96,6 +97,8 @@ type QuestionItem = {
     } | null;
   } | null;
 };
+
+type TopicItem = { id: string; name: string };
 
 type ChapterItem = {
   id: string;
@@ -215,11 +218,36 @@ const formatToLocalISO = (dateString: string | Date) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const buildDistribution = (mode: ExamMode, rows: QuestionConfig[]): ExamDistributionConfig[] => {
+  return mode === "BY_CHAPTER"
+        ? mergeChapterQuestionConfigs(rows).flatMap((item) => {
+            const chapterId = getConfigChapterId(item);
+
+            if (!chapterId) {
+              return [];
+            }
+
+            return [
+              {
+                chapter_id: chapterId,
+                quantity: item.quantity,
+              },
+            ];
+          })
+        : mergeTypeQuestionConfigs(rows).map((item) => ({
+            question_type: item.question_type,
+            question_format: item.question_format,
+            quantity: item.quantity,
+          }));
+
+};
+
 export default function EditExamPage({ params }: EditExamPageProps) {
   const t = useTranslations("lecturer.editExam");
   const enumLabel = useEnumLabels();
   const examId = use(params).id;
   const router = useRouter();
+  const [topics, setTopics] = useState<TopicItem[]>([]);
   const [exam, setExam] = useState<ExamDetail | null>(null);
   const [questionBank, setQuestionBank] = useState<QuestionItem[]>([]);
   const [chapters, setChapters] = useState<ChapterItem[]>([]);
@@ -238,9 +266,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       quantity: 0,
     },
   ]);
-  const [distribution, setDistribution] = useState<ExamDistributionConfig[]>(
-    [],
-  );
+
   const [nextRowId, setNextRowId] = useState(2);
   const questionChapterIds = useMemo(
     () =>
@@ -349,6 +375,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   const [examForm, setExamForm] = useState({
     title: "",
     topic: "",
+    topic_id: "",
     exam_start_time: "",
     exam_end_time: "",
     duration: "",
@@ -367,34 +394,13 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   };
 
   const handleSelectByConfig = () => {
-    const distribution =
-      questionSelectionMode === "BY_CHAPTER"
-        ? mergeChapterQuestionConfigs(configRows).flatMap((item) => {
-            const chapterId = getConfigChapterId(item);
-
-            if (!chapterId) {
-              return [];
-            }
-
-            return [
-              {
-                chapter_id: chapterId,
-                quantity: item.quantity,
-              },
-            ];
-          })
-        : mergeTypeQuestionConfigs(configRows).map((item) => ({
-            question_type: item.question_type,
-            question_format: item.question_format,
-            quantity: item.quantity,
-          }));
+    const distribution = buildDistribution(questionSelectionMode, configRows);
 
     if (questionSelectionMode === "BY_CHAPTER" && distribution.length === 0) {
       toast.warning(t("pleaseSelectAtLeastOneChapter"));
       return;
     }
 
-    setDistribution(distribution);
     setIsDialogOpen(false);
   };
   const fetchExam = useCallback(async () => {
@@ -410,22 +416,19 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   }, [examId, t]);
 
   const fetchQuestions = useCallback(async () => {
+    if (!examForm.topic_id) return;
     try {
-      const response = await apiClient.get<PageResult<QuestionItem>>(
-        ENDPOINTS.QUESTIONS.BASE,
-        {
-          params: {
-            page: 1,
-            limit: 100,
-          },
-        },
-      );
-      setQuestionBank(response.data.data);
+      // Questions only support chapter_id filtering; topic_id is stripped by the backend DTO.
+      const topicChapters = await fetchAllPages<ChapterItem>(ENDPOINTS.CHAPTERS.BASE, { topic_id: examForm.topic_id });
+      const lists = await Promise.all(topicChapters.map((chapter) =>
+        fetchAllPages<QuestionItem>(ENDPOINTS.QUESTIONS.BASE, { chapter_id: chapter.id }),
+      ));
+      setQuestionBank(lists.flat());
     } catch (error) {
       toast.error(t("unableToLoadQuestionBank"));
       console.log(error);
     }
-  }, [t]);
+  }, [examForm.topic_id, t]);
 
   const fetchChapters = useCallback(async (topicId?: string) => {
     if (!topicId) {
@@ -511,7 +514,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
 
     if (
       !examForm.title ||
-      !examForm.topic ||
+      !examForm.topic_id ||
       !examForm.exam_start_time ||
       !examForm.exam_end_time ||
       !/^[0-9]+$/.test(examForm.duration) ||
@@ -521,8 +524,14 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       return;
     }
 
+    const distribution = buildDistribution(questionSelectionMode, configRows);
+    if (questionSelectionMode === "BY_CHAPTER" && distribution.length === 0) {
+      toast.warning(t("pleaseSelectAtLeastOneChapter"));
+      return;
+    }
     const payload = {
       title: examForm.title,
+      topic_id: examForm.topic_id,
       exam_start_time: new Date(examForm.exam_start_time).toISOString(),
       exam_end_time: new Date(examForm.exam_end_time).toISOString(),
       duration: parsedDuration,
@@ -551,13 +560,18 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     }
   };
   useEffect(() => {
-    void fetchExam();
-    void fetchQuestions();
-  }, [fetchExam, fetchQuestions]);
+    void fetchAllPages<TopicItem>(ENDPOINTS.TOPICS.BASE, {}).then(setTopics).catch(() => toast.error(t("unableToLoadQuestionBank")));
+  }, [t]);
 
   useEffect(() => {
-    void fetchChapters(exam?.topic_id);
-  }, [exam?.topic_id, fetchChapters]);
+    void fetchExam();
+  }, [fetchExam]);
+
+  useEffect(() => { void fetchQuestions(); }, [fetchQuestions]);
+
+  useEffect(() => {
+    void fetchChapters(examForm.topic_id);
+  }, [examForm.topic_id, fetchChapters]);
 
   useEffect(() => {
     if (!exam) return;
@@ -568,6 +582,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     setExamForm({
       title: exam.title,
       topic: getExamTopicName(exam.topic),
+      topic_id: exam.topic_id ?? "",
       exam_start_time: formatToLocalISO(exam.exam_start_time),
       exam_end_time: formatToLocalISO(exam.exam_end_time),
       duration: exam.duration.toString(),
@@ -596,15 +611,14 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       });
       setConfigRows(configRowsWithIds);
       setNextRowId(configRowsWithIds.length + 1);
-      setDistribution(parsedDistribution);
-    }
+      }
   }, [exam]);
 
   // Kept apart from the effect above: resolveChapterSelection changes every
   // time chapters are refetched (e.g. after an import), and that must not
   // reset the form or the question selection.
   useEffect(() => {
-    if (!exam || exam.mode !== "BY_CHAPTER" || !exam.distribution) return;
+    if (!exam || examForm.topic_id !== exam.topic_id || exam.mode !== "BY_CHAPTER" || !exam.distribution) return;
 
     const parsedDistribution = JSON.parse(
       exam.distribution,
@@ -622,8 +636,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     });
     setConfigRows(configRowsWithIds);
     setNextRowId(configRowsWithIds.length + 1);
-    setDistribution(parsedDistribution);
-  }, [exam, resolveChapterSelection]);
+  }, [exam, examForm.topic_id, resolveChapterSelection]);
 
   return (
     <div className="space-y-6">
@@ -658,15 +671,16 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                 <Label htmlFor="exam-topic">
                   {t("topic")}<span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="exam-topic"
-                  placeholder={t("enterSubject")}
-                  value={examForm.topic}
-                  onChange={(e) =>
-                    setExamForm({ ...examForm, topic: e.target.value })
-                  }
-                  className="bg-white border-gray-300"
-                />
+                <Select value={examForm.topic_id} onValueChange={(topicId) => {
+                  setExamForm((current) => ({ ...current, topic_id: topicId }));
+                  setSelectedQuestions([]);
+                  setConfigRows([]);
+                }}>
+                  <SelectTrigger id="exam-topic" className="bg-white border-gray-300"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-white border-gray-300">
+                    {topics.map((topic) => <SelectItem key={topic.id} value={topic.id}>{topic.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -1137,14 +1151,14 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       <QuestionImportDialog
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
-        topicId={exam?.topic_id}
+        topicId={examForm.topic_id}
         examId={examId}
         onCompleted={async () => {
           // The import may have created chapters from names in the file, and
           // the backend has already attached the imported questions.
           await Promise.all([
             fetchQuestions(),
-            fetchChapters(exam?.topic_id),
+            fetchChapters(examForm.topic_id),
             mergeImportedQuestions(),
           ]);
         }}

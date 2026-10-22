@@ -6,7 +6,7 @@ import type {
   GenerationPage,
   QuestionGenerationBatch,
   QuestionGenerationItem,
-  TextQuestionGenerationCommand,
+  QuestionGenerationCommand,
 } from "@/types/question-generation";
 
 const routes = ENDPOINTS.QUESTION_GENERATION;
@@ -21,7 +21,7 @@ export const questionGenerationService = {
       )
     ).data;
   },
-  async create(command: TextQuestionGenerationCommand, key: string) {
+  async create(command: QuestionGenerationCommand, key: string) {
     return (
       await apiClient.post<{
         batch_id: string;

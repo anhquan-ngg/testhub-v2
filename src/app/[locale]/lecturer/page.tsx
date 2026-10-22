@@ -28,15 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAppSelector } from "@/store/hook";
-import apiClient from "@/lib/api-client";
+import { fetchAllPages } from "@/lib/pagination";
 import { ENDPOINTS } from "@/constants/endpoints";
-
-type PageResult<T> = {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-};
 
 type LecturerExamItem = {
   id: string;
@@ -66,30 +59,6 @@ const getTopicName = (topic: LecturerExamItem["topic"], fallback: string) => {
   return topic.name ?? fallback;
 };
 
-/** Follows PageResult.total across pages instead of assuming everything
- * fits in one request — a lecturer with more exams than the page size
- * would otherwise silently have their dashboard metrics undercount. */
-async function fetchAllPages<T>(
-  url: string,
-  params: Record<string, unknown>,
-): Promise<T[]> {
-  const limit = 100;
-  let page = 1;
-  let all: T[] = [];
-
-  while (true) {
-    const response = await apiClient.get<PageResult<T>>(url, {
-      params: { ...params, page, limit },
-    });
-    const data = response.data.data ?? [];
-    all = all.concat(data);
-    if (data.length < limit || all.length >= response.data.total) break;
-    page += 1;
-  }
-
-  return all;
-}
-
 export default function LecturerHome() {
   const t = useTranslations("lecturer.dashboard");
   const locale = useLocale();
@@ -118,21 +87,12 @@ export default function LecturerHome() {
       const [registrationLists, submissionLists] = await Promise.all([
         Promise.all(
           lecturerExams.map((exam) =>
-            apiClient
-              .get<PageResult<ExamRegistrationItem>>(
-                ENDPOINTS.EXAM_REGISTRATIONS.BASE,
-                { params: { exam_id: exam.id, limit: 100 } },
-              )
-              .then((res) => res.data.data ?? []),
+            fetchAllPages<ExamRegistrationItem>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, { exam_id: exam.id }),
           ),
         ),
         Promise.all(
           lecturerExams.map((exam) =>
-            apiClient
-              .get<PageResult<ExamSubmissionItem>>(ENDPOINTS.SUBMISSIONS.BASE, {
-                params: { exam_id: exam.id, status: "COMPLETED", limit: 100 },
-              })
-              .then((res) => res.data.data ?? []),
+            fetchAllPages<ExamSubmissionItem>(ENDPOINTS.SUBMISSIONS.BASE, { exam_id: exam.id, status: "COMPLETED" }),
           ),
         ),
       ]);

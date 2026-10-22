@@ -266,15 +266,26 @@ export default function StudentDashboard() {
     };
   }, [user.id, filteredExams]);
 
+  const [runtimeClock, setRuntimeClock] = useState(() => Date.now());
   useEffect(() => {
-    if (!user.id || filteredExams.length === 0 || typeof window === "undefined")
+    const timer = window.setInterval(() => setRuntimeClock(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const runtimeExamIds = testsData.filter((exam) =>
+    registrationsData.some((registration) => registration.exam_id === exam.id && registration.status === "APPROVED") &&
+    new Date(exam.exam_start_time).getTime() <= runtimeClock + 15 * 60_000 &&
+    new Date(exam.exam_end_time).getTime() >= runtimeClock
+  ).map((exam) => exam.id).sort().join(",");
+
+  useEffect(() => {
+    if (!user.id || !runtimeExamIds || typeof window === "undefined")
       return;
 
     const apiBaseUrl =
       process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-    const eventSources = filteredExams.map((exam) => {
+    const eventSources = runtimeExamIds.split(",").map((examId) => {
       const source = new EventSource(
-        `${apiBaseUrl}${ENDPOINTS.EXAM_RUNTIME.EVENTS(exam.id)}`,
+        `${apiBaseUrl}${ENDPOINTS.EXAM_RUNTIME.EVENTS(examId)}`,
         { withCredentials: true },
       );
 
@@ -287,8 +298,8 @@ export default function StudentDashboard() {
         }
         setExamStatuses((prev) => ({
           ...prev,
-          [exam.id]: {
-            ...(prev[exam.id] ?? payload),
+          [examId]: {
+            ...(prev[examId] ?? payload),
             ...payload,
           },
         }));
@@ -303,11 +314,11 @@ export default function StudentDashboard() {
         }
         setExamStatuses((prev) => ({
           ...prev,
-          [exam.id]: {
-            ...(prev[exam.id] ?? {
-              examId: exam.id,
+          [examId]: {
+            ...(prev[examId] ?? {
+              examId: examId,
               serverTime: new Date().toISOString(),
-              entryDeadline: exam.exam_end_time,
+              entryDeadline: "",
               reason: null,
               activeCount: 0,
             }),
@@ -328,11 +339,11 @@ export default function StudentDashboard() {
         }
         setExamStatuses((prev) => ({
           ...prev,
-          [exam.id]: {
-            ...(prev[exam.id] ?? {
-              examId: exam.id,
+          [examId]: {
+            ...(prev[examId] ?? {
+              examId: examId,
               serverTime: new Date().toISOString(),
-              entryDeadline: exam.exam_end_time,
+              entryDeadline: "",
               reason: "EXAM_CLOSED",
               activeCount: 0,
             }),
@@ -353,11 +364,11 @@ export default function StudentDashboard() {
         }
         setExamStatuses((prev) => ({
           ...prev,
-          [exam.id]: {
-            ...(prev[exam.id] ?? {
-              examId: exam.id,
+          [examId]: {
+            ...(prev[examId] ?? {
+              examId: examId,
               serverTime: new Date().toISOString(),
-              entryDeadline: exam.exam_end_time,
+              entryDeadline: "",
               isOpen: false,
               canStart: false,
               reason: null,
@@ -378,7 +389,7 @@ export default function StudentDashboard() {
     return () => {
       eventSources.forEach((source) => source.close());
     };
-  }, [user.id, filteredExams]);
+  }, [user.id, runtimeExamIds]);
 
   const availableTopics = Array.from(
     new Set(

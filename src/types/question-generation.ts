@@ -12,6 +12,34 @@ export type TextQuestionGenerationCommand = {
   external_processing_consent: true;
 };
 
+export type DocumentQuestionGenerationCommand = Omit<
+  TextQuestionGenerationCommand,
+  "source"
+> & { source: { mode: "document"; version_id: string; query: string } };
+export type QuestionGenerationCommand =
+  | TextQuestionGenerationCommand
+  | DocumentQuestionGenerationCommand;
+export type QuestionProvenance = {
+  contract_version: "rag-generation.v1";
+  profile_id: string;
+  quality_status: "UNASSESSED";
+  citations: {
+    quote: string;
+    chunk: {
+      chunk_id: string;
+      document_id: string;
+      version_id: string;
+      kind: "PAGE" | "SLIDE" | "NOTES";
+      position: number;
+      text: string;
+      start_offset: number;
+      end_offset: number;
+      source_sha256: string;
+      text_sha256: string;
+    };
+  }[];
+};
+
 /** Review payload uses arrays; NestJS serializes choices only for bank writes. */
 export type GeneratedSingleChoiceQuestion = {
   question_text: string;
@@ -23,6 +51,7 @@ export type GeneratedSingleChoiceQuestion = {
 
 // Current persisted states. Extra states must be added with backend transitions.
 export type QuestionGenerationBatchStatus =
+  | "WAITING_SOURCE"
   | "QUEUED"
   | "GENERATING"
   | "REVIEW_REQUIRED"
@@ -42,6 +71,14 @@ export type QuestionGenerationBatch = {
   topic_id: string;
   chapter_id: string;
   status: QuestionGenerationBatchStatus;
+  sourceVersion?: {
+    file_name: string;
+    version: number;
+    document_id: string;
+  } | null;
+  source_mode?: "text" | "document";
+  source_version_id?: string | null;
+  preparation_stage?: "EXTRACTING" | "INDEXING" | "READY" | null;
   requested_count: number;
   total_items: number;
   question_format: QuestionFormat;
@@ -54,6 +91,7 @@ export type QuestionGenerationItem = {
   revision: number;
   status: QuestionGenerationDraftStatus;
   data: GeneratedSingleChoiceQuestion;
+  provenance?: QuestionProvenance | null;
   errors: string[];
   warnings: string[];
   question_id: string | null;

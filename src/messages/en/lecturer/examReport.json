@@ -1,4 +1,11 @@
 {
+  "unrated": "Not rated",
+  "poor": "Poor",
+  "average": "Average",
+  "good": "Good",
+  "excellent": "Excellent",
+  "reportFilenamePrefix": "Report",
+  "elapsedTime": "{minutes}m {seconds}s",
   "examSummary": "Exam: {title} - Total attempts: {count}",
   "incorrect": "Incorrect",
   "errorDownloadingTestReport": "Error downloading test report.",

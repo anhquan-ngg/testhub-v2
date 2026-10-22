@@ -26,7 +26,6 @@ import type {
 import type { QuestionFormat } from "@/types/backend-enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +41,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { GenerationDraftCard } from "./GenerationDraftCard";
-import { generationCommandSchema } from "./generation-validation";
+import { documentGenerationSettingsSchema } from "./generation-validation";
+
+import { learningDocumentService as documentApi } from "@/services/learningDocumentService";
+import type { DocumentReservation } from "@/types/learning-document";
 
 type Target = {
   id: string;
@@ -81,9 +83,10 @@ function chapterLabel(
   return `${chapterLabel(parent, chapters, seen)} / ${chapter.name}`;
 }
 
-/** Text authoring and explicit review. An owned batch can be resumed by URL. */
+/** File-based RAG authoring and explicit review. An owned batch can be resumed by URL. */
 export function QuestionGenerationScreen() {
   const t = useTranslations("shared.questionGeneration");
+  const documentText = useTranslations("shared.learningDocuments");
   const locale = useLocale();
   const { questionFormat } = useEnumLabels();
   const params = useSearchParams();
@@ -93,7 +96,19 @@ export function QuestionGenerationScreen() {
   const [chapterId, setChapterId] = useState(params.get("chapter") ?? "");
   const [topics, setTopics] = useState<Target[]>([]);
   const [chapters, setChapters] = useState<Target[]>([]);
-  const [source, setSource] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [includeNotes, setIncludeNotes] = useState(false);
+  const [focus, setFocus] = useState("");
+  const [uploadStage, setUploadStage] = useState<
+    "UPLOADING" | "CONFIRMING" | "CREATING"
+  >("UPLOADING");
+  const uploadCheckpoint = useRef<{
+    file: File;
+    signature: string;
+    reservation: DocumentReservation;
+    uploaded: boolean;
+    confirmed: boolean;
+  } | null>(null);
   const [format, setFormat] = useState<QuestionFormat>("KNOWLEDGE");
   const [count, setCount] = useState(5);
   const [consent, setConsent] = useState(false);
@@ -204,7 +219,7 @@ export function QuestionGenerationScreen() {
         const state = await load(batchId as string, controller.signal);
         if (
           !controller.signal.aborted &&
-          ["QUEUED", "GENERATING"].includes(state.status)
+          ["WAITING_SOURCE", "QUEUED", "GENERATING"].includes(state.status)
         )
           timer = setTimeout(() => void poll(), 2_000);
       } catch {
@@ -236,29 +251,108 @@ export function QuestionGenerationScreen() {
   async function create(event: React.FormEvent) {
     event.preventDefault();
     if (createLock.current) return;
-    const parsed = generationCommandSchema.safeParse({
+    const parsed = documentGenerationSettingsSchema.safeParse({
       topic_id: topicId,
       chapter_id: chapterId,
-      source: { mode: "text", text: source },
       question_type: "SINGLE_CHOICE",
       question_format: format,
       count,
       language: "vi",
       external_processing_consent: consent,
+      query: focus,
     });
-    if (!parsed.success) {
+    const sourceType = file?.name.toLowerCase().endsWith(".pdf")
+      ? "PDF"
+      : file?.name.toLowerCase().endsWith(".pptx")
+        ? "PPTX"
+        : null;
+    if (
+      !parsed.success ||
+      !file ||
+      !sourceType ||
+      file.size <= 0 ||
+      file.size > 20 * 1024 * 1024 ||
+      file.name.length > 200
+    ) {
       setInvalidCommand(true);
       return;
     }
-    const canonical = JSON.stringify(parsed.data);
-    if (requestKey.current?.canonical !== canonical)
-      requestKey.current = { canonical, key: crypto.randomUUID() };
     createLock.current = true;
     setCreating(true);
     setInvalidCommand(false);
+    setUploadStage("UPLOADING");
     try {
-      const result = await api.create(parsed.data, requestKey.current.key);
+      const signature = JSON.stringify({
+        topicId,
+        chapterId,
+        includeNotes: sourceType === "PPTX" && includeNotes,
+      });
+      let checkpoint = uploadCheckpoint.current;
+      if (
+        !checkpoint ||
+        checkpoint.file !== file ||
+        checkpoint.signature !== signature
+      ) {
+        const mime =
+          sourceType === "PDF"
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+        const reservation = await documentApi.create({
+          title: file.name,
+          topic_id: topicId,
+          chapter_id: chapterId,
+          upload: {
+            file_name: file.name,
+            source_type: sourceType,
+            mime_type: mime,
+            size: file.size,
+            include_notes: sourceType === "PPTX" && includeNotes,
+            consent: true,
+          },
+        });
+        checkpoint = {
+          file,
+          signature,
+          reservation,
+          uploaded: false,
+          confirmed: false,
+        };
+        uploadCheckpoint.current = checkpoint;
+      }
+      if (!checkpoint.uploaded) {
+        await documentApi.upload(
+          checkpoint.reservation,
+          file,
+          sourceType === "PDF"
+            ? "application/pdf"
+            : "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        );
+        checkpoint.uploaded = true;
+      }
+      setUploadStage("CONFIRMING");
+      if (!checkpoint.confirmed) {
+        await documentApi.complete(
+          checkpoint.reservation.document_id,
+          checkpoint.reservation.version_id,
+        );
+        checkpoint.confirmed = true;
+      }
+      const { query, ...settings } = parsed.data;
+      const command = {
+        ...settings,
+        source: {
+          mode: "document" as const,
+          version_id: checkpoint.reservation.version_id,
+          query,
+        },
+      };
+      const canonical = JSON.stringify(command);
+      if (requestKey.current?.canonical !== canonical)
+        requestKey.current = { canonical, key: crypto.randomUUID() };
+      setUploadStage("CREATING");
+      const result = await api.create(command, requestKey.current.key);
       requestKey.current = null;
+      uploadCheckpoint.current = null;
       router.replace(`/lecturer/questions/generate?batch=${result.batch_id}`);
       setRefresh((value) => value + 1);
       toast.success(t("queued"));
@@ -307,6 +401,11 @@ export function QuestionGenerationScreen() {
             <Link href="/lecturer/questions">
               <ArrowLeft className="size-4" />
               {t("back")}
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="mb-3">
+            <Link href="/lecturer/questions/documents">
+              {documentText("title")}
             </Link>
           </Button>
           <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
@@ -372,20 +471,54 @@ export function QuestionGenerationScreen() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ai-source">{t("source")}</Label>
-                  <Textarea
-                    id="ai-source"
-                    value={source}
+                  <Label htmlFor="ai-source-file">{t("fileSource")}</Label>
+                  <Input
+                    id="ai-source-file"
+                    type="file"
+                    accept=".pdf,.pptx"
                     disabled={creating}
-                    onChange={(event) => setSource(event.target.value)}
-                    rows={7}
-                    placeholder={t("sourcePlaceholder")}
+                    onChange={(event) => {
+                      setFile(event.target.files?.[0] ?? null);
+                      setInvalidCommand(false);
+                    }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {t("sourceHint", {
-                      count: Array.from(source.trim()).length,
-                    })}
+                    {t("fileHint")}
                   </p>
+                  {file && (
+                    <p className="break-words text-sm">
+                      {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                    </p>
+                  )}
+                  <div className="flex items-start gap-2">
+                    <Checkbox
+                      id="ai-file-notes"
+                      checked={includeNotes}
+                      disabled={
+                        creating || !file?.name.toLowerCase().endsWith(".pptx")
+                      }
+                      onCheckedChange={(value) =>
+                        setIncludeNotes(value === true)
+                      }
+                    />
+                    <Label
+                      htmlFor="ai-file-notes"
+                      className="text-xs leading-relaxed"
+                    >
+                      {t("includeNotes")}
+                    </Label>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ai-focus">{t("focus")}</Label>
+                  <Input
+                    id="ai-focus"
+                    value={focus}
+                    maxLength={400}
+                    disabled={creating}
+                    onChange={(event) => setFocus(event.target.value)}
+                    placeholder={t("focusPlaceholder")}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
@@ -448,14 +581,16 @@ export function QuestionGenerationScreen() {
                 <Button
                   className="w-full"
                   type="submit"
-                  disabled={creating || busy || Boolean(editingId) || !consent}
+                  disabled={
+                    creating || busy || Boolean(editingId) || !consent || !file
+                  }
                 >
                   {creating ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
                     <Sparkles className="size-4" />
                   )}
-                  {t("generate")}
+                  {creating ? t(`uploadStage.${uploadStage}`) : t("generate")}
                 </Button>
               </form>
             </CardContent>
@@ -576,9 +711,26 @@ export function QuestionGenerationScreen() {
                       >
                         {t(`batchStatus.${batch.status}`)}
                       </Badge>
-                      {["QUEUED", "GENERATING"].includes(batch.status) && (
+                      {["WAITING_SOURCE", "QUEUED", "GENERATING"].includes(
+                        batch.status,
+                      ) && (
                         <p className="text-sm text-muted-foreground">
                           {t("processing")}
+                        </p>
+                      )}
+                      {batch.sourceVersion && (
+                        <p className="break-words text-sm">
+                          {t("sourceFileLabel", {
+                            file: batch.sourceVersion.file_name,
+                            version: batch.sourceVersion.version,
+                          })}
+                        </p>
+                      )}
+                      {batch.status === "WAITING_SOURCE" && (
+                        <p role="status" className="text-sm">
+                          {t(
+                            `preparationStage.${batch.preparation_stage ?? "EXTRACTING"}`,
+                          )}
                         </p>
                       )}
                       {batch.status === "FAILED" && (
