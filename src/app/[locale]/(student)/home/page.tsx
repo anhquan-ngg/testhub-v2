@@ -240,7 +240,7 @@ export default function StudentDashboard() {
             const response = await apiClient.get<ExamRuntimeStatus>(
               ENDPOINTS.EXAM_RUNTIME.STATUS(exam.id),
             );
-            return [exam.id, response.data] as const;
+            return [exam.id, response.data, performance.now()] as const;
           } catch (error) {
             console.error("Fetch exam runtime status error:", error);
             return null;
@@ -250,6 +250,8 @@ export default function StudentDashboard() {
 
       if (cancelled) return;
 
+      const sample = statuses.find((item) => item && Number.isFinite(Date.parse(item[1].serverTime)));
+      if (sample) setServerClock({ time: Date.parse(sample[1].serverTime), receivedAt: sample[2] });
       setExamStatuses((prev) => {
         const next = { ...prev };
         statuses.forEach((item) => {
@@ -266,15 +268,19 @@ export default function StudentDashboard() {
     };
   }, [user.id, filteredExams]);
 
-  const [runtimeClock, setRuntimeClock] = useState(() => Date.now());
+  const [serverClock, setServerClock] = useState<{ time: number; receivedAt: number } | null>(null);
+  const [serverTime, setServerTime] = useState<number | null>(null);
   useEffect(() => {
-    const timer = window.setInterval(() => setRuntimeClock(Date.now()), 30_000);
+    if (!serverClock) return;
+    const update = () => setServerTime(serverClock.time + performance.now() - serverClock.receivedAt);
+    update();
+    const timer = window.setInterval(update, 30_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [serverClock]);
   const runtimeExamIds = testsData.filter((exam) =>
-    registrationsData.some((registration) => registration.exam_id === exam.id && registration.status === "APPROVED") &&
-    new Date(exam.exam_start_time).getTime() <= runtimeClock + 15 * 60_000 &&
-    new Date(exam.exam_end_time).getTime() >= runtimeClock
+    serverTime !== null && registrationsData.some((registration) => registration.exam_id === exam.id && registration.status === "APPROVED") &&
+    new Date(exam.exam_start_time).getTime() <= serverTime + 15 * 60_000 &&
+    new Date(exam.exam_end_time).getTime() >= serverTime
   ).map((exam) => exam.id).sort().join(",");
 
   useEffect(() => {

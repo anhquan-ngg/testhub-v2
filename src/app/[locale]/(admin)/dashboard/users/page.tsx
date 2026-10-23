@@ -123,6 +123,7 @@ export default function UsersPage() {
               page,
               limit,
               search: search || undefined,
+              sortOrder,
               role: roleFilter === "ALL" ? undefined : roleFilter,
             },
           },
@@ -137,7 +138,7 @@ export default function UsersPage() {
         if (id === requestId.current) { setIsLoading(false); setHasLoaded(true); }
       }
     },
-    [currentPage, itemsPerPage, roleFilter, debouncedSearch],
+    [currentPage, itemsPerPage, roleFilter, debouncedSearch, sortOrder],
   );
 
   const handleAddUser = async () => {
@@ -203,17 +204,8 @@ export default function UsersPage() {
     );
   }
 
-  const filteredUsers =
-    users
-      ?.slice()
-      .sort((a: any, b: any) => {
-        const dateA = new Date(a.created_at).getTime();
-        const dateB = new Date(b.created_at).getTime();
-        return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
-      }) || [];
-
   const totalPages = Math.ceil(totalCount / itemsPerPage);
-  const paginatedUsers = filteredUsers;
+  const paginatedUsers = users || [];
 
   return (
     <div className="space-y-6">

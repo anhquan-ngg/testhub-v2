@@ -383,6 +383,27 @@ export function QuestionImportDialog({
     }
   };
 
+  const handleRetryComplete = async () => {
+    if (!questionImport || questionImport.status !== "UPLOADING" || isBusy) return;
+    setIsBusy(true);
+    try {
+      const response = await apiClient.post<{ status: QuestionImportRecord["status"] }>(
+        ENDPOINTS.QUESTION_IMPORTS.COMPLETE(questionImport.id),
+      );
+      setQuestionImport({ ...questionImport, status: response.data.status });
+    } catch (error) {
+      try {
+        const current = await apiClient.get<QuestionImportRecord>(ENDPOINTS.QUESTION_IMPORTS.DETAIL(questionImport.id));
+        setQuestionImport(current.data);
+      } catch {
+        // Keep the existing import so confirmation/status recovery can be retried.
+      }
+      toast.error(getErrorMessage(error, t("unableToLoadAndProcessImport")));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   const startEditing = (item: QuestionImportItem) => {
     const baseOptions = item.data.options.length
       ? item.data.options
@@ -986,6 +1007,12 @@ export function QuestionImportDialog({
               </div>
             )}
           </div>
+        )}
+
+        {questionImport?.status === "UPLOADING" && (
+          <Button onClick={() => void handleRetryComplete()} disabled={isBusy}>
+            {t("retryUploadConfirmation")}
+          </Button>
         )}
 
         <DialogFooter>

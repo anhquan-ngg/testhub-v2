@@ -1,4 +1,5 @@
 {
+  "retryUploadConfirmation": "Retry upload confirmation",
   "importSummary": "Created {created} questions; skipped {skipped} duplicates.",
   "totalCount": "Total {count}",
   "validCount": "Valid {count}",

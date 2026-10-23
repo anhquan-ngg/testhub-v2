@@ -1,5 +1,16 @@
 # AGENTS.md — testhub-v2 (frontend)
 
+Hướng dẫn chung cho mọi AI agent (Claude Code, Codex, Cursor, Copilot…) làm việc trong repo này. Nội dung dựa trên code và cấu hình thực tế tại thời điểm viết; khi thấy tài liệu lệch với code, tin code và cập nhật lại file này.
+
+## Question configs table (2026-10-23)
+
+- QuestionGenerationScreen sends question_configs from QuestionConfigTable
+  (type x level x count rows, max 10 rows / 20 questions, generated in row order).
+  The creation card is full width; history and review stay in the two-column grid.
+- Limits/rules live in generation-validation.ts and mirror the backend contract.
+  GenerationDraftCard edits MULTIPLE_CHOICE with checkboxes (2-3 correct answers)
+  and shows the type label. Labels: shared/questionGeneration.json config.*.
+
 ## Attached-file question generation (2026-10-22)
 
 - QuestionGenerationScreen now attaches one text-layer PDF/PPTX <=20 MiB instead
@@ -8,6 +19,9 @@
 - Explicit consent covers source content and query sent to Google. In-memory upload
   checkpoints avoid reuploading confirmed bytes on same-page retries. Do not put
   reservations/signed URLs/source bodies in browser URL/localStorage.
+- Replace expired reservations only before upload; uploaded checkpoints can still
+  retry confirmation. Import recovery must keep the existing ID and offer COMPLETE
+  replay for UPLOADING rather than polling or creating a replacement import.
 - Poll WAITING_SOURCE/QUEUED/GENERATING and display preparation stage/source file.
   Accepted batches resume by business batch ID/history; server workers prepare
   sources after navigation. Pre-batch upload checkpoints do not survive reload.
@@ -41,10 +55,8 @@
 - Require consent, PDF/PPTX <=20 MiB and explicit notes opt-in. New versions retain
   old source identities; version selection controls extraction preview.
 - Render PAGE/SLIDE/NOTES as plain text. Show OCR_REQUIRED separately; EXTRACTED
-  is not READY and no document RAG generation action exists yet. Labels use
+  is not READY; attached-file generation prepares an index before generating. Labels use
   shared/learningDocuments.json in vi/en. Revoke is not physical file deletion.
-
-Hướng dẫn chung cho mọi AI agent (Claude Code, Codex, Cursor, Copilot…) làm việc trong repo này. Nội dung dựa trên code và cấu hình thực tế tại thời điểm viết; khi thấy tài liệu lệch với code, tin code và cập nhật lại file này.
 
 ## 0. Trước khi làm việc
 

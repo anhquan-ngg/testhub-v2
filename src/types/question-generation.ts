@@ -1,13 +1,20 @@
 import type { QuestionFormat } from "./backend-enums";
 
+export type GenerationQuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE";
+
+/** One requested row; questions are generated in row order. */
+export type QuestionGenerationConfig = {
+  question_type: GenerationQuestionType;
+  question_format: QuestionFormat;
+  count: number;
+};
+
 /** text-generation.v1: command accepted by the NestJS batch endpoint. */
 export type TextQuestionGenerationCommand = {
   topic_id: string;
   chapter_id: string;
   source: { mode: "text"; text: string };
-  question_type: "SINGLE_CHOICE";
-  question_format: QuestionFormat;
-  count: number;
+  question_configs: QuestionGenerationConfig[];
   language: "vi";
   external_processing_consent: true;
 };
@@ -41,10 +48,10 @@ export type QuestionProvenance = {
 };
 
 /** Review payload uses arrays; NestJS serializes choices only for bank writes. */
-export type GeneratedSingleChoiceQuestion = {
+export type GeneratedChoiceQuestion = {
   question_text: string;
   options: { text: string; isCorrect: boolean }[];
-  question_type: "SINGLE_CHOICE";
+  question_type: GenerationQuestionType;
   question_format: QuestionFormat;
   correct_answer: null;
 };
@@ -79,9 +86,10 @@ export type QuestionGenerationBatch = {
   source_mode?: "text" | "document";
   source_version_id?: string | null;
   preparation_stage?: "EXTRACTING" | "INDEXING" | "READY" | null;
+  /** Total of question_configs counts. */
   requested_count: number;
   total_items: number;
-  question_format: QuestionFormat;
+  question_configs: QuestionGenerationConfig[];
   error_code: string | null;
   created_at: string;
 };
@@ -90,7 +98,7 @@ export type QuestionGenerationItem = {
   source_index: number;
   revision: number;
   status: QuestionGenerationDraftStatus;
-  data: GeneratedSingleChoiceQuestion;
+  data: GeneratedChoiceQuestion;
   provenance?: QuestionProvenance | null;
   errors: string[];
   warnings: string[];

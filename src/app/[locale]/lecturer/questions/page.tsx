@@ -353,7 +353,11 @@ export default function LecturerQuestions() {
     setChapters(await fetchAllPages<Chapter>(ENDPOINTS.CHAPTERS.BASE, { ...(topicId && { topic_id: topicId }) }));
   }, []);
   const fetchQuestions = useCallback(async (chapterId?: string) => {
-    setQuestions(await fetchAllPages<Question>(ENDPOINTS.QUESTIONS.BASE, { ...(chapterId && { chapter_id: chapterId }) }));
+    if (!chapterId) {
+      setQuestions([]);
+      return;
+    }
+    setQuestions(await fetchAllPages<Question>(ENDPOINTS.QUESTIONS.BASE, { chapter_id: chapterId }));
   }, []);
 
   const refreshAll = useCallback(async () => {

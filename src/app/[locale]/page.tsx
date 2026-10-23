@@ -470,7 +470,7 @@ export default function Home() {
       period: "",
       description: t("plans.enterprise.description"),
       cta: t("plans.enterprise.cta"),
-      href: "#contact",
+      href: "mailto:quanna.works@gmail.com",
       popular: false,
       features: [
         t("plans.enterprise.feature1"),

@@ -20,6 +20,8 @@ import { useS3 } from "@/hooks/useS3";
 import { useFiles } from "@/hooks/useFiles";
 import { ENDPOINTS } from "@/constants/endpoints";
 
+type ProfileRegistration = { exam_id: string; status: string; exam?: { practice?: boolean } };
+
 type PageResult<T> = {
   data: T[];
   total: number;
@@ -37,7 +39,7 @@ export default function StudentProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [submissionCount, setSubmissionCount] = useState(0);
-  const [userRegistrations, setUserRegistrations] = useState<any[]>([]);
+  const [userRegistrations, setUserRegistrations] = useState<ProfileRegistration[]>([]);
   const [completedSubmissions, setCompletedSubmissions] = useState<any[]>([]);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export default function StudentProfile() {
 
       try {
         const [registrationsResponse, submissionsResponse] = await Promise.all([
-          apiClient.get<PageResult<any>>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
+          apiClient.get<PageResult<ProfileRegistration>>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
             params: {
               page: 1,
               limit: 100,
@@ -63,7 +65,19 @@ export default function StudentProfile() {
           }),
         ]);
 
-        setUserRegistrations(registrationsResponse.data.data ?? []);
+        const registrations = registrationsResponse.data.data ?? [];
+        const examIds = [...new Set(registrations
+          .filter((registration) => registration.status === "APPROVED" && typeof registration.exam?.practice !== "boolean")
+          .map((registration) => registration.exam_id))];
+        const exams = await Promise.allSettled(examIds.map(async (id) => {
+          const response = await apiClient.get<{ practice: boolean }>(ENDPOINTS.EXAMS.DETAIL(id));
+          return [id, response.data] as const;
+        }));
+        const byId = new Map(exams.flatMap((result) => result.status === "fulfilled" ? [result.value] : []));
+        setUserRegistrations(registrations.map((registration) => ({
+          ...registration,
+          exam: byId.get(registration.exam_id) ?? registration.exam,
+        })));
         setCompletedSubmissions(submissionsResponse.data.data ?? []);
         setSubmissionCount(submissionsResponse.data.total ?? 0);
       } catch (error) {

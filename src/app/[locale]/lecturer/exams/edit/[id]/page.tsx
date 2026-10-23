@@ -76,13 +76,6 @@ type ExamChapterDistributionConfig = {
 type ExamDistributionConfig =
   ExamTypeDistributionConfig | ExamChapterDistributionConfig;
 
-type PageResult<T> = {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-};
-
 type QuestionItem = {
   id: string;
   chapter_id?: string;
@@ -219,6 +212,7 @@ const formatToLocalISO = (dateString: string | Date) => {
 };
 
 const buildDistribution = (mode: ExamMode, rows: QuestionConfig[]): ExamDistributionConfig[] => {
+  rows = rows.filter((row) => Number.isSafeInteger(row.quantity) && row.quantity > 0);
   return mode === "BY_CHAPTER"
         ? mergeChapterQuestionConfigs(rows).flatMap((item) => {
             const chapterId = getConfigChapterId(item);
@@ -249,6 +243,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   const router = useRouter();
   const [topics, setTopics] = useState<TopicItem[]>([]);
   const [exam, setExam] = useState<ExamDetail | null>(null);
+  const [isLoadingQuestionBank, setIsLoadingQuestionBank] = useState(true);
   const [questionBank, setQuestionBank] = useState<QuestionItem[]>([]);
   const [chapters, setChapters] = useState<ChapterItem[]>([]);
   const [existingQuestionIds, setExistingQuestionIds] = useState<string[]>([]);
@@ -386,6 +381,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const handleToggleQuestion = (questionId: string) => {
+    if (isLoadingQuestionBank) return;
     setSelectedQuestions((prev) =>
       prev.includes(questionId)
         ? prev.filter((id) => id !== questionId)
@@ -396,6 +392,10 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   const handleSelectByConfig = () => {
     const distribution = buildDistribution(questionSelectionMode, configRows);
 
+    if (questionSelectionMode === "BY_TYPE" && distribution.length === 0) {
+      toast.warning(t("pleaseAddValidDistribution"));
+      return;
+    }
     if (questionSelectionMode === "BY_CHAPTER" && distribution.length === 0) {
       toast.warning(t("pleaseSelectAtLeastOneChapter"));
       return;
@@ -415,38 +415,44 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     }
   }, [examId, t]);
 
+  const topicIdRef = useRef(examForm.topic_id);
+  topicIdRef.current = examForm.topic_id;
+  const bankRequestId = useRef(0);
+  const chapterRequestId = useRef(0);
   const fetchQuestions = useCallback(async () => {
-    if (!examForm.topic_id) return;
+    const requestId = ++bankRequestId.current;
+    const topicId = examForm.topic_id;
+    setQuestionBank([]);
+    setIsLoadingQuestionBank(true);
+    if (!topicId) { setIsLoadingQuestionBank(false); return; }
     try {
       // Questions only support chapter_id filtering; topic_id is stripped by the backend DTO.
       const topicChapters = await fetchAllPages<ChapterItem>(ENDPOINTS.CHAPTERS.BASE, { topic_id: examForm.topic_id });
       const lists = await Promise.all(topicChapters.map((chapter) =>
         fetchAllPages<QuestionItem>(ENDPOINTS.QUESTIONS.BASE, { chapter_id: chapter.id }),
       ));
+      if (topicIdRef.current !== topicId || requestId !== bankRequestId.current) return;
       setQuestionBank(lists.flat());
     } catch (error) {
+      if (topicIdRef.current !== topicId || requestId !== bankRequestId.current) return;
       toast.error(t("unableToLoadQuestionBank"));
       console.log(error);
+    } finally {
+      if (topicIdRef.current === topicId && requestId === bankRequestId.current) setIsLoadingQuestionBank(false);
     }
   }, [examForm.topic_id, t]);
 
   const fetchChapters = useCallback(async (topicId?: string) => {
+    const requestId = ++chapterRequestId.current;
     if (!topicId) {
       setChapters([]);
       return;
     }
 
     try {
-      const response = await apiClient.get<PageResult<ChapterItem>>(
-        ENDPOINTS.CHAPTERS.BASE,
-        {
-          params: {
-            topic_id: topicId,
-            limit: 100,
-          },
-        },
-      );
-      setChapters(response.data.data ?? []);
+      const chapters = await fetchAllPages<ChapterItem>(ENDPOINTS.CHAPTERS.BASE, { topic_id: topicId });
+      if (topicIdRef.current !== topicId || requestId !== chapterRequestId.current) return;
+      setChapters(chapters);
     } catch (error) {
       toast.error(t("unableToLoadChapterList"));
       console.log(error);
@@ -525,6 +531,10 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     }
 
     const distribution = buildDistribution(questionSelectionMode, configRows);
+    if (questionSelectionMode === "BY_TYPE" && distribution.length === 0) {
+      toast.warning(t("pleaseAddValidDistribution"));
+      return;
+    }
     if (questionSelectionMode === "BY_CHAPTER" && distribution.length === 0) {
       toast.warning(t("pleaseSelectAtLeastOneChapter"));
       return;
@@ -672,6 +682,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                   {t("topic")}<span className="text-red-500">*</span>
                 </Label>
                 <Select value={examForm.topic_id} onValueChange={(topicId) => {
+                  topicIdRef.current = topicId;
+                  setQuestionBank([]);
+                  setIsLoadingQuestionBank(true);
                   setExamForm((current) => ({ ...current, topic_id: topicId }));
                   setSelectedQuestions([]);
                   setConfigRows([]);
@@ -797,7 +810,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                 </Button>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button className="bg-[#0066cc] hover:bg-[#0052a3] text-white">
+                    <Button disabled={isLoadingQuestionBank} className="bg-[#0066cc] hover:bg-[#0052a3] text-white">
                       {t("selectQuestion")}</Button>
                   </DialogTrigger>
                   <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[calc(100vh-4rem)] overflow-y-auto bg-white border-gray-300">
@@ -830,7 +843,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                     {questionSelectionMode === "MANUAL" && (
                       <div className="space-y-2">
                         <div className="border border-gray-300 rounded-lg p-4 space-y-3 max-h-64 overflow-y-auto">
-                          {questionBank?.length > 0 ? (
+                          {!isLoadingQuestionBank && questionBank?.length > 0 ? (
                             questionBank.map((question) => (
                               <div
                                 key={question.id}

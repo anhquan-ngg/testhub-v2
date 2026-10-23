@@ -1,4 +1,30 @@
 import { z } from "zod";
+import type { GenerationQuestionType } from "@/types/question-generation";
+
+// Keep these limits and rules aligned with the backend question-generation contract.
+export const MAX_GENERATION_QUESTIONS = 20;
+export const MAX_GENERATION_CONFIGS = 10;
+export const GENERATION_QUESTION_TYPES = [
+  "SINGLE_CHOICE",
+  "MULTIPLE_CHOICE",
+] as const;
+export const GENERATION_QUESTION_FORMATS = [
+  "KNOWLEDGE",
+  "UNDERSTANDING",
+  "APPLYING",
+  "ADVANCED",
+] as const;
+
+/** SINGLE_CHOICE has one correct option; MULTIPLE_CHOICE has two or more, never all. */
+export function hasValidAnswers(
+  questionType: GenerationQuestionType,
+  options: { isCorrect: boolean }[],
+) {
+  const correct = options.filter((option) => option.isCorrect).length;
+  return questionType === "SINGLE_CHOICE"
+    ? correct === 1
+    : correct >= 2 && correct < options.length;
+}
 
 const text = (max: number, min = 1) =>
   z
@@ -15,20 +41,33 @@ export const generationDraftSchema = z
     options: z
       .array(z.object({ text: text(500), isCorrect: z.boolean() }).strict())
       .length(4),
-    question_type: z.literal("SINGLE_CHOICE"),
-    question_format: z.enum([
-      "KNOWLEDGE",
-      "UNDERSTANDING",
-      "APPLYING",
-      "ADVANCED",
-    ]),
+    question_type: z.enum(GENERATION_QUESTION_TYPES),
+    question_format: z.enum(GENERATION_QUESTION_FORMATS),
     correct_answer: z.null(),
   })
   .strict()
   .refine(
-    ({ options }) =>
-      options.filter((option) => option.isCorrect).length === 1 &&
+    ({ question_type, options }) =>
+      hasValidAnswers(question_type, options) &&
       new Set(options.map((option) => option.text.toLowerCase())).size === 4,
+  );
+
+export const questionConfigsSchema = z
+  .array(
+    z
+      .object({
+        question_type: z.enum(GENERATION_QUESTION_TYPES),
+        question_format: z.enum(GENERATION_QUESTION_FORMATS),
+        count: z.number().int().min(1).max(MAX_GENERATION_QUESTIONS),
+      })
+      .strict(),
+  )
+  .min(1)
+  .max(MAX_GENERATION_CONFIGS)
+  .refine(
+    (configs) =>
+      configs.reduce((total, config) => total + config.count, 0) <=
+      MAX_GENERATION_QUESTIONS,
   );
 
 export const generationCommandSchema = z
@@ -45,14 +84,7 @@ export const generationCommandSchema = z
         })
         .strict(),
     ]),
-    question_type: z.literal("SINGLE_CHOICE"),
-    question_format: z.enum([
-      "KNOWLEDGE",
-      "UNDERSTANDING",
-      "APPLYING",
-      "ADVANCED",
-    ]),
-    count: z.number().int().min(1).max(20),
+    question_configs: questionConfigsSchema,
     language: z.literal("vi"),
     external_processing_consent: z.literal(true),
   })

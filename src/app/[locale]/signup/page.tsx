@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,13 +29,21 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const handleSignup = async () => {
+    if (isSubmitting || submittingRef.current) return;
+    submittingRef.current = true;
+    setIsSubmitting(true);
     try {
       await authServices.signup(form);
       toast.success(t("signup.success"));
       setForm({ full_name: "", email: "", password: "", confirmPassword: "" });
     } catch {
       toast.error(t("signup.failed"));
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -182,6 +190,7 @@ export default function SignupPage() {
               {/* Signup Button */}
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base mt-6"
               >
                 {t("signup.title")}
