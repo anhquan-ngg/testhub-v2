@@ -4,6 +4,20 @@
 
 **Cập nhật lần cuối:** 2026-10-23 — sửa các nhận xét review frontend; kiểm tra workspace tệp đính kèm trước đó chạy ngày 2026-10-22.
 
+## Merge conflict resolution (2026-10-23)
+
+- Combined local 25be5c8 with incoming b9cda79: retained question configuration,
+  distribution validation, request sequencing/loading guards, duplicate signup
+  protection, typed profile data with isolated lookups, and remote import retry UI.
+- Deduplicated clock/topic state and upload expiry checks introduced by automatic
+  merging. Existing user sort, report batching and EXAM_CLOSED handling are retained.
+- Validation: TypeScript, production build, 32 paired i18n files and pure logic/
+  branch preservation checks passed. Six merged TSX files have zero ESLint errors
+  and two existing warnings, with no added diagnostics against local HEAD. Full
+  lint still reports 42 existing errors/36 warnings. No authenticated browser or
+  live API/database verification was performed. Resolutions are staged for the
+  user's merge commit; no merge commit was created by this task.
+
 ## Pagination and recovery review (2026-10-23)
 
 - User lists send sortOrder to the backend, which sorts by created_at/id before
@@ -74,6 +88,25 @@
   TypeScript, scoped ESLint, 32 i18n pairs and production build passed.
   Real database/storage/Google and interactive browser E2E remain unverified.
 - Long-term rules and setup references are maintained in AGENTS.md.
+
+### Verification for attached-file workspace (2026-10-22)
+
+- TypeScript, scoped ESLint and i18n check (32 paired files) passed. Next.js 16.1.1
+  production Turbopack build passed with the file generation/review route.
+- Upload checkpoints and idempotency keys remain in memory; WAITING_SOURCE polling
+  and batch history resume accepted background work. Original citation evidence is
+  displayed separately from question edits and is not presented as factual proof.
+- No authenticated browser click-through, real upload/CORS or live DB/Google E2E
+  was performed. Apply the additional backend migration and run both workers for
+  the local end-to-end demo, as described in backend docs/rag-indexing.md section 4.
+
+### Verified RAG checks (2026-10-21)
+
+- TypeScript check, scoped ESLint and i18n check (32 paired files) passed.
+- Next.js 16.1.1 production Turbopack build passed, including the document route.
+- New panel starts/retries indexes, polls progress and queries selected READY
+  versions through NestJS. Results remain plain text and explicitly UNASSESSED.
+  No interactive browser/live DB/S3/Google E2E was performed in this session.
 
 ## Cách cập nhật file này
 

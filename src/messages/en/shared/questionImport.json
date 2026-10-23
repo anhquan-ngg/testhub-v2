@@ -70,6 +70,8 @@
   "moreOptions": "More options",
   "saveAndCheckAgain": "Save and check again",
   "cancel": "Cancel",
+  "retryComplete": "Retry upload confirmation",
+  "retryCompleteHint": "The file has been uploaded. Retry confirmation to start processing.",
   "uploadAndCheck": "Upload and check",
   "selectAnotherFile": "Select another file"
 }

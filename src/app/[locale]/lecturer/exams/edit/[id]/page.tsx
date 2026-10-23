@@ -684,6 +684,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                 <Select value={examForm.topic_id} onValueChange={(topicId) => {
                   topicIdRef.current = topicId;
                   setQuestionBank([]);
+                  setChapters([]);
                   setIsLoadingQuestionBank(true);
                   setExamForm((current) => ({ ...current, topic_id: topicId }));
                   setSelectedQuestions([]);

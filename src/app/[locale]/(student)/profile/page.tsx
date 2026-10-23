@@ -20,14 +20,20 @@ import { useS3 } from "@/hooks/useS3";
 import { useFiles } from "@/hooks/useFiles";
 import { ENDPOINTS } from "@/constants/endpoints";
 
-type ProfileRegistration = { exam_id: string; status: string; exam?: { practice?: boolean } };
-
 type PageResult<T> = {
   data: T[];
   total: number;
   page: number;
   limit: number;
 };
+
+type ExamRegistration = {
+  exam_id: string;
+  status: string;
+  exam?: { practice?: boolean } | null;
+};
+
+type CompletedSubmission = { exam_id: string };
 
 export default function StudentProfile() {
   const t = useTranslations("student.profile");
@@ -39,8 +45,8 @@ export default function StudentProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [submissionCount, setSubmissionCount] = useState(0);
-  const [userRegistrations, setUserRegistrations] = useState<ProfileRegistration[]>([]);
-  const [completedSubmissions, setCompletedSubmissions] = useState<any[]>([]);
+  const [userRegistrations, setUserRegistrations] = useState<ExamRegistration[]>([]);
+  const [completedSubmissions, setCompletedSubmissions] = useState<CompletedSubmission[]>([]);
 
   useEffect(() => {
     const loadProfileSummary = async () => {
@@ -48,14 +54,14 @@ export default function StudentProfile() {
 
       try {
         const [registrationsResponse, submissionsResponse] = await Promise.all([
-          apiClient.get<PageResult<ProfileRegistration>>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
+          apiClient.get<PageResult<ExamRegistration>>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
             params: {
               page: 1,
               limit: 100,
               student_id: student.id,
             },
           }),
-          apiClient.get<PageResult<any>>(ENDPOINTS.SUBMISSIONS.BASE, {
+          apiClient.get<PageResult<CompletedSubmission>>(ENDPOINTS.SUBMISSIONS.BASE, {
             params: {
               page: 1,
               limit: 100,
@@ -107,9 +113,9 @@ export default function StudentProfile() {
 
   //Filter for official (non-practice) exams
   const officialExamIds = new Set<string>(userRegistrations
-    .filter((reg: { status?: string; exam?: { practice?: boolean } }) => reg.status === "APPROVED" && reg.exam?.practice === false)
-    .map((reg: { exam_id: string }) => reg.exam_id));
-  const completedExamIds = new Set<string>(completedSubmissions.map((submission: { exam_id: string }) => submission.exam_id));
+    .filter((reg) => reg.status === "APPROVED" && reg.exam?.practice === false)
+    .map((reg) => reg.exam_id));
+  const completedExamIds = new Set<string>(completedSubmissions.map((submission) => submission.exam_id));
   const pendingExamsCount = [...officialExamIds].filter((id) => !completedExamIds.has(id)).length;
 
   const [formData, setFormData] = useState({
