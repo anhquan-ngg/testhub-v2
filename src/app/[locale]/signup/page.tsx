@@ -26,16 +26,21 @@ export default function SignupPage() {
     password: "",
     confirmPassword: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSignup = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await authServices.signup(form);
       toast.success(t("signup.success"));
       setForm({ full_name: "", email: "", password: "", confirmPassword: "" });
     } catch {
       toast.error(t("signup.failed"));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -182,6 +187,7 @@ export default function SignupPage() {
               {/* Signup Button */}
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base mt-6"
               >
                 {t("signup.title")}

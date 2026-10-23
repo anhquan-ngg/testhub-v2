@@ -1,5 +1,14 @@
 # CONTINUITY.md — testhub-v2 (frontend)
 
+## Follow-up review fixes (2026-10-23)
+
+- Link kết quả dùng submissionId cho cả bài chính thức/luyện tập. SSE dùng serverTime từ status API cộng thời gian monotonic, không dùng giờ thiết bị cho cửa sổ bắt đầu/kết thúc.
+- Profile bổ sung exam.practice qua endpoint chi tiết khi APPROVED thiếu exam; gom request theo exam ID trước khi phân loại. Backend checkout không có trong sandbox nên chưa đối chiếu controller/live API.
+- Edit exam bỏ kết quả câu hỏi/chương cũ sau khi đổi topic; lựa chọn BY_CHAPTER dùng fetchAllPages để lấy cả chương ngoài trang đầu. Signup chặn submit khi đang chờ và mở lại trong finally.
+- Generation chỉ thay reservation hết hạn khi chưa upload; upload đã xong vẫn tiếp tục complete. Import giữ UPLOADING sẵn có và thêm nút xác nhận lại COMPLETE, không poll UPLOADING.
+- Đồng bộ nhãn Enterprise vi/en thành lời mời liên hệ. Href vẫn là #contact (đang trỏ tới newsletter); chờ người dùng cung cấp email/URL liên hệ thật, không tự đặt địa chỉ.
+- Kiểm tra trong sandbox: TypeScript và production build pass; i18n 32 cặp pass; kiểm tra hồi quy VM/AST với dữ liệu giả lập pass; scoped ESLint 14 errors/9 warnings đều có sẵn (giảm 4 errors so với HEAD), full lint 53 errors/36 warnings. Chưa kiểm thử API thật hoặc trình duyệt có đăng nhập. Chi tiết input hashes/lệnh/kết quả ở workspace-context/validation-record.md ngoài repository.
+
 ## Frontend review fixes (2026-10-23)
 
 - Admin exams/users giữ input khi refetch, debounce tìm kiếm 300 ms, bỏ phản hồi cũ và chỉ phân trang server một lần. Dashboard realtime giữ nội dung khi cập nhật.

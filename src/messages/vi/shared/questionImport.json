@@ -69,6 +69,8 @@
   "moreOptions": "Thêm lựa chọn",
   "saveAndCheckAgain": "Lưu và kiểm tra lại",
   "cancel": "Hủy",
+  "retryComplete": "Thử xác nhận tải lên lại",
+  "retryCompleteHint": "Tệp đã được tải lên. Thử xác nhận lại để bắt đầu xử lý.",
   "uploadAndCheck": "Tải lên và kiểm tra",
   "selectAnotherFile": "Chọn file khác"
 }

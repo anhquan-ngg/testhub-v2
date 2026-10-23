@@ -76,13 +76,6 @@ type ExamChapterDistributionConfig = {
 type ExamDistributionConfig =
   ExamTypeDistributionConfig | ExamChapterDistributionConfig;
 
-type PageResult<T> = {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-};
-
 type QuestionItem = {
   id: string;
   chapter_id?: string;
@@ -382,6 +375,10 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     practice: false,
     is_public: false,
   });
+  const currentTopicIdRef = useRef(examForm.topic_id);
+  useEffect(() => {
+    currentTopicIdRef.current = examForm.topic_id;
+  }, [examForm.topic_id]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
@@ -423,6 +420,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       const lists = await Promise.all(topicChapters.map((chapter) =>
         fetchAllPages<QuestionItem>(ENDPOINTS.QUESTIONS.BASE, { chapter_id: chapter.id }),
       ));
+      if (currentTopicIdRef.current !== examForm.topic_id) return;
       setQuestionBank(lists.flat());
     } catch (error) {
       toast.error(t("unableToLoadQuestionBank"));
@@ -437,16 +435,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     }
 
     try {
-      const response = await apiClient.get<PageResult<ChapterItem>>(
-        ENDPOINTS.CHAPTERS.BASE,
-        {
-          params: {
-            topic_id: topicId,
-            limit: 100,
-          },
-        },
-      );
-      setChapters(response.data.data ?? []);
+      const chapters = await fetchAllPages<ChapterItem>(ENDPOINTS.CHAPTERS.BASE, { topic_id: topicId });
+      if (currentTopicIdRef.current !== topicId) return;
+      setChapters(chapters);
     } catch (error) {
       toast.error(t("unableToLoadChapterList"));
       console.log(error);
@@ -672,6 +663,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                   {t("topic")}<span className="text-red-500">*</span>
                 </Label>
                 <Select value={examForm.topic_id} onValueChange={(topicId) => {
+                  currentTopicIdRef.current = topicId;
+                  setQuestionBank([]);
+                  setChapters([]);
                   setExamForm((current) => ({ ...current, topic_id: topicId }));
                   setSelectedQuestions([]);
                   setConfigRows([]);

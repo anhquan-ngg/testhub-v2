@@ -291,7 +291,9 @@ export function QuestionGenerationScreen() {
       if (
         !checkpoint ||
         checkpoint.file !== file ||
-        checkpoint.signature !== signature
+        checkpoint.signature !== signature ||
+        (!checkpoint.uploaded &&
+          Date.parse(checkpoint.reservation.upload_expires_at) <= Date.now())
       ) {
         const mime =
           sourceType === "PDF"

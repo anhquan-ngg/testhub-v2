@@ -27,6 +27,14 @@ type PageResult<T> = {
   limit: number;
 };
 
+type ExamRegistration = {
+  exam_id: string;
+  status: string;
+  exam?: { practice?: boolean } | null;
+};
+
+type CompletedSubmission = { exam_id: string };
+
 export default function StudentProfile() {
   const t = useTranslations("student.profile");
   const student = useAppSelector((state) => state.user);
@@ -37,8 +45,8 @@ export default function StudentProfile() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [submissionCount, setSubmissionCount] = useState(0);
-  const [userRegistrations, setUserRegistrations] = useState<any[]>([]);
-  const [completedSubmissions, setCompletedSubmissions] = useState<any[]>([]);
+  const [userRegistrations, setUserRegistrations] = useState<ExamRegistration[]>([]);
+  const [completedSubmissions, setCompletedSubmissions] = useState<CompletedSubmission[]>([]);
 
   useEffect(() => {
     const loadProfileSummary = async () => {
@@ -46,14 +54,14 @@ export default function StudentProfile() {
 
       try {
         const [registrationsResponse, submissionsResponse] = await Promise.all([
-          apiClient.get<PageResult<any>>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
+          apiClient.get<PageResult<ExamRegistration>>(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
             params: {
               page: 1,
               limit: 100,
               student_id: student.id,
             },
           }),
-          apiClient.get<PageResult<any>>(ENDPOINTS.SUBMISSIONS.BASE, {
+          apiClient.get<PageResult<CompletedSubmission>>(ENDPOINTS.SUBMISSIONS.BASE, {
             params: {
               page: 1,
               limit: 100,
@@ -63,7 +71,18 @@ export default function StudentProfile() {
           }),
         ]);
 
-        setUserRegistrations(registrationsResponse.data.data ?? []);
+        const registrations = registrationsResponse.data.data ?? [];
+        const missingExamIds = [...new Set(registrations
+          .filter((reg) => reg.status === "APPROVED" && typeof reg.exam?.practice !== "boolean")
+          .map((reg) => reg.exam_id))];
+        const exams = new Map(await Promise.all(missingExamIds.map(async (examId) => {
+          const response = await apiClient.get<{ practice: boolean }>(ENDPOINTS.EXAMS.DETAIL(examId));
+          return [examId, response.data] as const;
+        })));
+        setUserRegistrations(registrations.map((reg) => ({
+          ...reg,
+          exam: exams.get(reg.exam_id) ?? reg.exam,
+        })));
         setCompletedSubmissions(submissionsResponse.data.data ?? []);
         setSubmissionCount(submissionsResponse.data.total ?? 0);
       } catch (error) {
@@ -93,9 +112,9 @@ export default function StudentProfile() {
 
   //Filter for official (non-practice) exams
   const officialExamIds = new Set<string>(userRegistrations
-    .filter((reg: { status?: string; exam?: { practice?: boolean } }) => reg.status === "APPROVED" && reg.exam?.practice === false)
-    .map((reg: { exam_id: string }) => reg.exam_id));
-  const completedExamIds = new Set<string>(completedSubmissions.map((submission: { exam_id: string }) => submission.exam_id));
+    .filter((reg) => reg.status === "APPROVED" && reg.exam?.practice === false)
+    .map((reg) => reg.exam_id));
+  const completedExamIds = new Set<string>(completedSubmissions.map((submission) => submission.exam_id));
   const pendingExamsCount = [...officialExamIds].filter((id) => !completedExamIds.has(id)).length;
 
   const [formData, setFormData] = useState({

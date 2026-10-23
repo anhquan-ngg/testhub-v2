@@ -844,7 +844,7 @@ export default function ExamPage() {
               <p>
                 {t("theSystemHasRecordedYourResults")}{" "}
                 <Link
-                  href={exam.practice && exam.submissionId ? `/result/${exam.submissionId}` : "/result"}
+                  href={exam.submissionId ? `/result/${exam.submissionId}` : "/result"}
                   className="font-semibold text-blue-600 hover:underline"
                 >
                   {t("examResults")}</Link>{" "}

@@ -97,6 +97,10 @@ export default function StudentDashboard() {
   const [examStatuses, setExamStatuses] = useState<
     Record<string, ExamRuntimeStatus>
   >({});
+  const [serverClock, setServerClock] = useState<{
+    time: number;
+    receivedAt: number;
+  } | null>(null);
   const user = useAppSelector((state) => state.user);
   const { socket } = useSocket();
 
@@ -240,7 +244,7 @@ export default function StudentDashboard() {
             const response = await apiClient.get<ExamRuntimeStatus>(
               ENDPOINTS.EXAM_RUNTIME.STATUS(exam.id),
             );
-            return [exam.id, response.data] as const;
+            return [exam.id, response.data, performance.now()] as const;
           } catch (error) {
             console.error("Fetch exam runtime status error:", error);
             return null;
@@ -250,6 +254,10 @@ export default function StudentDashboard() {
 
       if (cancelled) return;
 
+      const clockSample = statuses.find((item) => item && Number.isFinite(Date.parse(item[1].serverTime)));
+      if (clockSample) {
+        setServerClock({ time: Date.parse(clockSample[1].serverTime), receivedAt: clockSample[2] });
+      }
       setExamStatuses((prev) => {
         const next = { ...prev };
         statuses.forEach((item) => {
@@ -266,15 +274,20 @@ export default function StudentDashboard() {
     };
   }, [user.id, filteredExams]);
 
-  const [runtimeClock, setRuntimeClock] = useState(() => Date.now());
+  const [runtimeClock, setRuntimeClock] = useState(0);
   useEffect(() => {
-    const timer = window.setInterval(() => setRuntimeClock(Date.now()), 30_000);
+    const timer = window.setInterval(() => setRuntimeClock(performance.now()), 30_000);
     return () => window.clearInterval(timer);
   }, []);
+  // Advance the server timestamp with monotonic elapsed time, independent of the device clock.
+  const serverTime = serverClock
+    ? serverClock.time + Math.max(0, runtimeClock - serverClock.receivedAt)
+    : null;
   const runtimeExamIds = testsData.filter((exam) =>
+    serverTime !== null &&
     registrationsData.some((registration) => registration.exam_id === exam.id && registration.status === "APPROVED") &&
-    new Date(exam.exam_start_time).getTime() <= runtimeClock + 15 * 60_000 &&
-    new Date(exam.exam_end_time).getTime() >= runtimeClock
+    new Date(exam.exam_start_time).getTime() <= serverTime + 15 * 60_000 &&
+    new Date(exam.exam_end_time).getTime() >= serverTime
   ).map((exam) => exam.id).sort().join(",");
 
   useEffect(() => {
