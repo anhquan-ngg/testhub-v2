@@ -379,12 +379,17 @@ export default function LecturerExams() {
     };
   }, [socket, refetchExams]);
 
+  const [registrationDialogId, setRegistrationDialogId] = useState<string | null>(null);
+
   const filteredExams =
     exams?.filter((exam) =>
       exam.title.toLowerCase().includes(searchTerm.toLowerCase()),
     ) || [];
 
   const totalPages = Math.ceil(filteredExams.length / ITEMS_PER_PAGE);
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
   const paginatedExams = filteredExams.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
@@ -510,7 +515,7 @@ export default function LecturerExams() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Dialog>
+                      <Dialog open={registrationDialogId === exam.id} onOpenChange={(open) => setRegistrationDialogId(open ? exam.id : null)}>
                         <DialogTrigger asChild>
                           <Button
                             variant="ghost"
@@ -523,12 +528,12 @@ export default function LecturerExams() {
                               0}
                           </Button>
                         </DialogTrigger>
-                        <StudentManagementDialog
+                        {registrationDialogId === exam.id && <StudentManagementDialog
                           exam={exam}
                           onRegistrationsChanged={() => {
                             void refetchExams();
                           }}
-                        />
+                        />}
                       </Dialog>
                     </TableCell>
                     <TableCell className="text-center">

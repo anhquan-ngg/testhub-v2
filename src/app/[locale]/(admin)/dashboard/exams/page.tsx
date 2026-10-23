@@ -2,7 +2,7 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { intlLocales } from "@/i18n/config";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "@/i18n/navigation";
 import { Input } from "@/components/ui/input";
 import {
@@ -55,17 +55,25 @@ export default function ExamsPage() {
   const router = useRouter();
   const [exams, setExams] = useState([] as any);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const requestId = useRef(0);
   const [error, setError] = useState<unknown>(null);
   const [totalCount, setTotalCount] = useState(0);
   // const [students] = useState(mockStudents);
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => { setDebouncedSearch(searchTerm); setCurrentPage(1); }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
   const fetchExams = useCallback(
-    async (page = currentPage, limit = itemsPerPage, search = searchTerm) => {
+    async (page = currentPage, limit = itemsPerPage, search = debouncedSearch) => {
+      const id = ++requestId.current;
       setIsLoading(true);
       try {
         const response = await apiClient.get<PageResult<any>>(
@@ -78,16 +86,17 @@ export default function ExamsPage() {
             },
           },
         );
+        if (id !== requestId.current) return;
         setExams(response.data.data ?? []);
         setTotalCount(response.data.total ?? 0);
         setError(null);
       } catch (err) {
-        setError(err);
+        if (id === requestId.current) setError(err);
       } finally {
-        setIsLoading(false);
+        if (id === requestId.current) { setIsLoading(false); setHasLoaded(true); }
       }
     },
-    [currentPage, itemsPerPage, searchTerm],
+    [currentPage, itemsPerPage, debouncedSearch],
   );
 
   useEffect(() => {
@@ -100,7 +109,7 @@ export default function ExamsPage() {
     }
   }, [error, t]);
 
-  if (isLoading) {
+  if (isLoading && !hasLoaded) {
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner />
@@ -137,12 +146,13 @@ export default function ExamsPage() {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1);
+
                 }}
               />
             </div>
           </div>
 
+          {isLoading && <div className="flex justify-center py-4"><Spinner /></div>}
           <Table>
             <TableHeader>
               <TableRow className="border-gray-300">
@@ -210,7 +220,8 @@ export default function ExamsPage() {
                             Danh sách sinh viên cho bài thi: {exam.title}
                           </DialogDescription>
                         </DialogHeader>
-                        <Table>
+                        {isLoading && <div className="flex justify-center py-4"><Spinner /></div>}
+          <Table>
                           <TableHeader>
                             <TableRow className="border-gray-300">
                               <TableHead>Tên sinh viên</TableHead>

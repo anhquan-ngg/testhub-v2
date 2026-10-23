@@ -1,4 +1,6 @@
 {
+  "reportFilenamePrefix": "Report",
+  "elapsedTime": "{minutes}m {seconds}s",
   "examSummary": "Exam: {title} - Total attempts: {count}",
   "incorrect": "Incorrect",
   "anErrorOccurredWhileLoadingReport": "An error occurred while loading report data.",

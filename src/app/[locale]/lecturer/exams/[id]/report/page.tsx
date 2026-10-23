@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 
@@ -72,10 +73,6 @@ type ReportSubmission = {
   questions?: ReportSubmissionQuestion[];
 };
 
-type SubmissionListResponse = {
-  data?: Array<{ id: string }>;
-};
-
 export default function ExamReportPage() {
   const t = useTranslations("lecturer.examReport");
   const params = useParams();
@@ -103,19 +100,13 @@ export default function ExamReportPage() {
     try {
       const [examResponse, submissionsResponse] = await Promise.all([
         apiClient.get<ReportExam>(ENDPOINTS.EXAMS.DETAIL(examId)),
-        apiClient.get<SubmissionListResponse>(ENDPOINTS.SUBMISSIONS.BASE, {
-          params: {
-            exam_id: examId,
-            status: "COMPLETED",
-            limit: 100,
-          },
-        }),
+        fetchAllPages<{ id: string }>(ENDPOINTS.SUBMISSIONS.BASE, { exam_id: examId, status: "COMPLETED" }),
       ]);
 
       setExam(examResponse.data);
 
-      const submissionList = submissionsResponse.data?.data ?? [];
-      const detailedSubmissions = await Promise.all(
+      const submissionList = submissionsResponse;
+      const detailedSubmissions = await Promise.allSettled(
         submissionList.map(async (submission) => {
           const response = await apiClient.get<ReportSubmission>(
             ENDPOINTS.SUBMISSIONS.DETAIL(submission.id),
@@ -124,7 +115,8 @@ export default function ExamReportPage() {
         }),
       );
 
-      setSubmissions(detailedSubmissions);
+      setSubmissions(detailedSubmissions.flatMap((result) => result.status === "fulfilled" ? [result.value] : []));
+      if (detailedSubmissions.some((result) => result.status === "rejected")) toast.error(t("errorDownloadingTestReport"));
     } catch (error) {
       console.error("Fetch report data error:", error);
       toast.error(t("errorDownloadingTestReport"));
@@ -153,7 +145,7 @@ export default function ExamReportPage() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Baocao_${exam?.title?.replace(/\s+/g, "_")}_${examId}.pdf`;
+      a.download = `${t("reportFilenamePrefix")}_${exam?.title?.replace(/\s+/g, "_")}_${examId}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -219,9 +211,18 @@ export default function ExamReportPage() {
     const diff = new Date(end).getTime() - new Date(start).getTime();
     const minutes = Math.floor(diff / 60000);
     const seconds = Math.floor((diff % 60000) / 1000);
-    return `${minutes}p ${seconds}s`;
+    return t("elapsedTime", { minutes, seconds });
   };
 
+  const getRatingText = (rating?: string | null) => {
+    switch (rating) {
+      case "EXCELLENT": return t("excellent");
+      case "GOOD": return t("good");
+      case "AVERAGE": return t("average");
+      case "POOR": return t("poor");
+      default: return t("unrated");
+    }
+  };
   const getRatingColor = (rating: string | null) => {
     switch (rating) {
       case "EXCELLENT":
@@ -352,7 +353,7 @@ export default function ExamReportPage() {
                         <Badge
                           className={`${getRatingColor(sub.rating ?? null)} text-white`}
                         >
-                          {sub.rating || "N/A"}
+                          {getRatingText(sub.rating)}
                         </Badge>
                       </TableCell>
                       <TableCell className="font-semibold text-green-600 text-center">

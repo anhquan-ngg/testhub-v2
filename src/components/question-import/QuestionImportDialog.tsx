@@ -326,6 +326,7 @@ export function QuestionImportDialog({
 
     setIsBusy(true);
     let createdImportId: string | null = null;
+    let uploadFinished = false;
     try {
       const created = await apiClient.post<{
         import: QuestionImportRecord;
@@ -346,6 +347,7 @@ export function QuestionImportDialog({
         timeout: 120_000,
         withCredentials: false,
       });
+      uploadFinished = true;
       const completed = await apiClient.post<{
         status: QuestionImportRecord["status"];
       }>(ENDPOINTS.QUESTION_IMPORTS.COMPLETE(created.data.import.id));
@@ -354,7 +356,7 @@ export function QuestionImportDialog({
         status: completed.data.status,
       });
     } catch (error) {
-      if (createdImportId) {
+      if (createdImportId && !uploadFinished) {
         // The import row exists server-side; cancel it so a failed upload
         // does not leave an orphan until it expires. A cleanup failure must
         // not mask the original error below.
@@ -366,7 +368,39 @@ export function QuestionImportDialog({
           // The server-side expiry job removes it eventually.
         }
       }
-      setQuestionImport(null);
+      if (!uploadFinished) setQuestionImport(null);
+      else if (createdImportId) {
+        try {
+          const current = await apiClient.get<QuestionImportRecord>(ENDPOINTS.QUESTION_IMPORTS.DETAIL(createdImportId));
+          setQuestionImport(current.data);
+        } catch {
+          // Preserve the uploaded import even if status recovery is unavailable.
+        }
+      }
+      toast.error(getErrorMessage(error, t("unableToLoadAndProcessImport")));
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
+  const handleRetryComplete = async () => {
+    if (!questionImport || questionImport.status !== "UPLOADING" || isBusy) return;
+    setIsBusy(true);
+    try {
+      const response = await apiClient.post<{ status: QuestionImportRecord["status"] }>(
+        ENDPOINTS.QUESTION_IMPORTS.COMPLETE(questionImport.id),
+      );
+      setQuestionImport({ ...questionImport, status: response.data.status });
+    } catch (error) {
+      // COMPLETE may have succeeded before its response was lost. Keep the import for retry.
+      try {
+        const current = await apiClient.get<QuestionImportRecord>(
+          ENDPOINTS.QUESTION_IMPORTS.DETAIL(questionImport.id),
+        );
+        setQuestionImport(current.data);
+      } catch {
+        // Retain the last known state when recovery is unavailable.
+      }
       toast.error(getErrorMessage(error, t("unableToLoadAndProcessImport")));
     } finally {
       setIsBusy(false);
@@ -630,6 +664,8 @@ export function QuestionImportDialog({
           <div className="flex min-h-44 flex-col items-center justify-center gap-3 py-8 text-center">
             {questionImport.status === "FAILED" ? (
               <AlertCircle className="h-10 w-10 text-red-600" />
+            ) : questionImport.status === "UPLOADING" && !isBusy ? (
+              <Upload className="h-10 w-10 text-[#0066cc]" />
             ) : questionImport.status === "COMPLETED" ? (
               <CheckCircle2 className="h-10 w-10 text-emerald-600" />
             ) : (
@@ -642,6 +678,14 @@ export function QuestionImportDialog({
               <p className="max-w-2xl text-sm text-red-700">
                 {questionImport.error_message}
               </p>
+            )}
+            {questionImport.status === "UPLOADING" && (
+              <>
+                {!isBusy && <p className="text-sm text-gray-600">{t("retryCompleteHint")}</p>}
+                <Button disabled={isBusy} onClick={() => void handleRetryComplete()}>
+                  {t("retryComplete")}
+                </Button>
+              </>
             )}
             {questionImport.status === "COMPLETED" && (
               <p className="text-sm text-gray-600">

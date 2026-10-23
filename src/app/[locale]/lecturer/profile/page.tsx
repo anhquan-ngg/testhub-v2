@@ -78,7 +78,6 @@ export default function LecturerProfile() {
 
       // 2. Upload file lên S3
       const uploadedFile = await uploadAvatar(file, user.id);
-      await markFileDeletedByUrl(oldAvatarUrl, user.id);
       setProfileImage(uploadedFile.url);
 
       // 3. Cập nhật avatar_url trong Redux store (chỉ lưu file.name)
@@ -95,6 +94,11 @@ export default function LecturerProfile() {
         }),
       );
       toast.success(t("updatedProfilePictureSuccessfully"));
+      if (oldAvatarUrl && oldAvatarUrl !== uploadedFile.url) {
+        try { await markFileDeletedByUrl(oldAvatarUrl, user.id); } catch {
+          console.warn("Unable to clean up previous avatar");
+        }
+      }
     } catch (error) {
       console.error("Error uploading image:", error);
       toast.error(t("errorUploadingPhotoPleaseTryAgain"));
@@ -146,16 +150,13 @@ export default function LecturerProfile() {
     }
 
     try {
-      const response = await apiClient.post("/auth/change-password", {
+      await apiClient.post("/auth/change-password", {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
-      if (response.status === 200) {
-        toast.success(t("passwordChangeSuccessful"));
-      }
-    } catch (error) {
+      toast.success(t("passwordChangeSuccessful"));
+    } catch {
       toast.error(t("errorWhenChangingPasswordPleaseTry"));
-      console.log(error);
     } finally {
       setPasswordData({
         currentPassword: "",
@@ -186,13 +187,8 @@ export default function LecturerProfile() {
   }, [getLegacyAvatarViewUrl, user.avatar_url, user.id, user.isLoggedIn]);
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        email: user.email,
-        username: user.full_name,
-      });
-    }
-  }, [user]);
+    setFormData({ email: user.email, username: user.full_name });
+  }, [user.email, user.full_name]);
 
   return (
     <div className="space-y-6">

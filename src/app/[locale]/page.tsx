@@ -12,7 +12,6 @@ import {
   GraduationCap,
   LineChart,
   LockKeyhole,
-  Mail,
   Menu,
   MonitorCheck,
   PlayCircle,
@@ -816,24 +815,7 @@ export default function Home() {
             <p className="mt-5 text-sm leading-6 text-slate-600">
               {t("footer.newsletterDescription")}
             </p>
-            <form className="mt-5 flex gap-2">
-              <label className="sr-only" htmlFor="newsletter-email">
-                {t("footer.email")}
-              </label>
-              <input
-                id="newsletter-email"
-                type="email"
-                placeholder="email@domain.com"
-                className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium outline-none transition placeholder:text-slate-400 focus:border-blue-300 focus:ring-4 focus:ring-blue-500/10"
-              />
-              <Button
-                className="h-11 rounded-xl bg-[#0b63ce] px-4 text-white hover:bg-[#0858bb]"
-                type="submit"
-                aria-label={t("footer.subscribe")}
-              >
-                <Mail className="h-4 w-4" />
-              </Button>
-            </form>
+
           </div>
         </div>
 

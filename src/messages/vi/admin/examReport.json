@@ -1,4 +1,6 @@
 {
+  "reportFilenamePrefix": "Bao_cao",
+  "elapsedTime": "{minutes} phút {seconds} giây",
   "examSummary": "Bài thi: {title} - Tổng số lượt thi: {count}",
   "incorrect": "Sai",
   "anErrorOccurredWhileLoadingReport": "Có lỗi xảy ra khi tải dữ liệu báo cáo.",

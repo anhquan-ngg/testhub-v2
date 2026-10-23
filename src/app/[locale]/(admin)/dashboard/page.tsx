@@ -78,8 +78,8 @@ export default function AdminDashboard() {
     return submissions;
   }, []);
 
-  const fetchDashboardData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchDashboardData = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setIsLoading(true);
     setHasError(false);
     try {
       const [
@@ -118,7 +118,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    void fetchDashboardData();
+    void fetchDashboardData(true);
   }, [fetchDashboardData]);
 
   useEffect(() => {

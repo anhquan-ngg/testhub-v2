@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const { parse } = require("@formatjs/icu-messageformat-parser");
+const { parse, TYPE } = require("@formatjs/icu-messageformat-parser");
 
 const root = path.join(__dirname, "..", "src", "messages");
 const list = (directory, prefix = "") =>
@@ -19,7 +19,7 @@ const placeholders = (elements) => {
   const names = new Set();
   const visit = (items) => {
     for (const item of items) {
-      if (item.type >= 1 && item.type <= 6 && typeof item.value === "string") names.add(item.value);
+      if ((item.type >= 1 && item.type <= 6 || item.type === TYPE.tag) && typeof item.value === "string") names.add(item.value);
       if (item.options) for (const option of Object.values(item.options)) visit(option.value);
       if (item.children) visit(item.children);
     }
@@ -42,7 +42,7 @@ for (const file of [...new Set([...viFiles, ...enFiles])]) {
       } else if (typeof left[name] === "string" && typeof right[name] === "string") {
         const parsed = {};
         for (const [locale, value] of [["vi", left[name]], ["en", right[name]]]) {
-          try { parsed[locale] = parse(value); } catch (error) { errors.push(`${locale}/${file}:${current}: ${error.message}`); }
+          try { parsed[locale] = parse(value, { requiresOtherClause: true }); } catch (error) { errors.push(`${locale}/${file}:${current}: ${error.message}`); }
         }
         if (parsed.vi && parsed.en && placeholders(parsed.vi) !== placeholders(parsed.en))
           errors.push(`${file}:${current}: placeholder mismatch (${placeholders(parsed.vi)} vs ${placeholders(parsed.en)})`);

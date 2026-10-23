@@ -1,8 +1,93 @@
 # CONTINUITY.md — testhub-v2 (frontend)
 
+## Follow-up review fixes (2026-10-23)
+
+- Link kết quả dùng submissionId cho cả bài chính thức/luyện tập. SSE dùng serverTime từ status API cộng thời gian monotonic, không dùng giờ thiết bị cho cửa sổ bắt đầu/kết thúc.
+- Profile bổ sung exam.practice qua endpoint chi tiết khi APPROVED thiếu exam; gom request theo exam ID trước khi phân loại. Backend checkout không có trong sandbox nên chưa đối chiếu controller/live API.
+- Edit exam bỏ kết quả câu hỏi/chương cũ sau khi đổi topic; lựa chọn BY_CHAPTER dùng fetchAllPages để lấy cả chương ngoài trang đầu. Signup chặn submit khi đang chờ và mở lại trong finally.
+- Generation chỉ thay reservation hết hạn khi chưa upload; upload đã xong vẫn tiếp tục complete. Import giữ UPLOADING sẵn có và thêm nút xác nhận lại COMPLETE, không poll UPLOADING.
+- Đồng bộ nhãn Enterprise vi/en thành lời mời liên hệ. Href vẫn là #contact (đang trỏ tới newsletter); chờ người dùng cung cấp email/URL liên hệ thật, không tự đặt địa chỉ.
+- Kiểm tra trong sandbox: TypeScript và production build pass; i18n 32 cặp pass; kiểm tra hồi quy VM/AST với dữ liệu giả lập pass; scoped ESLint 14 errors/9 warnings đều có sẵn (giảm 4 errors so với HEAD), full lint 53 errors/36 warnings. Chưa kiểm thử API thật hoặc trình duyệt có đăng nhập. Chi tiết input hashes/lệnh/kết quả ở workspace-context/validation-record.md ngoài repository.
+
+## Frontend review fixes (2026-10-23)
+
+- Admin exams/users giữ input khi refetch, debounce tìm kiếm 300 ms, bỏ phản hồi cũ và chỉ phân trang server một lần. Dashboard realtime giữ nội dung khi cập nhật.
+- Student landing chỉ đọc session/thông tin thi; START_EXAM chạy khi xác nhận bắt đầu. Link kết quả dùng submissionId cho luyện tập; SSE chỉ theo dõi bài APPROVED sắp mở (15 phút)/đang mở với khóa ID ổn định. Bộ đếm bài chờ loại trùng theo exam ID.
+- Tải đủ các trang cho ngân hàng, dashboard giảng viên và danh sách bài nộp báo cáo; báo cáo giữ các chi tiết tải thành công. Helper chung ở src/lib/pagination.ts. Bộ lọc câu hỏi backend chỉ nhận chapter_id, nên ngân hàng theo môn tải các chương của môn rồi lấy câu hỏi từng chương (không gửi topic_id bị DTO loại bỏ).
+- Chỉnh sửa đề gửi topic_id từ Select, dựng distribution từ mode/configRows hiện tại và chặn BY_CHAPTER rỗng. Chương gốc hỗ trợ parent_id bị thiếu, bỏ chương cha gửi null và loại hậu duệ khỏi lựa chọn. SINGLE_CHOICE giữ tối đa một đáp án đúng.
+- Upload avatar cập nhật preview/store trước cleanup best-effort; đổi mật khẩu giảng viên chấp nhận mọi response 2xx và không log request lỗi chứa mật khẩu. Signup giữ form khi thất bại; SignupPayload.full_name khớp DTO backend. Callback Google báo lỗi trước redirect; ẩn Outlook chưa hoạt động và bỏ form newsletter chưa kết nối, CTA mô tả đúng đích.
+- Sửa nhãn vi/en, thời lượng/tên file báo cáo, rich-text tag matching, ICU other và audit thuộc tính JSX expression. COMPLETE import lỗi không DELETE import đã upload: backend cancel có thể huỷ cả QUEUED/PARSING.
+- Đồng bộ README/AGENTS/CLAUDE và ghi nhận ngày kiểm tra attached-file cũ là 2026-10-22 theo review. Zod đã là 4.3.5, z.uuid() hợp lệ nên giữ nguyên. CI giữ master/dev: origin/HEAD trỏ master, refs local/remote-tracking không có main; chưa truy vấn PR/nhánh GitHub trực tiếp. API users không hỗ trợ sortOrder (DTO không có field, repository cố định created_at desc), nên không gửi tham số không có tác dụng; sort hiện chỉ áp dụng trang hiện tại.
+- Kiểm tra: TypeScript pass; i18n 32 cặp pass; production Next.js 16.1.1 build pass ngoài sandbox (trong sandbox lỗi nạp native binding). Kiểm tra hồi quy cục bộ bằng VM/AST pass cho ICU other/tags, JSX attributes, distribution và pagination 103 bản ghi. Scoped ESLint vẫn có lỗi tồn đọng nhưng so với HEAD không thêm lỗi mới; git diff --check pass. Chưa kiểm thử trình duyệt có đăng nhập hoặc API/DB thật.
+
+### Verification for attached-file workspace (2026-10-22)
+
+- TypeScript, scoped ESLint and i18n check (32 paired files) passed. Next.js 16.1.1
+  production Turbopack build passed with the file generation/review route.
+- Upload checkpoints and idempotency keys remain in memory; WAITING_SOURCE polling
+  and batch history resume accepted background work. Original citation evidence is
+  displayed separately from question edits and is not presented as factual proof.
+- No authenticated browser click-through, real upload/CORS or live DB/Google E2E
+  was performed. Apply the additional backend migration and run both workers for
+  the local end-to-end demo, as described in backend docs/rag-indexing.md section 4.
+
+## Attached-file question generation (2026-10-22)
+
+- QuestionGenerationScreen now attaches one text-layer PDF/PPTX <=20 MiB instead
+  of pasted source text. Reuse learningDocumentService upload/confirm, then create
+  source.mode=document with version_id and optional knowledge focus. Notes opt in.
+- Explicit consent covers source content and query sent to Google. In-memory upload
+  checkpoints avoid reuploading confirmed bytes on same-page retries. Do not put
+  reservations/signed URLs/source bodies in browser URL/localStorage.
+- Poll WAITING_SOURCE/QUEUED/GENERATING and display preparation stage/source file.
+  Accepted batches resume by business batch ID/history; server workers prepare
+  sources after navigation. Pre-batch upload checkpoints do not survive reload.
+- GenerationDraftCard shows original evidence quotes/pages/slides with UNASSESSED
+  quality guidance. Edits retain evidence and display a recheck warning. Continue
+  using explicit revision approval and selected commit; no automatic bank writes.
+- vi/en labels, cookie API client and document size/types match backend. Text API
+  compatibility is retained for existing consumers/history. Setup requires the
+  additional migration and BOTH workers; see backend docs/rag-indexing.md section 4.
+
+### Verified RAG checks (2026-10-21)
+
+- TypeScript check, scoped ESLint and i18n check (32 paired files) passed.
+- Next.js 16.1.1 production Turbopack build passed, including the document route.
+- New panel starts/retries indexes, polls progress and queries selected READY
+  versions through NestJS. Results remain plain text and explicitly UNASSESSED.
+  No interactive browser/live DB/S3/Google E2E was performed in this session.
+
+## Current RAG workspace (2026-10-21)
+
+- DocumentRagPanel adds explicit index start/retry, checkpoint progress and retrieval
+  preview to the document screen. Poll while extraction OR indexing is pending.
+- Use learningDocumentService/ENDPOINTS.LEARNING_DOCUMENTS, cookie auth, vi/en labels.
+  Query bodies remain in memory, never URLs/localStorage. Cancel retrieval on unmount
+  or version change and discard stale results. Render source text as plain text.
+- Explain Google transmission for indexed content AND queries. Similarity is not a
+  calibrated quality result: show UNASSESSED. Retrieval does not create questions
+  or write the bank. Current UI searches one selected version; API supports ten.
+- Setup and demo: ../testhub-v2-backend/docs/rag-indexing.md. Older extraction-only
+  snapshots below describe the preceding implementation stage.
+
 > Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-**Cập nhật lần cuối:** 2026-10-05 — bắt buộc toàn màn hình khi làm bài thi chính thức (trang thi của học viên).
+**Cập nhật lần cuối:** 2026-10-23 — sửa các nhận xét review frontend; kiểm tra workspace tệp đính kèm trước đó chạy ngày 2026-10-22.
+
+## Learning documents workspace (2026-10-21)
+
+- Route `/[locale]/lecturer/questions/documents`, link từ ngân hàng và AI workspace.
+  Chọn title/topic/chapter, PDF/PPTX <=20 MiB, consent và notes opt-in. Backend
+  tạo reservation; PUT storage bằng Axios riêng không cookies; complete/replay202.
+- Lịch sử phân trang, chọn phiên bản cũ, poll QUEUED/PROCESSING rồi dừng ở terminal,
+  preview PAGE/SLIDE/NOTES plain text, OCR_REQUIRED có cảnh báo nội dung thiếu.
+  Có upload phiên bản mới, xác nhận lại upload và thu hồi quyền truy cập.
+- API caller/types/endpoints riêng; nhãn `shared/learningDocuments.json` vi/en.
+  Không lưu signed URL, tài liệu hay token vào URL/local storage. Chưa sinh câu từ file.
+- Cần migration backend mới, Python dependencies mới và document worker riêng.
+  Xem `../testhub-v2-backend/docs/learning-documents.md`. Không gọi DB/S3 thật.
+- TypeScript, ESLint feature/các trang sửa, i18n 32 cặp và production build đã pass.
+  Build route mới thành công; chưa kiểm thử click-through trong trình duyệt.
 
 ## Cách cập nhật file này
 
@@ -32,6 +117,7 @@
 - `vercel.json` override Build Command thành `npm run build`, thay lệnh ZenStack cũ trong Vercel Project Settings. GitHub Actions chạy trên `master`/`dev`, dùng `npm ci`, Node 22 và build với giá trị JWT chỉ dùng để kiểm tra build; lint còn lỗi tồn đọng nên tạm không chặn build.
 - Trang thi `src/app/[locale]/(student)/exam/[id]/page.tsx`: bài thi chính thức (`practice === false`) bấm "Làm bài ngay" sẽ mở dialog yêu cầu toàn màn hình; chỉ bắt đầu khi `requestFullscreen` thành công. Trong lúc làm bài, nếu không ở toàn màn hình (thoát bằng Esc, hoặc tải lại trang khi đang có bài làm dở) thì đề bị ẩn (`invisible`) sau một dialog không đóng được, cho tới khi học viên bật lại; đồng hồ vẫn chạy. Mỗi lần thoát gửi `POST /exam-runtime/submissions/:id/violations` với `FULLSCREEN_EXIT` (debounce 5 giây ở client và ở backend); backend phát SSE `EXAM_MONITOR_VIOLATION` và trang giám sát giảng viên hiện toast cùng số vi phạm (đã có sẵn, không đổi backend). Lần thoát do trang tự thực hiện sau khi nộp bài không bị tính (ref `intentionalFullscreenExit`). Bài luyện tập và trình duyệt không hỗ trợ Fullscreen API (`document.fullscreenEnabled === false`, ví dụ Safari trên iPhone) không bị yêu cầu toàn màn hình.
 - Các enum API mà frontend cần nằm tại `src/types/backend-enums.ts`, đối chiếu với `../testhub-v2-backend/prisma/schema.prisma`; `src/` không còn import Prisma Client.
+- `src/types/question-generation.ts` mô tả command text (tương thích lịch sử) và document hiện tại. Frontend đã đăng ký ENDPOINTS.QUESTION_GENERATION, gọi questionGenerationService và có route lecturer/questions/generate với polling, lịch sử, chỉnh sửa, duyệt và commit chọn lọc. Type không chứa token/URL nội bộ.
 
 ## i18n (vi/en) — tiến độ
 
@@ -50,13 +136,17 @@
 5. `useAuth.handleOutlookLogin` là hàm rỗng, trong khi backend có `GET /auth/outlook`.
 6. `src/lib/socket.ts` export một socket không được import ở đâu; `src/types/next-auth.d.ts` khai báo module `next-auth` dù package này không được cài.
 7. Không thấy import trong `src/` của các dependency: `@react-oauth/google`, `js-cookie`, `zod`, `react-to-print`, `dotenv`.
-8. Không có test và không có `.env.example`; `README.md` lỗi thời (Next.js 15, TanStack Query, `prisma/`, `generated/`, các bước `prisma migrate`/`zenstack generate`).
+8. Tự đăng xuất (phân tích từ code ngày 2026-10-08, chưa sửa):
+   - `src/proxy.ts` không bao giờ refresh được: backend đặt `refresh_token` với `path: /auth/refresh` nên request tới `/{locale}/...` không mang cookie này. Khi cookie `access_token` hết hạn (`maxAge` 15 phút), mọi lần tải trang hoặc điều hướng tới route bảo vệ đều bị chuyển về `/login`, dù refresh token còn hạn 7 ngày. Chỉ request axios gửi tới backend mới refresh được.
+   - Backend lưu một hash refresh token cho mỗi user (`generateAndSaveTokens` gọi `updateMany` trên mọi account) và đổi token mới ở mỗi lần refresh ⇒ đăng nhập ở trình duyệt/thiết bị khác hoặc hai tab cùng refresh sẽ làm phiên còn lại hỏng.
+   - `jwt-refresh.strategy.ts` chỉ tìm account `provider: 'local'` ⇒ user chỉ đăng nhập bằng Google/Outlook luôn refresh thất bại.
+   - `api-client.ts` coi mọi lỗi refresh (kể cả lỗi mạng hay backend đang khởi động lại) là hết phiên và chuyển về login.
+9. Không có framework test và không có `.env.example`; README đã đồng bộ thiết lập frontend Next.js 16 ngày 2026-10-23.
 
 ## Chưa xác minh
 
 - Luồng toàn màn hình của trang thi mới kiểm tra bằng typecheck/lint; chưa thử thủ công trên trình duyệt với backend local (vào bài, Esc, tải lại trang, nộp bài, toast bên trang giám sát).
 - Chưa chạy `npm ci` trong môi trường sạch hay xác minh deployment Vercel sau thay đổi; `@prisma/client` và `prisma` vẫn nằm trong dependencies dù `src/` không dùng chúng.
-- Nhánh refresh trong `src/proxy.ts`: backend đặt `refresh_token` với `path: /auth/refresh`, nên trình duyệt có thể không gửi cookie này khi điều hướng tới các trang khác ⇒ refresh ở edge có thể không bao giờ chạy. Chưa kiểm tra thực tế.
 - Production (frontend và API khác subdomain, cookie không đặt `domain`): `src/proxy.ts` có đọc được `access_token` hay không.
 - Người dùng cung cấp log build Vercel với Build Command cũ `npx zenstack generate && next build`; chưa xác minh nhánh production hoặc biến môi trường Vercel.
 
@@ -100,6 +190,56 @@
 ## Công việc đang làm
 
 Chưa có thông tin.
+
+## Kiểm tra contract AI (2026-10-16)
+
+- TypeScript `tsc --noEmit --incremental false` toàn frontend và ESLint `src/types/question-generation.ts` qua Node 22.22.0: pass.
+- Type command/câu trả về dùng đúng enum hiện tại; backend/Python có fixture contract và test HTTP liên repo. Chưa thêm API caller, endpoint constants hoặc giao diện; không build lại frontend vì thay đổi chỉ là type chưa được import vào runtime.
+
+## AI workspace (2026-10-19)
+
+- Route `/[locale]/lecturer/questions/generate`, có nút từ ngân hàng câu hỏi.
+  Tạo lô text với consent/target/count/level, polling và lịch sử lô phân trang,
+  mở lại bằng `?batch=UUID`. Không lưu văn bản/token nội bộ vào local storage.
+- Editor SINGLE_CHOICE sửa text/4 options/đáp án đúng/level, kiểm tra Zod,
+  gửi exact revision. Duyệt/từ chối là thao tác riêng; VALID không phải APPROVED.
+  Chỉ chọn câu APPROVED và xác nhận danh sách trước commit. Có bank IDs sau lưu.
+  Chặn commit khi đang sửa chưa lưu và bỏ chọn khi revision thay đổi.
+- API caller tại `src/services/questionGenerationService.ts`, endpoint constants
+  và types cập nhật theo backend; sử dụng Axios cookie/refresh hiện có. Key tạo lô
+  giữ trong memory cho retries cùng nội dung; reload mất key nên kiểm tra lịch sử
+  trước khi gửi lại nếu kết quả tạo lô chưa rõ. Conflict reload dữ liệu hiện tại.
+- Nhãn vi/en tại shared/questionGeneration.json, đăng ký cả hai index message.
+  Route đã nằm dưới quyền `/lecturer`, không thêm exception vào proxy.
+- Kiểm tra: TypeScript pass; ESLint feature + trang ngân hàng pass; script i18n
+  31 cặp JSON/ICU pass; `next build --turbopack` pass (route mới được build).
+  Lint toàn repo vẫn có **62 lỗi/37 cảnh báo tồn đọng**, ngoài phần AI mới và
+  trang ngân hàng đã sửa (các file này lint riêng sạch); không mở rộng sửa ngoài phạm vi.
+  Build cần escalation cho native SWC cache do sandbox owner SID, không cài dependency.
+  HTTP SSR localhost với JWT giả riêng: vi/en 200 và form/nhãn đúng. CUA không có
+  browser provider (iab unavailable), chưa kiểm thử click-through/visual.
+- Backend integration (PostgreSQL/Redis thật tạm + fake AI HTTP) đã kiểm tra sửa,
+  duyệt/revision, commit/replay/rollback/quyền sở hữu. Không dùng database hiện có,
+  Gemini hoặc tài khoản thật trong các kiểm tra này. Hướng dẫn demo tại
+  `../testhub-v2-backend/docs/ai-question-generation.md`.
+
+## Câu hỏi AI không thấy trong ngân hàng giảng viên (2026-10-20)
+
+- Người dùng xác nhận đã commit thành công nhưng chưa thấy hai câu trên giao diện.
+  CSV cũ chỉ thể hiện thời điểm APPROVED/question_id null, không phải bằng chứng
+  trạng thái DB sau commit. Đã yêu cầu kết quả SELECT chỉ đọc để xác minh mapping,
+  chapter, is_deleted và has_children của hai item; chưa kết nối DB hiện có.
+- Phát hiện bug UI chắc chắn từ code: `childCount > 0` chỉ mở danh sách chương con;
+  chỉ leaf chapter có đường mở câu hỏi, trong khi AI commit cho phép lưu vào mọi
+  chapter active thuộc topic. Vì vậy câu trực tiếp của chương cha không truy cập
+  được từ danh sách chương, dù API GET questions theo chapter_id vẫn trả chúng.
+- Sửa trang lecturer/questions: chương có con có cả nút Quản lý Chapter con và
+  Quản lý Câu hỏi; chương lá vẫn có nút Quản lý Câu hỏi. Truy vấn dùng chapter_id
+  của chính chương, không gộp câu của các chương con. Reuse nhãn vi/en hiện có.
+- Người dùng đã test lại và xác nhận hai câu hiển thị ngày 20/10. Không truy vấn
+  DB hoặc tự commit lại bản nháp; kết quả này dựa trên xác nhận của người dùng.
+- Kiểm tra bản sửa: ESLint riêng trang ngân hàng, TypeScript `--noEmit` và
+  production build Next.js đều thành công. Chưa kiểm tra giao diện bằng trình duyệt.
 
 ## Bước tiếp theo đề xuất
 

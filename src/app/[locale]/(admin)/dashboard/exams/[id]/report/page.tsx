@@ -122,7 +122,7 @@ export default function AdminExamReportPage() {
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Baocao_${exam?.title?.replace(/\s+/g, "_")}_${examId}.pdf`;
+      a.download = `${t("reportFilenamePrefix")}_${exam?.title?.replace(/\s+/g, "_")}_${examId}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -158,7 +158,7 @@ export default function AdminExamReportPage() {
     const diff = new Date(end).getTime() - new Date(start).getTime();
     const minutes = Math.floor(diff / 60000);
     const seconds = Math.floor((diff % 60000) / 1000);
-    return `${minutes}p ${seconds}s`;
+    return t("elapsedTime", { minutes, seconds });
   };
 
   const getRatingColor = (rating: string | null) => {

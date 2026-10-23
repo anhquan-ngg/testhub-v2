@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { useEffect, useRef, Suspense } from "react";
+import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -19,12 +20,13 @@ function GoogleCallbackContent() {
     processedRef.current = true;
 
     if (error) {
-      router.push("/login?error=google_auth_failed");
+      toast.error(t("failed"));
+      router.replace("/login");
       return;
     }
 
     router.replace("/");
-  }, [searchParams, router]);
+  }, [searchParams, router, t]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

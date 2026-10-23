@@ -15,7 +15,10 @@ for (const file of walk(root)) {
   function visit(node) {
     let value;
     if (ts.isJsxText(node)) value = node.text;
-    else if (ts.isStringLiteral(node) && ts.isJsxAttribute(node.parent) && /^(title|placeholder|alt|aria-label|label|name)$/.test(node.parent.name.text)) value = node.text;
+    else if (ts.isStringLiteral(node)) {
+      const attribute = ts.isJsxExpression(node.parent) ? node.parent.parent : node.parent;
+      if (ts.isJsxAttribute(attribute) && /^(title|placeholder|alt|aria-label|label|name)$/.test(attribute.name.text)) value = node.text;
+    }
     if (value && /[A-Za-zÀ-ỹ]/u.test(value) && !/^\s*(?:[A-F]|[0-9]+|\/|%|\.\.\.)\s*$/.test(value)) {
       const line = ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1;
       found.push(`${line}\t${value.replace(/\s+/g, " ").trim().slice(0, 100)}`);

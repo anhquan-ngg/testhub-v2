@@ -30,6 +30,25 @@ export const ENDPOINTS = {
       `/question-imports/${id}/items/${itemId}`,
     COMMIT: (id: string) => `/question-imports/${id}/commit`,
   },
+  QUESTION_GENERATION: {
+    BASE: "/question-generation-batches",
+    DETAIL: (id: string) => `/question-generation-batches/${id}`,
+    ITEMS: (id: string) => `/question-generation-batches/${id}/items`,
+    ITEM: (id: string, itemId: string) => `/question-generation-batches/${id}/items/${itemId}`,
+    REVIEW: (id: string, itemId: string) => `/question-generation-batches/${id}/items/${itemId}/review`,
+    COMMIT: (id: string) => `/question-generation-batches/${id}/commit`,
+  },
+  LEARNING_DOCUMENTS: {
+    INDEX: (id:string, version:string) => `/learning-documents/${id}/versions/${version}/index`,
+    RETRY_INDEX: (id:string) => `/learning-documents/indexes/${id}/retry`,
+    RETRIEVE: "/learning-documents/retrieve",
+
+    BASE: "/learning-documents",
+    DETAIL: (id: string) => `/learning-documents/${id}`,
+    VERSIONS: (id: string) => `/learning-documents/${id}/versions`,
+    COMPLETE: (id: string, versionId: string) => `/learning-documents/${id}/versions/${versionId}/complete`,
+    CONTENT: (id: string, versionId: string) => `/learning-documents/${id}/versions/${versionId}/content`,
+  },
   EXAMS: {
     BASE: "/exams",
     DETAIL: (id: string) => `/exams/${id}`,
