@@ -13,11 +13,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { MathRenderer } from "@/components/MathRenderer";
 import type {
-  GeneratedSingleChoiceQuestion,
+  GeneratedChoiceQuestion,
   QuestionGenerationItem,
 } from "@/types/question-generation";
 import type { QuestionFormat } from "@/types/backend-enums";
-import { generationDraftSchema } from "./generation-validation";
+import {
+  GENERATION_QUESTION_FORMATS,
+  generationDraftSchema,
+} from "./generation-validation";
 
 type Props = {
   item: QuestionGenerationItem;
@@ -25,7 +28,7 @@ type Props = {
   busy: boolean;
   editable: boolean;
   onSelect: (selected: boolean) => void;
-  onEdit: (data: GeneratedSingleChoiceQuestion) => Promise<boolean>;
+  onEdit: (data: GeneratedChoiceQuestion) => Promise<boolean>;
   onReview: (decision: "APPROVE" | "REJECT") => Promise<boolean>;
   onEditingChange: (id: string, editing: boolean) => void;
 };
@@ -43,7 +46,7 @@ export function GenerationDraftCard({
 }: Props) {
   const t = useTranslations("shared.questionGeneration");
   const documentText = useTranslations("shared.learningDocuments");
-  const { questionFormat } = useEnumLabels();
+  const { questionFormat, questionType } = useEnumLabels();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.data);
   const [invalid, setInvalid] = useState(false);
@@ -52,6 +55,7 @@ export function GenerationDraftCard({
     [item.id, onEditingChange],
   );
   const canEdit = editable && !["COMMITTED", "SKIPPED"].includes(item.status);
+  const multiple = draft.question_type === "MULTIPLE_CHOICE";
   async function save() {
     const parsed = generationDraftSchema.safeParse(draft);
     if (!parsed.success) {
@@ -141,24 +145,29 @@ export function GenerationDraftCard({
             />
             <fieldset className="space-y-3" disabled={busy}>
               <legend className="mb-2 text-sm font-medium">
-                {t("optionsHint")}
+                {t(`optionsHint.${draft.question_type}`)}
               </legend>
               {draft.options.map((option, index) => (
                 <div key={index} className="flex items-center gap-3">
                   <input
-                    type="radio"
+                    type={multiple ? "checkbox" : "radio"}
                     name={`answer-${item.id}`}
                     aria-label={t("correctOption", {
                       option: String.fromCharCode(65 + index),
                     })}
                     checked={option.isCorrect}
-                    onChange={() =>
+                    onChange={(event) =>
                       setDraft({
                         ...draft,
+                        // Single choice keeps exactly one answer; multiple choice toggles.
                         options: draft.options.map(
                           (candidate, candidateIndex) => ({
                             ...candidate,
-                            isCorrect: candidateIndex === index,
+                            isCorrect: multiple
+                              ? candidateIndex === index
+                                ? event.target.checked
+                                : candidate.isCorrect
+                              : candidateIndex === index,
                           }),
                         ),
                       })
@@ -203,9 +212,7 @@ export function GenerationDraftCard({
                 })
               }
             >
-              {(
-                ["KNOWLEDGE", "UNDERSTANDING", "APPLYING", "ADVANCED"] as const
-              ).map((value) => (
+              {GENERATION_QUESTION_FORMATS.map((value) => (
                 <option key={value} value={value}>
                   {questionFormat(value)}
                 </option>
@@ -264,6 +271,7 @@ export function GenerationDraftCard({
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
+              {questionType(item.data.question_type)} ·{" "}
               {questionFormat(item.data.question_format)}
             </p>
             {item.question_id && (

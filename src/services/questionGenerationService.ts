@@ -1,7 +1,7 @@
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type {
-  GeneratedSingleChoiceQuestion,
+  GeneratedChoiceQuestion,
   GenerationCommitResult,
   GenerationPage,
   QuestionGenerationBatch,
@@ -48,7 +48,7 @@ export const questionGenerationService = {
   async edit(
     id: string,
     item: QuestionGenerationItem,
-    data: GeneratedSingleChoiceQuestion,
+    data: GeneratedChoiceQuestion,
   ) {
     return (
       await apiClient.patch<QuestionGenerationItem>(routes.ITEM(id, item.id), {

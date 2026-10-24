@@ -23,7 +23,6 @@ import type {
   QuestionGenerationBatch,
   QuestionGenerationItem,
 } from "@/types/question-generation";
-import type { QuestionFormat } from "@/types/backend-enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +40,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { GenerationDraftCard } from "./GenerationDraftCard";
+import {
+  QuestionConfigTable,
+  newQuestionConfigRow,
+} from "./QuestionConfigTable";
+import type { QuestionConfigRow } from "./QuestionConfigTable";
 import { documentGenerationSettingsSchema } from "./generation-validation";
 
 import { learningDocumentService as documentApi } from "@/services/learningDocumentService";
@@ -88,7 +92,7 @@ export function QuestionGenerationScreen() {
   const t = useTranslations("shared.questionGeneration");
   const documentText = useTranslations("shared.learningDocuments");
   const locale = useLocale();
-  const { questionFormat } = useEnumLabels();
+  const { questionFormat, questionType } = useEnumLabels();
   const params = useSearchParams();
   const router = useRouter();
   const batchId = params.get("batch");
@@ -109,8 +113,9 @@ export function QuestionGenerationScreen() {
     uploaded: boolean;
     confirmed: boolean;
   } | null>(null);
-  const [format, setFormat] = useState<QuestionFormat>("KNOWLEDGE");
-  const [count, setCount] = useState(5);
+  const [configs, setConfigs] = useState<QuestionConfigRow[]>(() => [
+    newQuestionConfigRow(5),
+  ]);
   const [consent, setConsent] = useState(false);
   const [creating, setCreating] = useState(false);
   const [invalidCommand, setInvalidCommand] = useState(false);
@@ -254,9 +259,13 @@ export function QuestionGenerationScreen() {
     const parsed = documentGenerationSettingsSchema.safeParse({
       topic_id: topicId,
       chapter_id: chapterId,
-      question_type: "SINGLE_CHOICE",
-      question_format: format,
-      count,
+      question_configs: configs.map(
+        ({ question_type, question_format, count }) => ({
+          question_type,
+          question_format,
+          count,
+        }),
+      ),
       language: "vi",
       external_processing_consent: consent,
       query: focus,
@@ -290,10 +299,9 @@ export function QuestionGenerationScreen() {
       let checkpoint = uploadCheckpoint.current;
       if (
         !checkpoint ||
+        (!checkpoint.uploaded && Date.parse(checkpoint.reservation.upload_expires_at) <= Date.now()) ||
         checkpoint.file !== file ||
-        checkpoint.signature !== signature ||
-        (!checkpoint.uploaded &&
-          Date.parse(checkpoint.reservation.upload_expires_at) <= Date.now())
+        checkpoint.signature !== signature
       ) {
         const mime =
           sourceType === "PDF"
@@ -419,184 +427,157 @@ export function QuestionGenerationScreen() {
           {t("textOnly")}
         </Badge>
       </div>
-      <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="space-y-5">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">{t("createTitle")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form
-                onSubmit={(event) => void create(event)}
-                className="space-y-4"
-              >
-                {targetError && (
-                  <p role="alert" className="text-sm text-destructive">
-                    {t("targetError")}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">{t("createTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(event) => void create(event)}
+            className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+          >
+            <div className="space-y-4">
+              {targetError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {t("targetError")}
+                </p>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="ai-topic">{t("topic")}</Label>
+                <select
+                  id="ai-topic"
+                  className="w-full rounded-md border bg-background p-2 text-sm"
+                  value={topicId}
+                  disabled={creating}
+                  onChange={(event) => {
+                    setTopicId(event.target.value);
+                    setChapterId("");
+                  }}
+                >
+                  <option value="">{t("chooseTopic")}</option>
+                  {topics.map((topic) => (
+                    <option key={topic.id} value={topic.id}>
+                      {topic.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ai-chapter">{t("chapter")}</Label>
+                <select
+                  id="ai-chapter"
+                  className="w-full rounded-md border bg-background p-2 text-sm"
+                  value={chapterId}
+                  disabled={!topicId || creating}
+                  onChange={(event) => setChapterId(event.target.value)}
+                >
+                  <option value="">{t("chooseChapter")}</option>
+                  {chapters.map((chapter) => (
+                    <option key={chapter.id} value={chapter.id}>
+                      {chapterLabel(chapter, chapters)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ai-source-file">{t("fileSource")}</Label>
+                <Input
+                  id="ai-source-file"
+                  type="file"
+                  accept=".pdf,.pptx"
+                  disabled={creating}
+                  onChange={(event) => {
+                    setFile(event.target.files?.[0] ?? null);
+                    setInvalidCommand(false);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t("fileHint")}
+                </p>
+                {file && (
+                  <p className="break-words text-sm">
+                    {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                   </p>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="ai-topic">{t("topic")}</Label>
-                  <select
-                    id="ai-topic"
-                    className="w-full rounded-md border bg-background p-2 text-sm"
-                    value={topicId}
-                    disabled={creating}
-                    onChange={(event) => {
-                      setTopicId(event.target.value);
-                      setChapterId("");
-                    }}
-                  >
-                    <option value="">{t("chooseTopic")}</option>
-                    {topics.map((topic) => (
-                      <option key={topic.id} value={topic.id}>
-                        {topic.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ai-chapter">{t("chapter")}</Label>
-                  <select
-                    id="ai-chapter"
-                    className="w-full rounded-md border bg-background p-2 text-sm"
-                    value={chapterId}
-                    disabled={!topicId || creating}
-                    onChange={(event) => setChapterId(event.target.value)}
-                  >
-                    <option value="">{t("chooseChapter")}</option>
-                    {chapters.map((chapter) => (
-                      <option key={chapter.id} value={chapter.id}>
-                        {chapterLabel(chapter, chapters)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ai-source-file">{t("fileSource")}</Label>
-                  <Input
-                    id="ai-source-file"
-                    type="file"
-                    accept=".pdf,.pptx"
-                    disabled={creating}
-                    onChange={(event) => {
-                      setFile(event.target.files?.[0] ?? null);
-                      setInvalidCommand(false);
-                    }}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    {t("fileHint")}
-                  </p>
-                  {file && (
-                    <p className="break-words text-sm">
-                      {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                    </p>
-                  )}
-                  <div className="flex items-start gap-2">
-                    <Checkbox
-                      id="ai-file-notes"
-                      checked={includeNotes}
-                      disabled={
-                        creating || !file?.name.toLowerCase().endsWith(".pptx")
-                      }
-                      onCheckedChange={(value) =>
-                        setIncludeNotes(value === true)
-                      }
-                    />
-                    <Label
-                      htmlFor="ai-file-notes"
-                      className="text-xs leading-relaxed"
-                    >
-                      {t("includeNotes")}
-                    </Label>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="ai-focus">{t("focus")}</Label>
-                  <Input
-                    id="ai-focus"
-                    value={focus}
-                    maxLength={400}
-                    disabled={creating}
-                    onChange={(event) => setFocus(event.target.value)}
-                    placeholder={t("focusPlaceholder")}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="ai-level">{t("level")}</Label>
-                    <select
-                      id="ai-level"
-                      className="w-full rounded-md border bg-background p-2 text-sm"
-                      disabled={creating}
-                      value={format}
-                      onChange={(event) =>
-                        setFormat(event.target.value as QuestionFormat)
-                      }
-                    >
-                      {(
-                        [
-                          "KNOWLEDGE",
-                          "UNDERSTANDING",
-                          "APPLYING",
-                          "ADVANCED",
-                        ] as const
-                      ).map((value) => (
-                        <option key={value} value={value}>
-                          {questionFormat(value)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="ai-count">{t("count")}</Label>
-                    <Input
-                      id="ai-count"
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={Number.isNaN(count) ? "" : count}
-                      disabled={creating}
-                      onChange={(event) => setCount(event.target.valueAsNumber)}
-                    />
-                  </div>
-                </div>
                 <div className="flex items-start gap-2">
                   <Checkbox
-                    id="ai-consent"
-                    checked={consent}
-                    disabled={creating}
-                    onCheckedChange={(value) => setConsent(value === true)}
+                    id="ai-file-notes"
+                    checked={includeNotes}
+                    disabled={
+                      creating || !file?.name.toLowerCase().endsWith(".pptx")
+                    }
+                    onCheckedChange={(value) =>
+                      setIncludeNotes(value === true)
+                    }
                   />
                   <Label
-                    htmlFor="ai-consent"
+                    htmlFor="ai-file-notes"
                     className="text-xs leading-relaxed"
                   >
-                    {t("consent")}
+                    {t("includeNotes")}
                   </Label>
                 </div>
-                {invalidCommand && (
-                  <p role="alert" className="text-sm text-destructive">
-                    {t("invalidCommand")}
-                  </p>
-                )}
-                <Button
-                  className="w-full"
-                  type="submit"
-                  disabled={
-                    creating || busy || Boolean(editingId) || !consent || !file
-                  }
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ai-focus">{t("focus")}</Label>
+                <Input
+                  id="ai-focus"
+                  value={focus}
+                  maxLength={400}
+                  disabled={creating}
+                  onChange={(event) => setFocus(event.target.value)}
+                  placeholder={t("focusPlaceholder")}
+                />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <QuestionConfigTable
+                rows={configs}
+                disabled={creating}
+                onChange={(rows) => {
+                  setConfigs(rows);
+                  setInvalidCommand(false);
+                }}
+              />
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="ai-consent"
+                  checked={consent}
+                  disabled={creating}
+                  onCheckedChange={(value) => setConsent(value === true)}
+                />
+                <Label
+                  htmlFor="ai-consent"
+                  className="text-xs leading-relaxed"
                 >
-                  {creating ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Sparkles className="size-4" />
-                  )}
-                  {creating ? t(`uploadStage.${uploadStage}`) : t("generate")}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  {t("consent")}
+                </Label>
+              </div>
+              {invalidCommand && (
+                <p role="alert" className="text-sm text-destructive">
+                  {t("invalidCommand")}
+                </p>
+              )}
+              <Button
+                className="w-full"
+                type="submit"
+                disabled={
+                  creating || busy || Boolean(editingId) || !consent || !file
+                }
+              >
+                {creating ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Sparkles className="size-4" />
+                )}
+                {creating ? t(`uploadStage.${uploadStage}`) : t("generate")}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+      <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="space-y-5">
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">{t("history")}</CardTitle>
@@ -719,6 +700,21 @@ export function QuestionGenerationScreen() {
                         <p className="text-sm text-muted-foreground">
                           {t("processing")}
                         </p>
+                      )}
+                      {!!batch.question_configs?.length && (
+                        <ul className="flex flex-wrap gap-2">
+                          {batch.question_configs.map((config, index) => (
+                            <li key={index}>
+                              <Badge variant="outline">
+                                {t("configSummary", {
+                                  count: config.count,
+                                  type: questionType(config.question_type),
+                                  format: questionFormat(config.question_format),
+                                })}
+                              </Badge>
+                            </li>
+                          ))}
+                        </ul>
                       )}
                       {batch.sourceVersion && (
                         <p className="break-words text-sm">

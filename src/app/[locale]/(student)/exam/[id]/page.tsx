@@ -48,6 +48,7 @@ import { useAppSelector } from "@/store/hook";
 import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
 import { ExamData } from "@/types/exam";
+import { isAxiosError } from "axios";
 import { parseOptions } from "@/lib/exam-utils";
 import { ENDPOINTS } from "@/constants/endpoints";
 
@@ -737,7 +738,17 @@ export default function ExamPage() {
       setExam(session);
       setStartTime(session.entered_at ? new Date(session.entered_at) : new Date());
       dispatch(startTest());
-    } catch {
+    } catch (error: unknown) {
+      const data: unknown = isAxiosError<unknown>(error) ? error.response?.data : undefined;
+      const detail = typeof data === "object" && data !== null && "data" in data ? data.data : undefined;
+      const reason = (typeof data === "object" && data !== null && "reason" in data
+        ? data.reason
+        : undefined) ?? (typeof detail === "object" && detail !== null && "reason" in detail ? detail.reason : undefined);
+      if (reason === "EXAM_CLOSED") {
+        setExam(null);
+        setExamClosed(true);
+        return;
+      }
       toast.error(t("errorLoadingTestData"));
     } finally {
       startingRef.current = false;

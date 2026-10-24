@@ -1,4 +1,5 @@
 {
+  "pleaseAddValidDistribution": "Add at least one distribution row with a positive whole-number quantity.",
   "chooseQuestionsForExam": "Choose questions for the exam: {title}",
   "questionMetadata": "Topic: {topic} · Type: {type} · Format: {format}",
   "selectedQuestionCount": "{count} questions selected",

@@ -1,24 +1,107 @@
 # CONTINUITY.md — testhub-v2 (frontend)
 
-## Follow-up review fixes (2026-10-23)
+> Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-- Link kết quả dùng submissionId cho cả bài chính thức/luyện tập. SSE dùng serverTime từ status API cộng thời gian monotonic, không dùng giờ thiết bị cho cửa sổ bắt đầu/kết thúc.
-- Profile bổ sung exam.practice qua endpoint chi tiết khi APPROVED thiếu exam; gom request theo exam ID trước khi phân loại. Backend checkout không có trong sandbox nên chưa đối chiếu controller/live API.
-- Edit exam bỏ kết quả câu hỏi/chương cũ sau khi đổi topic; lựa chọn BY_CHAPTER dùng fetchAllPages để lấy cả chương ngoài trang đầu. Signup chặn submit khi đang chờ và mở lại trong finally.
-- Generation chỉ thay reservation hết hạn khi chưa upload; upload đã xong vẫn tiếp tục complete. Import giữ UPLOADING sẵn có và thêm nút xác nhận lại COMPLETE, không poll UPLOADING.
-- Đồng bộ nhãn Enterprise vi/en thành lời mời liên hệ. Href vẫn là #contact (đang trỏ tới newsletter); chờ người dùng cung cấp email/URL liên hệ thật, không tự đặt địa chỉ.
-- Kiểm tra trong sandbox: TypeScript và production build pass; i18n 32 cặp pass; kiểm tra hồi quy VM/AST với dữ liệu giả lập pass; scoped ESLint 14 errors/9 warnings đều có sẵn (giảm 4 errors so với HEAD), full lint 53 errors/36 warnings. Chưa kiểm thử API thật hoặc trình duyệt có đăng nhập. Chi tiết input hashes/lệnh/kết quả ở workspace-context/validation-record.md ngoài repository.
+**Cập nhật lần cuối:** 2026-10-24 — sửa fallback lý do lỗi, trạng thái thống kê hồ sơ và đồng bộ topic ref.
+
+## Student summary and topic ref review (2026-10-24)
+
+- Exam start falls back to nested detail.reason for nullish top-level reason,
+  preserving other top-level values and the existing EXAM_CLOSED handling.
+- Profile tracks rejected exam detail lookups and displays an incomplete-data
+  state instead of an exact pending count. Successful summaries are retained;
+  later successful loads clear the flag. Labels are available in vi/en.
+- Edit exam synchronizes topicIdRef in an effect after commit, before fetch
+  effects; onValueChange still writes immediately. Request sequencing remains.
+- Validation: TypeScript, 32 paired i18n files and pure regression checks passed
+  for reason precedence, partial summary/display, effect placement and stale-topic
+  guards. Scoped lint retains 14 errors/8 warnings with no added diagnostics
+  against HEAD. No authenticated browser/live API checks or production build run.
+
+## Merge conflict resolution (2026-10-23)
+
+- Combined local 25be5c8 with incoming b9cda79: retained question configuration,
+  distribution validation, request sequencing/loading guards, duplicate signup
+  protection, typed profile data with isolated lookups, and remote import retry UI.
+- Deduplicated clock/topic state and upload expiry checks introduced by automatic
+  merging. Existing user sort, report batching and EXAM_CLOSED handling are retained.
+- Validation: TypeScript, production build, 32 paired i18n files and pure logic/
+  branch preservation checks passed. Six merged TSX files have zero ESLint errors
+  and two existing warnings, with no added diagnostics against local HEAD. Full
+  lint still reports 42 existing errors/36 warnings. No authenticated browser or
+  live API/database verification was performed. Resolutions are staged for the
+  user's merge commit; no merge commit was created by this task.
+
+## Pagination and recovery review (2026-10-23)
+
+- User lists send sortOrder to the backend, which sorts by created_at/id before
+  pagination; page/limit are unchanged. Pagination helpers stop at total or an
+  empty page, allowing short intermediate pages.
+- Exam start handles EXAM_CLOSED without unsafe casts; profile practice lookups
+  isolate failures. Reports load pages with at most five detail requests in
+  flight and show each completed batch, retaining successful rows on failure.
+- Exam editing rejects empty/invalid BY_TYPE distributions. Changing topic clears
+  the question bank immediately and blocks selection until the current load ends;
+  stale responses cannot restore another topic's bank.
+- COMPLETE retries recover the current import via DETAIL on failure. README now
+  explains Google transmission, prerequisite migrations and both worker commands.
+- Validation: TypeScript, 32 paired i18n files and production build passed (build
+  outside sandbox after native binding failed inside). Local callback checks cover
+  pagination, closed-exam handling, isolated practice lookups, distribution guards,
+  stale bank loads, report concurrency/progress and COMPLETE recovery. Scoped lint
+  has 19 existing errors/9 warnings, with no added diagnostics against HEAD. Live
+  authenticated browser/API/database behavior remains unverified.
+
+## Review follow-up (2026-10-23)
+
+- Link kết quả dùng submissionId cho cả thi chính thức và luyện tập. SSE dùng
+  serverTime cộng elapsed time từ performance.now(), không dùng đồng hồ thiết bị.
+  Profile bổ sung practice theo exam_id cho đăng ký APPROVED khi response thiếu.
+- Chỉnh sửa đề tải đủ chương qua fetchAllPages và bỏ qua phản hồi ngân hàng/chương
+  của topic cũ. Ngân hàng không tải câu hỏi khi chưa chọn chương. Signup khóa gửi
+  trùng, giữ dữ liệu khi lỗi và mở lại nút trong finally.
+- Checkpoint chưa upload được tạo lại khi reservation hết hạn; checkpoint đã upload
+  vẫn tiếp tục xác nhận. Import UPLOADING sau lỗi COMPLETE có nút xác nhận lại,
+  giữ nguyên ID và không polling UPLOADING. CTA Enterprise vi/en mở email tư vấn
+  do người dùng cung cấp. Quy ước dài hạn ở AGENTS.md, README giữ hướng dẫn sản phẩm.
+- Kiểm tra: TypeScript và i18n 32 cặp pass; kiểm thử callback/AST cục bộ pass cho
+  stale topic, đủ chương, không query toàn bank, signup trùng, checkpoint expiry,
+  COMPLETE recovery, practice lookup và server-time SSE. Production build pass ngoài
+  sandbox (trong sandbox lỗi native binding). Scoped lint còn 16 lỗi/9 cảnh báo cũ,
+  so với HEAD không thêm chẩn đoán; override CommonJS không ảnh hưởng TypeScript.
+  Chưa kiểm thử trình duyệt có đăng nhập/API thật; git diff --check pass.
+
+## Question configs table (2026-10-23)
+
+- AI generation form now has a "Cấu hình câu hỏi" table (type/format/count rows)
+  and sends question_configs; draft cards support MULTIPLE_CHOICE editing.
+- Validation: `npx tsc --noEmit --incremental false` clean; eslint clean on changed
+  files; `node scripts/check-i18n.cjs` passed. Not verified manually in a browser
+  against a running backend.
 
 ## Frontend review fixes (2026-10-23)
 
 - Admin exams/users giữ input khi refetch, debounce tìm kiếm 300 ms, bỏ phản hồi cũ và chỉ phân trang server một lần. Dashboard realtime giữ nội dung khi cập nhật.
-- Student landing chỉ đọc session/thông tin thi; START_EXAM chạy khi xác nhận bắt đầu. Link kết quả dùng submissionId cho luyện tập; SSE chỉ theo dõi bài APPROVED sắp mở (15 phút)/đang mở với khóa ID ổn định. Bộ đếm bài chờ loại trùng theo exam ID.
+- Student landing chỉ đọc session/thông tin thi; START_EXAM chạy khi xác nhận bắt đầu. Link kết quả dùng submissionId; SSE chỉ theo dõi bài APPROVED sắp mở (15 phút)/đang mở với khóa ID ổn định. Bộ đếm bài chờ loại trùng theo exam ID.
 - Tải đủ các trang cho ngân hàng, dashboard giảng viên và danh sách bài nộp báo cáo; báo cáo giữ các chi tiết tải thành công. Helper chung ở src/lib/pagination.ts. Bộ lọc câu hỏi backend chỉ nhận chapter_id, nên ngân hàng theo môn tải các chương của môn rồi lấy câu hỏi từng chương (không gửi topic_id bị DTO loại bỏ).
 - Chỉnh sửa đề gửi topic_id từ Select, dựng distribution từ mode/configRows hiện tại và chặn BY_CHAPTER rỗng. Chương gốc hỗ trợ parent_id bị thiếu, bỏ chương cha gửi null và loại hậu duệ khỏi lựa chọn. SINGLE_CHOICE giữ tối đa một đáp án đúng.
-- Upload avatar cập nhật preview/store trước cleanup best-effort; đổi mật khẩu giảng viên chấp nhận mọi response 2xx và không log request lỗi chứa mật khẩu. Signup giữ form khi thất bại; SignupPayload.full_name khớp DTO backend. Callback Google báo lỗi trước redirect; ẩn Outlook chưa hoạt động và bỏ form newsletter chưa kết nối, CTA mô tả đúng đích.
+- Upload avatar cập nhật preview/store trước cleanup best-effort; đổi mật khẩu giảng viên chấp nhận mọi response 2xx và không log request lỗi chứa mật khẩu. Signup giữ form khi thất bại; SignupPayload.full_name khớp DTO backend. Callback Google báo lỗi trước redirect; ẩn Outlook chưa hoạt động và bỏ form newsletter chưa kết nối.
 - Sửa nhãn vi/en, thời lượng/tên file báo cáo, rich-text tag matching, ICU other và audit thuộc tính JSX expression. COMPLETE import lỗi không DELETE import đã upload: backend cancel có thể huỷ cả QUEUED/PARSING.
-- Đồng bộ README/AGENTS/CLAUDE và ghi nhận ngày kiểm tra attached-file cũ là 2026-10-22 theo review. Zod đã là 4.3.5, z.uuid() hợp lệ nên giữ nguyên. CI giữ master/dev: origin/HEAD trỏ master, refs local/remote-tracking không có main; chưa truy vấn PR/nhánh GitHub trực tiếp. API users không hỗ trợ sortOrder (DTO không có field, repository cố định created_at desc), nên không gửi tham số không có tác dụng; sort hiện chỉ áp dụng trang hiện tại.
+- Đồng bộ README/AGENTS/CLAUDE và ghi nhận ngày kiểm tra attached-file cũ là 2026-10-22 theo review. Zod đã là 4.3.5, z.uuid() hợp lệ nên giữ nguyên. CI giữ master/dev: origin/HEAD trỏ master, refs local/remote-tracking không có main; chưa truy vấn PR/nhánh GitHub trực tiếp. API users hiện hỗ trợ sortOrder asc/desc trước phân trang (xem mục Pagination and recovery review).
 - Kiểm tra: TypeScript pass; i18n 32 cặp pass; production Next.js 16.1.1 build pass ngoài sandbox (trong sandbox lỗi nạp native binding). Kiểm tra hồi quy cục bộ bằng VM/AST pass cho ICU other/tags, JSX attributes, distribution và pagination 103 bản ghi. Scoped ESLint vẫn có lỗi tồn đọng nhưng so với HEAD không thêm lỗi mới; git diff --check pass. Chưa kiểm thử trình duyệt có đăng nhập hoặc API/DB thật.
+
+## Attached-file question generation (2026-10-22)
+
+- PDF/PPTX generation, source preparation polling, history, evidence and explicit
+  review/commit are implemented. TypeScript, scoped ESLint, 32 i18n pairs and
+  production build passed. No authenticated browser/live storage/provider E2E.
+
+## Current RAG workspace (2026-10-21)
+
+- DocumentRagPanel supports index start/retry, progress and retrieval preview.
+  TypeScript, scoped ESLint, 32 i18n pairs and production build passed.
+  Real database/storage/Google and interactive browser E2E remain unverified.
+- Long-term rules and setup references are maintained in AGENTS.md.
 
 ### Verification for attached-file workspace (2026-10-22)
 
@@ -31,24 +114,6 @@
   was performed. Apply the additional backend migration and run both workers for
   the local end-to-end demo, as described in backend docs/rag-indexing.md section 4.
 
-## Attached-file question generation (2026-10-22)
-
-- QuestionGenerationScreen now attaches one text-layer PDF/PPTX <=20 MiB instead
-  of pasted source text. Reuse learningDocumentService upload/confirm, then create
-  source.mode=document with version_id and optional knowledge focus. Notes opt in.
-- Explicit consent covers source content and query sent to Google. In-memory upload
-  checkpoints avoid reuploading confirmed bytes on same-page retries. Do not put
-  reservations/signed URLs/source bodies in browser URL/localStorage.
-- Poll WAITING_SOURCE/QUEUED/GENERATING and display preparation stage/source file.
-  Accepted batches resume by business batch ID/history; server workers prepare
-  sources after navigation. Pre-batch upload checkpoints do not survive reload.
-- GenerationDraftCard shows original evidence quotes/pages/slides with UNASSESSED
-  quality guidance. Edits retain evidence and display a recheck warning. Continue
-  using explicit revision approval and selected commit; no automatic bank writes.
-- vi/en labels, cookie API client and document size/types match backend. Text API
-  compatibility is retained for existing consumers/history. Setup requires the
-  additional migration and BOTH workers; see backend docs/rag-indexing.md section 4.
-
 ### Verified RAG checks (2026-10-21)
 
 - TypeScript check, scoped ESLint and i18n check (32 paired files) passed.
@@ -56,38 +121,6 @@
 - New panel starts/retries indexes, polls progress and queries selected READY
   versions through NestJS. Results remain plain text and explicitly UNASSESSED.
   No interactive browser/live DB/S3/Google E2E was performed in this session.
-
-## Current RAG workspace (2026-10-21)
-
-- DocumentRagPanel adds explicit index start/retry, checkpoint progress and retrieval
-  preview to the document screen. Poll while extraction OR indexing is pending.
-- Use learningDocumentService/ENDPOINTS.LEARNING_DOCUMENTS, cookie auth, vi/en labels.
-  Query bodies remain in memory, never URLs/localStorage. Cancel retrieval on unmount
-  or version change and discard stale results. Render source text as plain text.
-- Explain Google transmission for indexed content AND queries. Similarity is not a
-  calibrated quality result: show UNASSESSED. Retrieval does not create questions
-  or write the bank. Current UI searches one selected version; API supports ten.
-- Setup and demo: ../testhub-v2-backend/docs/rag-indexing.md. Older extraction-only
-  snapshots below describe the preceding implementation stage.
-
-> Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
-
-**Cập nhật lần cuối:** 2026-10-23 — sửa các nhận xét review frontend; kiểm tra workspace tệp đính kèm trước đó chạy ngày 2026-10-22.
-
-## Learning documents workspace (2026-10-21)
-
-- Route `/[locale]/lecturer/questions/documents`, link từ ngân hàng và AI workspace.
-  Chọn title/topic/chapter, PDF/PPTX <=20 MiB, consent và notes opt-in. Backend
-  tạo reservation; PUT storage bằng Axios riêng không cookies; complete/replay202.
-- Lịch sử phân trang, chọn phiên bản cũ, poll QUEUED/PROCESSING rồi dừng ở terminal,
-  preview PAGE/SLIDE/NOTES plain text, OCR_REQUIRED có cảnh báo nội dung thiếu.
-  Có upload phiên bản mới, xác nhận lại upload và thu hồi quyền truy cập.
-- API caller/types/endpoints riêng; nhãn `shared/learningDocuments.json` vi/en.
-  Không lưu signed URL, tài liệu hay token vào URL/local storage. Chưa sinh câu từ file.
-- Cần migration backend mới, Python dependencies mới và document worker riêng.
-  Xem `../testhub-v2-backend/docs/learning-documents.md`. Không gọi DB/S3 thật.
-- TypeScript, ESLint feature/các trang sửa, i18n 32 cặp và production build đã pass.
-  Build route mới thành công; chưa kiểm thử click-through trong trình duyệt.
 
 ## Cách cập nhật file này
 
@@ -135,7 +168,7 @@
 4. `src/constants/routes.ts` khai báo `/register`, `/forgot-password` không tồn tại (trang đăng ký là `/signup`); `PUBLIC_ROUTES`, `AUTH_COOKIE_KEY`, `REFRESH_COOKIE_KEY` không được dùng.
 5. `useAuth.handleOutlookLogin` là hàm rỗng, trong khi backend có `GET /auth/outlook`.
 6. `src/lib/socket.ts` export một socket không được import ở đâu; `src/types/next-auth.d.ts` khai báo module `next-auth` dù package này không được cài.
-7. Không thấy import trong `src/` của các dependency: `@react-oauth/google`, `js-cookie`, `zod`, `react-to-print`, `dotenv`.
+7. Không thấy import trong `src/` của các dependency: `@react-oauth/google`, `js-cookie`, `react-to-print`, `dotenv`.
 8. Tự đăng xuất (phân tích từ code ngày 2026-10-08, chưa sửa):
    - `src/proxy.ts` không bao giờ refresh được: backend đặt `refresh_token` với `path: /auth/refresh` nên request tới `/{locale}/...` không mang cookie này. Khi cookie `access_token` hết hạn (`maxAge` 15 phút), mọi lần tải trang hoặc điều hướng tới route bảo vệ đều bị chuyển về `/login`, dù refresh token còn hạn 7 ngày. Chỉ request axios gửi tới backend mới refresh được.
    - Backend lưu một hash refresh token cho mỗi user (`generateAndSaveTokens` gọi `updateMany` trên mọi account) và đổi token mới ở mỗi lần refresh ⇒ đăng nhập ở trình duyệt/thiết bị khác hoặc hai tab cùng refresh sẽ làm phiên còn lại hỏng.

@@ -1,35 +1,6 @@
 # TESTHUB - Hệ thống Thi trực tuyến
 
-## Attached-file question generation (2026-10-22)
-
-- QuestionGenerationScreen now attaches one text-layer PDF/PPTX <=20 MiB instead
-  of pasted source text. Reuse learningDocumentService upload/confirm, then create
-  source.mode=document with version_id and optional knowledge focus. Notes opt in.
-- Explicit consent covers source content and query sent to Google. In-memory upload
-  checkpoints avoid reuploading confirmed bytes on same-page retries. Do not put
-  reservations/signed URLs/source bodies in browser URL/localStorage.
-- Poll WAITING_SOURCE/QUEUED/GENERATING and display preparation stage/source file.
-  Accepted batches resume by business batch ID/history; server workers prepare
-  sources after navigation. Pre-batch upload checkpoints do not survive reload.
-- GenerationDraftCard shows original evidence quotes/pages/slides with UNASSESSED
-  quality guidance. Edits retain evidence and display a recheck warning. Continue
-  using explicit revision approval and selected commit; no automatic bank writes.
-- vi/en labels, cookie API client and document size/types match backend. Text API
-  compatibility is retained for existing consumers/history. Setup requires the
-  additional migration and BOTH workers; see backend docs/rag-indexing.md section 4.
-
-## Current RAG workspace (2026-10-21)
-
-- DocumentRagPanel adds explicit index start/retry, checkpoint progress and retrieval
-  preview to the document screen. Poll while extraction OR indexing is pending.
-- Use learningDocumentService/ENDPOINTS.LEARNING_DOCUMENTS, cookie auth, vi/en labels.
-  Query bodies remain in memory, never URLs/localStorage. Cancel retrieval on unmount
-  or version change and discard stale results. Render source text as plain text.
-- Explain Google transmission for indexed content AND queries. Similarity is not a
-  calibrated quality result: show UNASSESSED. Retrieval does not create questions
-  or write the bank. Current UI searches one selected version; API supports ten.
-- Setup and demo: ../testhub-v2-backend/docs/rag-indexing.md. Older extraction-only
-  snapshots below describe the preceding implementation stage.
+TESTHUB là một nền tảng thi trực tuyến hiện đại được xây dựng bằng Next.js 16, cho phép các tổ chức giáo dục tạo, quản lý và triển khai các bài kiểm tra một cách hiệu quả.
 
 ## Tài liệu học tập PDF/PPTX
 
@@ -44,17 +15,21 @@ EXTRACTED chưa phải index RAG; lập chỉ mục tài liệu để dùng tron
 ## AI generation và review
 
 Trong tài khoản giảng viên, mở **Ngân hàng câu hỏi → Sinh câu hỏi bằng AI**
-(`/{locale}/lecturer/questions/generate`). Đính kèm PDF/PPTX với consent, tạo lô, chờ sinh,
+(`/{locale}/lecturer/questions/generate`). Nội dung tài liệu đã lập chỉ mục và truy vấn
+retrieval được gửi tới Google; cân nhắc điều này trước khi đồng ý consent.
+Đính kèm PDF/PPTX, tạo lô, chờ sinh,
 sửa bản nháp, duyệt từng câu, chọn câu đã duyệt và xác nhận lưu vào ngân hàng.
 Có lịch sử lô và URL để tiếp tục review; sửa sau duyệt cần duyệt lại phiên bản mới.
-Nhãn hỗ trợ vi/en; nội dung sinh hiện là trắc nghiệm một đáp án bằng tiếng Việt.
+Nhãn hỗ trợ vi/en; cấu hình trắc nghiệm một hoặc nhiều đáp án theo mức nhận thức, nội dung sinh bằng tiếng Việt.
 
-Backend cần áp dụng hai migration AI trên DB local, chạy API, Redis, FastAPI và
-worker riêng. Xem [hướng dẫn tích hợp/demo](../testhub-v2-backend/docs/ai-question-generation.md).
+Luồng file đính kèm cần đầy đủ migration AI staging/review, learning-documents,
+document-indexes, `20261023090000_add_document_question_generation` và migration
+`question_configs` mới nhất. Chạy API, Redis, FastAPI cùng **cả hai worker**:
+`npm run start:document-worker` (trích xuất/lập chỉ mục) và `npm run start:ai-worker`
+(chuẩn bị nguồn/sinh câu hỏi) sau khi build. Xem
+[hướng dẫn RAG mục 4](../testhub-v2-backend/docs/rag-indexing.md#4-generate-questions-directly-from-an-attached-file-2026-10-23). Xem [hướng dẫn tích hợp/demo](../testhub-v2-backend/docs/ai-question-generation.md).
 Frontend dùng session cookie hiện có, không cần Gemini key hoặc internal token.
 API từ văn bản được giữ để tương thích với consumer và lịch sử cũ; QuestionGenerationScreen dùng tệp đính kèm.
-
-TESTHUB là một nền tảng thi trực tuyến hiện đại được xây dựng bằng Next.js 16, cho phép các tổ chức giáo dục tạo, quản lý và triển khai các bài kiểm tra một cách hiệu quả.
 
 ## 🚀 Tính năng chính
 

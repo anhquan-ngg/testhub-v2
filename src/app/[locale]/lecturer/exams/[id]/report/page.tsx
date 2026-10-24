@@ -1,13 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 
 import { useParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSelector } from "@/store/hook";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,45 +90,60 @@ export default function ExamReportPage() {
   >(null);
   const [grantingRetryId, setGrantingRetryId] = useState<string | null>(null);
 
+  const reportRequest = useRef(0);
   const fetchReportData = useCallback(async () => {
     if (!examId) return;
 
+    const requestId = ++reportRequest.current;
+    const current = () => reportRequest.current === requestId;
+    let loadedExam = false;
     setIsLoadingExam(true);
     setIsLoadingSubmissions(true);
-
+    setSubmissions([]);
     try {
-      const [examResponse, submissionsResponse] = await Promise.all([
-        apiClient.get<ReportExam>(ENDPOINTS.EXAMS.DETAIL(examId)),
-        fetchAllPages<{ id: string }>(ENDPOINTS.SUBMISSIONS.BASE, { exam_id: examId, status: "COMPLETED" }),
-      ]);
-
+      const examResponse = await apiClient.get<ReportExam>(ENDPOINTS.EXAMS.DETAIL(examId));
+      if (!current()) return;
       setExam(examResponse.data);
-
-      const submissionList = submissionsResponse;
-      const detailedSubmissions = await Promise.allSettled(
-        submissionList.map(async (submission) => {
-          const response = await apiClient.get<ReportSubmission>(
-            ENDPOINTS.SUBMISSIONS.DETAIL(submission.id),
-          );
-          return response.data;
-        }),
-      );
-
-      setSubmissions(detailedSubmissions.flatMap((result) => result.status === "fulfilled" ? [result.value] : []));
-      if (detailedSubmissions.some((result) => result.status === "rejected")) toast.error(t("errorDownloadingTestReport"));
+      loadedExam = true;
+      setIsLoadingExam(false);
+      const limit = 100;
+      let loaded = 0;
+      let failures = false;
+      for (let page = 1; ; page += 1) {
+        const response = await apiClient.get<{ data: { id: string }[]; total: number }>(
+          ENDPOINTS.SUBMISSIONS.BASE, { params: { exam_id: examId, status: "COMPLETED", page, limit } },
+        );
+        if (!current()) return;
+        const rows = response.data.data ?? [];
+        for (let offset = 0; offset < rows.length; offset += 5) {
+          const results = await Promise.allSettled(rows.slice(offset, offset + 5).map(async (submission) => {
+            const detail = await apiClient.get<ReportSubmission>(ENDPOINTS.SUBMISSIONS.DETAIL(submission.id));
+            return detail.data;
+          }));
+          if (!current()) return;
+          setSubmissions((previous) => [...previous, ...results.flatMap((result) => result.status === "fulfilled" ? [result.value] : [])]);
+          failures ||= results.some((result) => result.status === "rejected");
+        }
+        loaded += rows.length;
+        if (rows.length === 0 || loaded >= response.data.total) break;
+      }
+      if (failures) toast.error(t("errorDownloadingTestReport"));
     } catch (error) {
+      if (!current()) return;
       console.error("Fetch report data error:", error);
       toast.error(t("errorDownloadingTestReport"));
-      setExam(null);
-      setSubmissions([]);
+      if (!loadedExam) setExam(null);
     } finally {
-      setIsLoadingExam(false);
-      setIsLoadingSubmissions(false);
+      if (current()) {
+        setIsLoadingExam(false);
+        setIsLoadingSubmissions(false);
+      }
     }
   }, [examId, t]);
 
   useEffect(() => {
     void fetchReportData();
+    return () => { reportRequest.current += 1; };
   }, [fetchReportData]);
 
   const handlePrintReport = async () => {
@@ -238,7 +252,7 @@ export default function ExamReportPage() {
     }
   };
 
-  if (isLoadingExam || isLoadingSubmissions) {
+  if (isLoadingExam) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
@@ -258,6 +272,7 @@ export default function ExamReportPage() {
 
   return (
     <div className="p-8 space-y-6 max-w-7xl mx-auto print:p-0">
+      {isLoadingSubmissions && <Loader2 className="h-6 w-6 animate-spin" role="status" />}
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <Button

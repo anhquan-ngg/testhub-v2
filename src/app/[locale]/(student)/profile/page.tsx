@@ -47,10 +47,12 @@ export default function StudentProfile() {
   const [submissionCount, setSubmissionCount] = useState(0);
   const [userRegistrations, setUserRegistrations] = useState<ExamRegistration[]>([]);
   const [completedSubmissions, setCompletedSubmissions] = useState<CompletedSubmission[]>([]);
+  const [isPendingCountIncomplete, setIsPendingCountIncomplete] = useState(true);
 
   useEffect(() => {
     const loadProfileSummary = async () => {
       if (!student.id) return;
+      setIsPendingCountIncomplete(true);
 
       try {
         const [registrationsResponse, submissionsResponse] = await Promise.all([
@@ -72,16 +74,18 @@ export default function StudentProfile() {
         ]);
 
         const registrations = registrationsResponse.data.data ?? [];
-        const missingExamIds = [...new Set(registrations
-          .filter((reg) => reg.status === "APPROVED" && typeof reg.exam?.practice !== "boolean")
-          .map((reg) => reg.exam_id))];
-        const exams = new Map(await Promise.all(missingExamIds.map(async (examId) => {
-          const response = await apiClient.get<{ practice: boolean }>(ENDPOINTS.EXAMS.DETAIL(examId));
-          return [examId, response.data] as const;
-        })));
-        setUserRegistrations(registrations.map((reg) => ({
-          ...reg,
-          exam: exams.get(reg.exam_id) ?? reg.exam,
+        const examIds = [...new Set(registrations
+          .filter((registration) => registration.status === "APPROVED" && typeof registration.exam?.practice !== "boolean")
+          .map((registration) => registration.exam_id))];
+        const exams = await Promise.allSettled(examIds.map(async (id) => {
+          const response = await apiClient.get<{ practice: boolean }>(ENDPOINTS.EXAMS.DETAIL(id));
+          return [id, response.data] as const;
+        }));
+        const byId = new Map(exams.flatMap((result) => result.status === "fulfilled" ? [result.value] : []));
+        setIsPendingCountIncomplete(exams.some((result) => result.status === "rejected"));
+        setUserRegistrations(registrations.map((registration) => ({
+          ...registration,
+          exam: byId.get(registration.exam_id) ?? registration.exam,
         })));
         setCompletedSubmissions(submissionsResponse.data.data ?? []);
         setSubmissionCount(submissionsResponse.data.total ?? 0);
@@ -348,10 +352,13 @@ export default function StudentProfile() {
                 <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
                   <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
                     <span className="text-2xl font-bold text-orange-500">
-                      {pendingExamsCount}
+                      {isPendingCountIncomplete ? "—" : pendingExamsCount}
                     </span>
                   </div>
                   <p className="font-medium text-gray-700">{t("lessonsToBeDone")}</p>
+                  {isPendingCountIncomplete && (
+                    <p className="text-sm text-gray-500" role="status">{t("pendingCountIncomplete")}</p>
+                  )}
                 </CardContent>
               </Card>
             </div>

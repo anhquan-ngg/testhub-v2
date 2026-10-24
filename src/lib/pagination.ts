@@ -19,7 +19,7 @@ export async function fetchAllPages<T>(
     });
     const data = response.data.data ?? [];
     all = all.concat(data);
-    if (data.length < limit || all.length >= response.data.total) break;
+    if (data.length === 0 || all.length >= response.data.total) break;
     page += 1;
   }
 

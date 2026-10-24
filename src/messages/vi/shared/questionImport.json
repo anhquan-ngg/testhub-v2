@@ -1,4 +1,5 @@
 {
+  "retryUploadConfirmation": "Xác nhận lại tệp đã tải lên",
   "importSummary": "Đã tạo {created} câu hỏi, bỏ qua {skipped} câu trùng.",
   "totalCount": "Tổng {count}",
   "validCount": "Hợp lệ {count}",
