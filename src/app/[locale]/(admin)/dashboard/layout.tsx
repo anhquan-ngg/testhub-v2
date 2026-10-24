@@ -1,5 +1,7 @@
 "use client";
 
+import SessionTransferPanel from "@/components/common/SessionTransferPanel";
+
 import type React from "react";
 
 import {
@@ -140,6 +142,7 @@ export default function AdminLayout({
         </header>
 
         <main className="flex-1 px-8 pb-8 overflow-y-auto overflow-x-hidden">
+          <div className="mb-6"><SessionTransferPanel /></div>
           {children}
         </main>
       </div>

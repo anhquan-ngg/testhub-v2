@@ -2,6 +2,18 @@
 
 TESTHUB là một nền tảng thi trực tuyến hiện đại được xây dựng bằng Next.js 16, cho phép các tổ chức giáo dục tạo, quản lý và triển khai các bài kiểm tra một cách hiệu quả.
 
+## Phiên đăng nhập và chuyển thiết bị
+
+Sinh viên có một phiên trình duyệt hoạt động. Đăng nhập ở trình duyệt khác cần
+xác nhận chuyển phiên; khi có bài đang làm, giảng viên phụ trách hoặc admin phải
+duyệt trước. Yêu cầu chờ không đẩy phiên cũ ra. Giảng viên/admin được đăng nhập
+nhiều thiết bị và đăng xuất riêng từng phiên. Giảng viên duyệt ở trang giám sát
+bài thi; admin duyệt tại dashboard. Sinh viên xác nhận lại tại trình duyệt mới.
+
+Cần migration `20261024090000_add_auth_sessions` ở backend và đăng nhập lại sau
+khi triển khai. Xem [hướng dẫn phiên đăng nhập](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/auth-sessions.md)
+về cookie cùng host, gia hạn phiên và các bước kiểm tra.
+
 ## Tài liệu học tập PDF/PPTX
 
 Mở **Ngân hàng câu hỏi → Tài liệu học tập** hoặc
@@ -27,7 +39,7 @@ document-indexes, `20261023090000_add_document_question_generation` và migratio
 `question_configs` mới nhất. Chạy API, Redis, FastAPI cùng **cả hai worker**:
 `npm run start:document-worker` (trích xuất/lập chỉ mục) và `npm run start:ai-worker`
 (chuẩn bị nguồn/sinh câu hỏi) sau khi build. Xem
-[hướng dẫn RAG mục 4](../testhub-v2-backend/docs/rag-indexing.md#4-generate-questions-directly-from-an-attached-file-2026-10-23). Xem [hướng dẫn tích hợp/demo](../testhub-v2-backend/docs/ai-question-generation.md).
+[hướng dẫn RAG mục 4](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/rag-indexing.md#4-generate-questions-directly-from-an-attached-file-2026-10-23). Xem [hướng dẫn tích hợp/demo](../testhub-v2-backend/docs/ai-question-generation.md).
 Frontend dùng session cookie hiện có, không cần Gemini key hoặc internal token.
 API từ văn bản được giữ để tương thích với consumer và lịch sử cũ; QuestionGenerationScreen dùng tệp đính kèm.
 

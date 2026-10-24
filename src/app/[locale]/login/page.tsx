@@ -16,7 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 
 const GoogleLogo = () => (
@@ -44,10 +44,11 @@ const GoogleLogo = () => (
   </svg>
 );
 
-
 export default function LoginPage() {
   const t = useTranslations("auth");
   const { handleLogin, handleGoogleLogin } = useAuth();
+  const submitting = useRef(false);
+  const [busy, setBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -88,7 +89,13 @@ export default function LoginPage() {
               noValidate
               onSubmit={(e) => {
                 e.preventDefault();
-                handleLogin({ email, password });
+                if (submitting.current) return;
+                submitting.current = true;
+                setBusy(true);
+                void handleLogin({ email, password }).finally(() => {
+                  submitting.current = false;
+                  setBusy(false);
+                });
               }}
             >
               {/* Email Field */}
@@ -146,6 +153,7 @@ export default function LoginPage() {
               {/* Login Button */}
               <Button
                 type="submit"
+                disabled={busy}
                 className="w-full h-12 rounded-full bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white font-medium text-base"
               >
                 {t("login.title")}
@@ -164,6 +172,7 @@ export default function LoginPage() {
                 <Button
                   type="button"
                   variant="outline"
+                  disabled={busy}
                   className="w-full h-12 rounded-full border-gray-300 border-1 hover:bg-accent hover:cursor-pointer font-medium text-base text-black bg-transparent"
                   onClick={() => handleGoogleLogin()}
                 >

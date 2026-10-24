@@ -4,6 +4,8 @@ export const ENDPOINTS = {
     SIGNUP: "/auth/signup",
     LOGOUT: "/auth/logout",
     REFRESH: "/auth/refresh",
+    SESSION_TRANSFER: "/auth/session-transfer",
+    SESSION_TRANSFERS: "/auth/session-transfers",
   },
   TOPICS: {
     BASE: "/topics",

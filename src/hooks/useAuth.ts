@@ -1,3 +1,4 @@
+import axios from "axios";
 import authServices from "@/services/authServices";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
@@ -50,7 +51,10 @@ export const useAuth = () => {
         router.push("/home");
       }
     } catch (error) {
-      console.error("Error when login:", error);
+      if (axios.isAxiosError(error) && error.response?.data?.code === "SESSION_TRANSFER_REQUIRED") {
+        router.push("/auth/session-transfer");
+        return;
+      }
       toast.error(t("login.failed"));
     }
   };
@@ -73,10 +77,12 @@ export const useAuth = () => {
         toast.error(t("logout.failed"));
       }
     } catch (error) {
-      console.error("Error when logout:", error);
-      dispatch(clearAuth());
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        dispatch(clearAuth());
+        router.push("/login");
+        return;
+      }
       toast.error(t("logout.failed"));
-      router.push("/login");
     }
   };
 

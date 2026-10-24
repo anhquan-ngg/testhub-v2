@@ -74,6 +74,7 @@ export default function StudentProfile() {
         ]);
 
         const registrations = registrationsResponse.data.data ?? [];
+        const completed = submissionsResponse.data.data ?? [];
         const examIds = [...new Set(registrations
           .filter((registration) => registration.status === "APPROVED" && typeof registration.exam?.practice !== "boolean")
           .map((registration) => registration.exam_id))];
@@ -82,12 +83,16 @@ export default function StudentProfile() {
           return [id, response.data] as const;
         }));
         const byId = new Map(exams.flatMap((result) => result.status === "fulfilled" ? [result.value] : []));
-        setIsPendingCountIncomplete(exams.some((result) => result.status === "rejected"));
+        setIsPendingCountIncomplete(
+          registrations.length < registrationsResponse.data.total ||
+          completed.length < submissionsResponse.data.total ||
+          exams.some((result) => result.status === "rejected"),
+        );
         setUserRegistrations(registrations.map((registration) => ({
           ...registration,
           exam: byId.get(registration.exam_id) ?? registration.exam,
         })));
-        setCompletedSubmissions(submissionsResponse.data.data ?? []);
+        setCompletedSubmissions(completed);
         setSubmissionCount(submissionsResponse.data.total ?? 0);
       } catch (error) {
         console.error("Fetch profile summary error:", error);

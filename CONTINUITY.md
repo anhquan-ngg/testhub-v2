@@ -2,7 +2,57 @@
 
 > Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-**Cập nhật lần cuối:** 2026-10-24 — sửa fallback lý do lỗi, trạng thái thống kê hồ sơ và đồng bộ topic ref.
+**Cập nhật lần cuối:** 2026-10-25 — triển khai phiên sinh viên duy nhất và chuyển thiết bị có xác nhận.
+
+## Review fixes: recovery and UI states (2026-10-25)
+
+- Replaced relative auth-session/RAG references in README, AGENTS and this file
+  with backend GitHub master links. Repository/default branch verified from Git;
+  targets exist locally. Publication/access on GitHub was not verified.
+- Student profile keeps the pending count incomplete when either first-page
+  list has fewer rows than total, or exam detail lookup fails. No extra page load.
+- Report table shows loading text while submissions are empty and still loading;
+  its status spinner has a localized accessible label. Google login is disabled
+  during password login. Logout 401 clears auth and navigates without an error toast.
+- Recovery stores the attempted destination in sessionStorage and stops repeated
+  navigation with a localized error. Explicit retry clears it; protected UI mount
+  clears successful attempts. Storage failure also stops navigation. Existing proxy
+  JWT signature, sid-string and token_use=access checks remain unchanged.
+- Transfer approval 409 reloads requests and closes confirmation. Network/5xx
+  alone show networkError; response errors such as 403 do not, including polling.
+- Validation: TypeScript, 32 paired i18n files, 15 real-jose navigation/token
+  checks and existing Axios session-client checks pass. VM hook/JSX checks ran
+  actual components/auth services with real Axios HTTP against local Postman:
+  pagination, loading, logout/approval errors and recovery remount/retry/cleanup.
+  Postman recorded 30 responses; fixtures/logs are in workspace executions/review-20261025.
+  Scoped lint: 0 errors, 1 existing profile img warning. Production build passed
+  outside sandbox with a synthetic build key after native binding failed inside.
+  No authenticated browser, real backend/database or production verification.
+
+## Authentication sessions (2026-10-25)
+
+- Implemented the requested STUDENT single-session policy; LECTURER/ADMIN keep
+  independent sessions. Login conflict opens a public confirmation shell. An
+  IN_PROGRESS exam requires responsible-lecturer/admin approval before the target
+  browser confirms. Staff panels are on exam monitoring and the admin dashboard.
+- Proxy now redirects expired/missing access to session-recovery, where browser
+  /auth/me and refresh complete before protected navigation. Terminal refresh 401
+  alone redirects to login?reauth=1; network/5xx do not end the session. Web Locks
+  serialize cross-tab refresh; UserLoader retries transient failures and online.
+- Confirmation keeps the old session until completed. Backend fences exam writes
+  against switching and supports confirmation replay if its response is lost.
+  Same-browser tabs share the session; a separate single-tab rule was not added.
+- vi/en text and 32-pair ICU check pass. Node 22 checks pass for eight navigation
+  assertions and Axios concurrent refresh/network/503/401/recovery. Scoped lint
+  and TypeScript pass; production Next.js build passed with synthetic build key
+  outside sandbox because the sandbox cannot load its native binding.
+- Backend PostgreSQL/HTTP tests cover the policy and actual start/save/ping/submit
+  endpoints (19 cases; full backend 268 pass / 42 unrelated opt-in skipped).
+  No browser click-through or production topology was verified. No
+  user DB/env/dependencies were changed. The additive auth-session migration must
+  be applied by the operator; legacy tokens require login again after deployment.
+- Setup/contract: [auth-session guide](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/auth-sessions.md). Auth cookies must be
+  on the frontend host; separate hosts require same-origin reverse proxy/BFF.
 
 ## Student summary and topic ref review (2026-10-24)
 
@@ -112,7 +162,7 @@
   displayed separately from question edits and is not presented as factual proof.
 - No authenticated browser click-through, real upload/CORS or live DB/Google E2E
   was performed. Apply the additional backend migration and run both workers for
-  the local end-to-end demo, as described in backend docs/rag-indexing.md section 4.
+  the local end-to-end demo, as described in [backend RAG guide, section 4](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/rag-indexing.md#4-generate-questions-directly-from-an-attached-file-2026-10-23).
 
 ### Verified RAG checks (2026-10-21)
 
@@ -140,7 +190,7 @@
 
 - Frontend thuần client gọi thẳng backend NestJS; không có route handler (`src/app/api/` rỗng), không truy cập DB.
 - Một axios instance dùng chung với `withCredentials` và cơ chế refresh khi 401 có hàng đợi request — `src/lib/api-client.ts`.
-- Bảo vệ route ở edge bằng `src/proxy.ts`: verify `access_token` bằng `jose`, thử refresh, chuyển hướng theo `role`.
+- Bảo vệ điều hướng sơ bộ bằng `src/proxy.ts`: verify `access_token` bằng `jose`, chuyển qua recovery khi cần gia hạn; backend quyết định phiên và quyền truy cập thực tế.
 - Toàn bộ đường dẫn API tập trung ở `src/constants/endpoints.ts`.
 - State toàn cục bằng Redux Toolkit (`src/store/`); thông tin người dùng nạp bởi `src/components/UserLoader.tsx` qua `GET /auth/me`.
 - Thông báo realtime qua `src/components/providers/SocketProvider.tsx` (namespace `/notifications`); trạng thái phòng thi và giám sát qua SSE (`ENDPOINTS.EXAM_RUNTIME.EVENTS`, `MONITOR_EVENTS`).
@@ -169,11 +219,7 @@
 5. `useAuth.handleOutlookLogin` là hàm rỗng, trong khi backend có `GET /auth/outlook`.
 6. `src/lib/socket.ts` export một socket không được import ở đâu; `src/types/next-auth.d.ts` khai báo module `next-auth` dù package này không được cài.
 7. Không thấy import trong `src/` của các dependency: `@react-oauth/google`, `js-cookie`, `react-to-print`, `dotenv`.
-8. Tự đăng xuất (phân tích từ code ngày 2026-10-08, chưa sửa):
-   - `src/proxy.ts` không bao giờ refresh được: backend đặt `refresh_token` với `path: /auth/refresh` nên request tới `/{locale}/...` không mang cookie này. Khi cookie `access_token` hết hạn (`maxAge` 15 phút), mọi lần tải trang hoặc điều hướng tới route bảo vệ đều bị chuyển về `/login`, dù refresh token còn hạn 7 ngày. Chỉ request axios gửi tới backend mới refresh được.
-   - Backend lưu một hash refresh token cho mỗi user (`generateAndSaveTokens` gọi `updateMany` trên mọi account) và đổi token mới ở mỗi lần refresh ⇒ đăng nhập ở trình duyệt/thiết bị khác hoặc hai tab cùng refresh sẽ làm phiên còn lại hỏng.
-   - `jwt-refresh.strategy.ts` chỉ tìm account `provider: 'local'` ⇒ user chỉ đăng nhập bằng Google/Outlook luôn refresh thất bại.
-   - `api-client.ts` coi mọi lỗi refresh (kể cả lỗi mạng hay backend đang khởi động lại) là hết phiên và chuyển về login.
+8. Các lỗi tự đăng xuất phát hiện ngày 2026-10-08 đã được thay bằng AuthSession/recovery ngày 2026-10-25. Cần áp migration và kiểm thử trình duyệt trên topology triển khai thật; xem mục Authentication sessions.
 9. Không có framework test và không có `.env.example`; README đã đồng bộ thiết lập frontend Next.js 16 ngày 2026-10-23.
 
 ## Chưa xác minh
