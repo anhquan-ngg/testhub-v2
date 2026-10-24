@@ -416,7 +416,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   }, [examId, t]);
 
   const topicIdRef = useRef(examForm.topic_id);
-  topicIdRef.current = examForm.topic_id;
+  useEffect(() => {
+    topicIdRef.current = examForm.topic_id;
+  }, [examForm.topic_id]);
   const bankRequestId = useRef(0);
   const chapterRequestId = useRef(0);
   const fetchQuestions = useCallback(async () => {

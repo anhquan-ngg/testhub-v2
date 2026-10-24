@@ -47,10 +47,12 @@ export default function StudentProfile() {
   const [submissionCount, setSubmissionCount] = useState(0);
   const [userRegistrations, setUserRegistrations] = useState<ExamRegistration[]>([]);
   const [completedSubmissions, setCompletedSubmissions] = useState<CompletedSubmission[]>([]);
+  const [isPendingCountIncomplete, setIsPendingCountIncomplete] = useState(true);
 
   useEffect(() => {
     const loadProfileSummary = async () => {
       if (!student.id) return;
+      setIsPendingCountIncomplete(true);
 
       try {
         const [registrationsResponse, submissionsResponse] = await Promise.all([
@@ -80,6 +82,7 @@ export default function StudentProfile() {
           return [id, response.data] as const;
         }));
         const byId = new Map(exams.flatMap((result) => result.status === "fulfilled" ? [result.value] : []));
+        setIsPendingCountIncomplete(exams.some((result) => result.status === "rejected"));
         setUserRegistrations(registrations.map((registration) => ({
           ...registration,
           exam: byId.get(registration.exam_id) ?? registration.exam,
@@ -349,10 +352,13 @@ export default function StudentProfile() {
                 <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
                   <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
                     <span className="text-2xl font-bold text-orange-500">
-                      {pendingExamsCount}
+                      {isPendingCountIncomplete ? "—" : pendingExamsCount}
                     </span>
                   </div>
                   <p className="font-medium text-gray-700">{t("lessonsToBeDone")}</p>
+                  {isPendingCountIncomplete && (
+                    <p className="text-sm text-gray-500" role="status">{t("pendingCountIncomplete")}</p>
+                  )}
                 </CardContent>
               </Card>
             </div>

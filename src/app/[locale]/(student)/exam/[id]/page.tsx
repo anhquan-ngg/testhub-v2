@@ -741,9 +741,9 @@ export default function ExamPage() {
     } catch (error: unknown) {
       const data: unknown = isAxiosError<unknown>(error) ? error.response?.data : undefined;
       const detail = typeof data === "object" && data !== null && "data" in data ? data.data : undefined;
-      const reason = typeof data === "object" && data !== null && "reason" in data
+      const reason = (typeof data === "object" && data !== null && "reason" in data
         ? data.reason
-        : typeof detail === "object" && detail !== null && "reason" in detail ? detail.reason : undefined;
+        : undefined) ?? (typeof detail === "object" && detail !== null && "reason" in detail ? detail.reason : undefined);
       if (reason === "EXAM_CLOSED") {
         setExam(null);
         setExamClosed(true);

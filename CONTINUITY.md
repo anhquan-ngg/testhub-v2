@@ -2,7 +2,21 @@
 
 > Trạng thái và bàn giao giữa các phiên làm việc. Đọc trước khi làm việc; cập nhật sau mỗi nhiệm vụ có thay đổi đáng kể.
 
-**Cập nhật lần cuối:** 2026-10-23 — sửa các nhận xét review frontend; kiểm tra workspace tệp đính kèm trước đó chạy ngày 2026-10-22.
+**Cập nhật lần cuối:** 2026-10-24 — sửa fallback lý do lỗi, trạng thái thống kê hồ sơ và đồng bộ topic ref.
+
+## Student summary and topic ref review (2026-10-24)
+
+- Exam start falls back to nested detail.reason for nullish top-level reason,
+  preserving other top-level values and the existing EXAM_CLOSED handling.
+- Profile tracks rejected exam detail lookups and displays an incomplete-data
+  state instead of an exact pending count. Successful summaries are retained;
+  later successful loads clear the flag. Labels are available in vi/en.
+- Edit exam synchronizes topicIdRef in an effect after commit, before fetch
+  effects; onValueChange still writes immediately. Request sequencing remains.
+- Validation: TypeScript, 32 paired i18n files and pure regression checks passed
+  for reason precedence, partial summary/display, effect placement and stale-topic
+  guards. Scoped lint retains 14 errors/8 warnings with no added diagnostics
+  against HEAD. No authenticated browser/live API checks or production build run.
 
 ## Merge conflict resolution (2026-10-23)
 
