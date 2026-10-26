@@ -5,8 +5,30 @@ export type DocumentStatus =
   | "EXTRACTED"
   | "OCR_REQUIRED"
   | "FAILED";
-export type DocumentIndex = { id:string;profile_id:string;status:"QUEUED"|"INDEXING"|"READY"|"FAILED"|"REVOKED";chunk_count:number;completed_chunks:number;error_code:string|null;created_at:string };
-export type RetrievalResult = {profile_id:string;quality_status:"UNASSESSED";context_bytes:number;chunks:{chunk_id:string;version_id:string;kind:"PAGE"|"SLIDE"|"NOTES";position:number;text:string;similarity:number;start_offset:number;end_offset:number}[]};
+export type DocumentIndex = {
+  id: string;
+  profile_id: string;
+  status: "QUEUED" | "INDEXING" | "READY" | "FAILED" | "REVOKED";
+  chunk_count: number;
+  completed_chunks: number;
+  error_code: string | null;
+  created_at: string;
+};
+export type RetrievalResult = {
+  profile_id: string;
+  quality_status: "UNASSESSED";
+  context_bytes: number;
+  chunks: {
+    chunk_id: string;
+    version_id: string;
+    kind: "PAGE" | "SLIDE" | "NOTES";
+    position: number;
+    text: string;
+    similarity: number;
+    start_offset: number;
+    end_offset: number;
+  }[];
+};
 export type DocumentVersion = {
   indexes: DocumentIndex[];
   id: string;
@@ -24,7 +46,7 @@ export type LearningDocument = {
   id: string;
   title: string;
   topic_id: string;
-  chapter_id: string;
+  chapter_id: string | null;
   created_at: string;
   versions: DocumentVersion[];
 };

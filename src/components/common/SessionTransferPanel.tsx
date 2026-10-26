@@ -17,7 +17,7 @@ type TransferRequest = {
 export default function SessionTransferPanel({ examId }: { examId?: string }) {
   const t = useTranslations("auth.session");
   const [requests, setRequests] = useState<TransferRequest[]>([]);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<false | "forbidden" | "network">(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [target, setTarget] = useState<TransferRequest | null>(null);
   const load = useCallback(
@@ -36,7 +36,10 @@ export default function SessionTransferPanel({ examId }: { examId?: string }) {
           const status = axios.isAxiosError(error)
             ? error.response?.status
             : undefined;
-          setError(status === undefined || status >= 500);
+          if (status === 403) setRequests([]);
+          setError(
+            status === 403 ? "forbidden" : status === undefined || status >= 500 ? "network" : false,
+          );
         }
       }
     },
@@ -68,7 +71,9 @@ export default function SessionTransferPanel({ examId }: { examId?: string }) {
         await load();
         setTarget(null);
       } else {
-        setError(status === undefined || status >= 500);
+        setError(
+          status === 403 ? "forbidden" : status === undefined || status >= 500 ? "network" : false,
+        );
       }
     } finally {
       setBusy(null);
@@ -78,8 +83,8 @@ export default function SessionTransferPanel({ examId }: { examId?: string }) {
     <section className="space-y-3 rounded-xl border bg-white p-4">
       <h3 className="font-semibold">{t("staffTitle")}</h3>
       <p className="text-sm text-muted-foreground">{t("staffDescription")}</p>
-      {error && <p role="alert">{t("networkError")}</p>}
-      {!requests.length && <p className="text-sm">{t("noRequests")}</p>}
+      {error && <p role="alert">{t(error === "forbidden" ? "forbidden" : "networkError")}</p>}
+      {!error && !requests.length && <p className="text-sm">{t("noRequests")}</p>}
       {requests.map((request) => (
         <div
           key={request.id}

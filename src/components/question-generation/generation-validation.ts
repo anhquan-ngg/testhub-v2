@@ -3,7 +3,7 @@ import type { GenerationQuestionType } from "@/types/question-generation";
 
 // Keep these limits and rules aligned with the backend question-generation contract.
 export const MAX_GENERATION_QUESTIONS = 20;
-export const MAX_GENERATION_CONFIGS = 10;
+export const MAX_GENERATION_CONFIGS = 20;
 export const GENERATION_QUESTION_TYPES = [
   "SINGLE_CHOICE",
   "MULTIPLE_CHOICE",
@@ -92,4 +92,4 @@ export const generationCommandSchema = z
 
 export const documentGenerationSettingsSchema = generationCommandSchema
   .omit({ source: true })
-  .extend({ query: text(400, 0) });
+  .extend({ chapter_id: z.uuid().optional(), query: text(400, 0) });

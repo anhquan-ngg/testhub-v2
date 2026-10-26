@@ -1,5 +1,14 @@
 # TESTHUB - Hệ thống Thi trực tuyến
 
+## Knowledge matrix authoring (2026-10-25)
+
+- Generation uploads topic-owned documents without selecting a chapter. Create/resume a durable plan via ?plan=id, edit tree and topic x cognition matrix, save, confirm, then generate.
+- KnowledgePlanWorkspace uses react-hook-form + Zod; chapters support arbitrary-depth parent references with cycle checks. Sources remain PAGE/SLIDE/NOTES positions.
+- PlanCoverage compares frozen requested cells with generated/approved/saved drafts. A saved question uses its frozen plan target, not model-provided chapter IDs.
+- Matching/creating bank chapters happens only at explicit approved commit. Proposal labels distinguish heading-derived versus inferred topics; lecturer review remains required.
+- New labels live in shared/questionGeneration.json plan.* for both locales. Config rows: max20, questions: max20. CONTINUITY.md stays local and ignored/untracked.
+
+
 TESTHUB là một nền tảng thi trực tuyến hiện đại được xây dựng bằng Next.js 16, cho phép các tổ chức giáo dục tạo, quản lý và triển khai các bài kiểm tra một cách hiệu quả.
 
 ## Phiên đăng nhập và chuyển thiết bị
@@ -11,7 +20,7 @@ nhiều thiết bị và đăng xuất riêng từng phiên. Giảng viên duy�
 bài thi; admin duyệt tại dashboard. Sinh viên xác nhận lại tại trình duyệt mới.
 
 Cần migration `20261024090000_add_auth_sessions` ở backend và đăng nhập lại sau
-khi triển khai. Xem [hướng dẫn phiên đăng nhập](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/auth-sessions.md)
+khi triển khai. Xem [hướng dẫn phiên đăng nhập](https://github.com/anhquan-ngg/testhub-v2-backend/blob/dev/docs/auth-sessions.md)
 về cookie cùng host, gia hạn phiên và các bước kiểm tra.
 
 ## Tài liệu học tập PDF/PPTX

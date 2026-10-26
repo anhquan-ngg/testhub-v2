@@ -15,9 +15,21 @@ const paths = ENDPOINTS.LEARNING_DOCUMENTS;
 
 /** Business calls use the cookie client; signed storage URLs never receive cookies or interceptors. */
 export const learningDocumentService = {
-  async index(id:string,version:string){return (await apiClient.post<DocumentIndex>(paths.INDEX(id,version))).data;},
-  async retryIndex(id:string){return (await apiClient.post<DocumentIndex>(paths.RETRY_INDEX(id))).data;},
-  async retrieve(version:string,query:string,signal:AbortSignal){return (await apiClient.post<RetrievalResult>(paths.RETRIEVE,{version_ids:[version],query,top_k:6},{signal,timeout:60000})).data;},
+  async index(id: string, version: string) {
+    return (await apiClient.post<DocumentIndex>(paths.INDEX(id, version))).data;
+  },
+  async retryIndex(id: string) {
+    return (await apiClient.post<DocumentIndex>(paths.RETRY_INDEX(id))).data;
+  },
+  async retrieve(version: string, query: string, signal: AbortSignal) {
+    return (
+      await apiClient.post<RetrievalResult>(
+        paths.RETRIEVE,
+        { version_ids: [version], query, top_k: 6 },
+        { signal, timeout: 60000 },
+      )
+    ).data;
+  },
   async list(page: number, signal?: AbortSignal) {
     return (
       await apiClient.get<DocumentPage<LearningDocument>>(paths.BASE, {
@@ -33,7 +45,7 @@ export const learningDocumentService = {
   async create(input: {
     title: string;
     topic_id: string;
-    chapter_id: string;
+    chapter_id?: string | null;
     upload: DocumentUpload;
   }) {
     return (await apiClient.post<DocumentReservation>(paths.BASE, input)).data;
