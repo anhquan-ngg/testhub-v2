@@ -1,4 +1,5 @@
 "use client";
+import { PlanCoverage } from "./PlanCoverage";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -46,6 +47,8 @@ import {
 } from "./QuestionConfigTable";
 import type { QuestionConfigRow } from "./QuestionConfigTable";
 import { documentGenerationSettingsSchema } from "./generation-validation";
+import { knowledgePlanService } from "@/services/knowledgePlanService";
+import { KnowledgePlanWorkspace } from "./KnowledgePlanWorkspace";
 
 import { learningDocumentService as documentApi } from "@/services/learningDocumentService";
 import type { DocumentReservation } from "@/types/learning-document";
@@ -74,19 +77,6 @@ async function allTargets(
   }
 }
 
-function chapterLabel(
-  chapter: Target,
-  chapters: Target[],
-  seen = new Set<string>(),
-): string {
-  const parent = chapters.find(
-    (candidate) => candidate.id === chapter.parent_id,
-  );
-  if (!parent || seen.has(parent.id)) return chapter.name;
-  seen.add(chapter.id);
-  return `${chapterLabel(parent, chapters, seen)} / ${chapter.name}`;
-}
-
 /** File-based RAG authoring and explicit review. An owned batch can be resumed by URL. */
 export function QuestionGenerationScreen() {
   const t = useTranslations("shared.questionGeneration");
@@ -97,12 +87,9 @@ export function QuestionGenerationScreen() {
   const router = useRouter();
   const batchId = params.get("batch");
   const [topicId, setTopicId] = useState(params.get("topic") ?? "");
-  const [chapterId, setChapterId] = useState(params.get("chapter") ?? "");
   const [topics, setTopics] = useState<Target[]>([]);
-  const [chapters, setChapters] = useState<Target[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [includeNotes, setIncludeNotes] = useState(false);
-  const [focus, setFocus] = useState("");
   const [uploadStage, setUploadStage] = useState<
     "UPLOADING" | "CONFIRMING" | "CREATING"
   >("UPLOADING");
@@ -153,17 +140,7 @@ export function QuestionGenerationScreen() {
       });
     return () => controller.abort();
   }, []);
-  useEffect(() => {
-    const controller = new AbortController();
-    setChapters([]);
-    if (topicId)
-      allTargets(ENDPOINTS.CHAPTERS.BASE, controller.signal, topicId)
-        .then(setChapters)
-        .catch(() => {
-          if (!controller.signal.aborted) setTargetError(true);
-        });
-    return () => controller.abort();
-  }, [topicId]);
+
   useEffect(() => {
     const controller = new AbortController();
     setHistoryError(false);
@@ -258,7 +235,7 @@ export function QuestionGenerationScreen() {
     if (createLock.current) return;
     const parsed = documentGenerationSettingsSchema.safeParse({
       topic_id: topicId,
-      chapter_id: chapterId,
+      chapter_id: undefined,
       question_configs: configs.map(
         ({ question_type, question_format, count }) => ({
           question_type,
@@ -268,7 +245,7 @@ export function QuestionGenerationScreen() {
       ),
       language: "vi",
       external_processing_consent: consent,
-      query: focus,
+      query: "",
     });
     const sourceType = file?.name.toLowerCase().endsWith(".pdf")
       ? "PDF"
@@ -293,13 +270,13 @@ export function QuestionGenerationScreen() {
     try {
       const signature = JSON.stringify({
         topicId,
-        chapterId,
         includeNotes: sourceType === "PPTX" && includeNotes,
       });
       let checkpoint = uploadCheckpoint.current;
       if (
         !checkpoint ||
-        (!checkpoint.uploaded && Date.parse(checkpoint.reservation.upload_expires_at) <= Date.now()) ||
+        (!checkpoint.uploaded &&
+          Date.parse(checkpoint.reservation.upload_expires_at) <= Date.now()) ||
         checkpoint.file !== file ||
         checkpoint.signature !== signature
       ) {
@@ -310,7 +287,7 @@ export function QuestionGenerationScreen() {
         const reservation = await documentApi.create({
           title: file.name,
           topic_id: topicId,
-          chapter_id: chapterId,
+          chapter_id: null,
           upload: {
             file_name: file.name,
             source_type: sourceType,
@@ -347,23 +324,24 @@ export function QuestionGenerationScreen() {
         );
         checkpoint.confirmed = true;
       }
-      const { query, ...settings } = parsed.data;
+      const { question_configs } = parsed.data;
       const command = {
-        ...settings,
-        source: {
-          mode: "document" as const,
-          version_id: checkpoint.reservation.version_id,
-          query,
-        },
+        topic_id: topicId,
+        version_id: checkpoint.reservation.version_id,
+        question_configs,
+        external_processing_consent: true as const,
       };
       const canonical = JSON.stringify(command);
       if (requestKey.current?.canonical !== canonical)
         requestKey.current = { canonical, key: crypto.randomUUID() };
       setUploadStage("CREATING");
-      const result = await api.create(command, requestKey.current.key);
+      const result = await knowledgePlanService.create(
+        command,
+        requestKey.current.key,
+      );
       requestKey.current = null;
       uploadCheckpoint.current = null;
-      router.replace(`/lecturer/questions/generate?batch=${result.batch_id}`);
+      router.replace(`/lecturer/questions/generate?plan=${result.id}`);
       setRefresh((value) => value + 1);
       toast.success(t("queued"));
     } catch (error) {
@@ -451,30 +429,12 @@ export function QuestionGenerationScreen() {
                   disabled={creating}
                   onChange={(event) => {
                     setTopicId(event.target.value);
-                    setChapterId("");
                   }}
                 >
                   <option value="">{t("chooseTopic")}</option>
                   {topics.map((topic) => (
                     <option key={topic.id} value={topic.id}>
                       {topic.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ai-chapter">{t("chapter")}</Label>
-                <select
-                  id="ai-chapter"
-                  className="w-full rounded-md border bg-background p-2 text-sm"
-                  value={chapterId}
-                  disabled={!topicId || creating}
-                  onChange={(event) => setChapterId(event.target.value)}
-                >
-                  <option value="">{t("chooseChapter")}</option>
-                  {chapters.map((chapter) => (
-                    <option key={chapter.id} value={chapter.id}>
-                      {chapterLabel(chapter, chapters)}
                     </option>
                   ))}
                 </select>
@@ -491,9 +451,7 @@ export function QuestionGenerationScreen() {
                     setInvalidCommand(false);
                   }}
                 />
-                <p className="text-xs text-muted-foreground">
-                  {t("fileHint")}
-                </p>
+                <p className="text-xs text-muted-foreground">{t("fileHint")}</p>
                 {file && (
                   <p className="break-words text-sm">
                     {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
@@ -506,9 +464,7 @@ export function QuestionGenerationScreen() {
                     disabled={
                       creating || !file?.name.toLowerCase().endsWith(".pptx")
                     }
-                    onCheckedChange={(value) =>
-                      setIncludeNotes(value === true)
-                    }
+                    onCheckedChange={(value) => setIncludeNotes(value === true)}
                   />
                   <Label
                     htmlFor="ai-file-notes"
@@ -517,17 +473,6 @@ export function QuestionGenerationScreen() {
                     {t("includeNotes")}
                   </Label>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ai-focus">{t("focus")}</Label>
-                <Input
-                  id="ai-focus"
-                  value={focus}
-                  maxLength={400}
-                  disabled={creating}
-                  onChange={(event) => setFocus(event.target.value)}
-                  placeholder={t("focusPlaceholder")}
-                />
               </div>
             </div>
             <div className="space-y-4">
@@ -546,10 +491,7 @@ export function QuestionGenerationScreen() {
                   disabled={creating}
                   onCheckedChange={(value) => setConsent(value === true)}
                 />
-                <Label
-                  htmlFor="ai-consent"
-                  className="text-xs leading-relaxed"
-                >
+                <Label htmlFor="ai-consent" className="text-xs leading-relaxed">
                   {t("consent")}
                 </Label>
               </div>
@@ -570,12 +512,23 @@ export function QuestionGenerationScreen() {
                 ) : (
                   <Sparkles className="size-4" />
                 )}
-                {creating ? t(`uploadStage.${uploadStage}`) : t("generate")}
+                {creating ? t(`uploadStage.${uploadStage}`) : t("plan.propose")}
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
+      {batch?.plan_snapshot && (
+        <PlanCoverage plan={batch.plan_snapshot} items={items} />
+      )}
+      <KnowledgePlanWorkspace
+        planId={params.get("plan")}
+        disabled={busy || Boolean(editingId) || creating}
+        onGenerated={(id) => {
+          router.replace(`/lecturer/questions/generate?batch=${id}`);
+          setRefresh((value) => value + 1);
+        }}
+      />
       <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-5">
           <Card>
@@ -709,7 +662,9 @@ export function QuestionGenerationScreen() {
                                 {t("configSummary", {
                                   count: config.count,
                                   type: questionType(config.question_type),
-                                  format: questionFormat(config.question_format),
+                                  format: questionFormat(
+                                    config.question_format,
+                                  ),
                                 })}
                               </Badge>
                             </li>

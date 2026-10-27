@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local agent handoff notes (keep files, do not track)
+CONTINUITY.md
+
+# Local validation/cache artifacts
+.tmp/

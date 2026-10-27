@@ -272,7 +272,13 @@ export default function ExamReportPage() {
 
   return (
     <div className="p-8 space-y-6 max-w-7xl mx-auto print:p-0">
-      {isLoadingSubmissions && <Loader2 className="h-6 w-6 animate-spin" role="status" />}
+      {isLoadingSubmissions && (
+        <Loader2
+          className="h-6 w-6 animate-spin"
+          role="status"
+          aria-label={t("loadingSubmissions")}
+        />
+      )}
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <Button
@@ -456,7 +462,9 @@ export default function ExamReportPage() {
                     colSpan={8}
                     className="h-32 text-center text-gray-500"
                   >
-                    {t("thereAreNoCompletedAssignmentsYet")}</TableCell>
+                    {isLoadingSubmissions
+                      ? t("loadingSubmissions")
+                      : t("thereAreNoCompletedAssignmentsYet")}</TableCell>
                 </TableRow>
               )}
             </TableBody>

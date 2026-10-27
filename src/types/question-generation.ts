@@ -27,6 +27,9 @@ export type QuestionGenerationCommand =
   | TextQuestionGenerationCommand
   | DocumentQuestionGenerationCommand;
 export type QuestionProvenance = {
+  plan_item_id?: string;
+  knowledge_title?: string;
+  objective?: string;
   contract_version: "rag-generation.v1";
   profile_id: string;
   quality_status: "UNASSESSED";
@@ -74,9 +77,11 @@ export type QuestionGenerationDraftStatus =
   | "SKIPPED";
 
 export type QuestionGenerationBatch = {
+  plan_id?: string | null;
+  plan_snapshot?: import("./knowledge-plan").FrozenPlan | null;
   id: string;
   topic_id: string;
-  chapter_id: string;
+  chapter_id: string | null;
   status: QuestionGenerationBatchStatus;
   sourceVersion?: {
     file_name: string;
@@ -94,6 +99,8 @@ export type QuestionGenerationBatch = {
   created_at: string;
 };
 export type QuestionGenerationItem = {
+  plan_item_id?: string | null;
+  target_chapter_id?: string | null;
   id: string;
   source_index: number;
   revision: number;

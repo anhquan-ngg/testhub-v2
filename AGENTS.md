@@ -1,11 +1,20 @@
 # AGENTS.md — testhub-v2 (frontend)
 
+## Knowledge matrix authoring (2026-10-25)
+
+- Generation uploads topic-owned documents without selecting a chapter. Create/resume a durable plan via ?plan=id, edit tree and topic x cognition matrix, save, confirm, then generate.
+- KnowledgePlanWorkspace uses react-hook-form + Zod; chapters support arbitrary-depth parent references with cycle checks. Sources remain PAGE/SLIDE/NOTES positions.
+- PlanCoverage compares frozen requested cells with generated/approved/saved drafts. A saved question uses its frozen plan target, not model-provided chapter IDs.
+- Matching/creating bank chapters happens only at explicit approved commit. Proposal labels distinguish heading-derived versus inferred topics; lecturer review remains required.
+- New labels live in shared/questionGeneration.json plan.* for both locales. Config rows: max20, questions: max20. CONTINUITY.md stays local and ignored/untracked.
+
+
 Hướng dẫn chung cho mọi AI agent (Claude Code, Codex, Cursor, Copilot…) làm việc trong repo này. Nội dung dựa trên code và cấu hình thực tế tại thời điểm viết; khi thấy tài liệu lệch với code, tin code và cập nhật lại file này.
 
 ## Question configs table (2026-10-23)
 
 - QuestionGenerationScreen sends question_configs from QuestionConfigTable
-  (type x level x count rows, max 10 rows / 20 questions, generated in row order).
+  (type x level x count rows, max 20 rows / 20 questions, generated in row order).
   The creation card is full width; history and review stay in the two-column grid.
 - Limits/rules live in generation-validation.ts and mirror the backend contract.
   GenerationDraftCard edits MULTIPLE_CHOICE with checkboxes (2-3 correct answers)
@@ -30,7 +39,7 @@ Hướng dẫn chung cho mọi AI agent (Claude Code, Codex, Cursor, Copilot…)
   using explicit revision approval and selected commit; no automatic bank writes.
 - vi/en labels, cookie API client and document size/types match backend. Text API
   compatibility is retained for existing consumers/history. Setup requires the
-  additional migration and BOTH workers; see backend docs/rag-indexing.md section 4.
+  additional migration and BOTH workers; see [backend RAG guide, section 4](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/rag-indexing.md#4-generate-questions-directly-from-an-attached-file-2026-10-23).
 
 ## Current RAG workspace (2026-10-21)
 
@@ -42,7 +51,7 @@ Hướng dẫn chung cho mọi AI agent (Claude Code, Codex, Cursor, Copilot…)
 - Explain Google transmission for indexed content AND queries. Similarity is not a
   calibrated quality result: show UNASSESSED. Retrieval does not create questions
   or write the bank. Current UI searches one selected version; API supports ten.
-- Setup and demo: ../testhub-v2-backend/docs/rag-indexing.md. Older extraction-only
+- Setup and demo: [RAG guide](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/rag-indexing.md). Older extraction-only
   snapshots below describe the preceding implementation stage.
 
 ## Learning documents workspace (2026-10-21)
@@ -166,13 +175,15 @@ Chạy tại thư mục gốc repo.
 
 - **Base URL:** `NEXT_PUBLIC_API_URL` (mặc định `http://localhost:3001` trong code), không có tiền tố `/api` hay version. Swagger backend: `/api-docs`.
 - **Contract:** không có package/type dùng chung hay codegen; contract là thủ công giữa `src/constants/endpoints.ts` và các controller `@Controller(...)` của backend. Khi thêm/đổi endpoint, đối chiếu controller, DTO (class-validator, `whitelist: true` sẽ loại bỏ field lạ) và response thực tế ở backend.
-- **Xác thực bằng cookie httpOnly do backend đặt:**
+- **Xác thực bằng cookie httpOnly do backend đặt (cập nhật 2026-10-25):**
   - `access_token` (15 phút) và `refresh_token` (7 ngày, `path: /auth/refresh`) — tên cookie khai báo ở `src/constants/routes.ts` và `src/proxy.ts`.
-  - `src/lib/api-client.ts`: khi 401 gọi `POST /auth/refresh` một lần rồi retry; thất bại → chuyển về `/login`.
+  - `src/lib/api-client.ts`: khi 401 gọi `POST /auth/refresh` rồi retry; chỉ refresh 401 mới chuyển về `/login?reauth=1`. Network/5xx giữ khả năng phục hồi. Web Locks phối hợp giữa tab, backend có grace cho refresh đồng thời.
   - `src/proxy.ts`: verify `access_token` bằng `NEXT_JWT_ACCESS_SECRET` (fallback `NEXT_JWT_SECRET`), giá trị phải trùng `JWT_ACCESS_SECRET` của backend; đọc `role` trong payload để chuyển hướng `ADMIN → /dashboard`, `LECTURER → /lecturer`, `STUDENT → /home`.
-  - Proxy chỉ thử refresh: cookie `refresh_token` có `path=/auth/refresh` nên không được gửi khi điều hướng tới `/{locale}/...`; access token hết hạn có thể chuyển người dùng về `/login`.
+  - Proxy kiểm tra sơ bộ JWT có sid/token_use=access. Thiếu/hết hạn chuyển tới `/{locale}/auth/session-recovery`; trình duyệt gọi /auth/me qua refresh client trước khi quay lại trang bảo vệ. Proxy không refresh hoặc xóa cookie. Backend kiểm tra AuthSession trên từng request.
+  - STUDENT có một phiên trình duyệt hoạt động; đăng nhập mới tạo PENDING và cần xác nhận. Có bài IN_PROGRESS phải được giảng viên phụ trách/admin duyệt. LECTURER/ADMIN giữ nhiều phiên và logout chỉ thu hồi phiên hiện tại. Trang /auth/session-transfer công khai chỉ hiển thị xác nhận, không tải dữ liệu riêng.
+  - Cookie phải thuộc host frontend (localhost khác cổng được); khác host cần cùng-origin reverse proxy/BFF. Xem [auth-session guide](https://github.com/anhquan-ngg/testhub-v2-backend/blob/dev/docs/auth-sessions.md). Migration auth-session chưa tự áp lên DB người dùng; token cũ phải đăng nhập lại.
   - OAuth: `useAuth.handleGoogleLogin` chuyển trang tới `${NEXT_PUBLIC_API_URL}/auth/google`; backend redirect về `FRONTEND_URL`.
-- **Socket.IO:** `${NEXT_PUBLIC_API_URL}/notifications`, gửi `userId`, `userRole` qua query. Sự kiện: `notification:unread`, `notification:new`, `notification:unread_count`, `notification:mark_read`, `notification:mark_all_read`, `dashboard:update`, `exam:registration_approved`, `exam:student_added`, `exam:registration_requested`.
+- **Socket.IO:** `${NEXT_PUBLIC_API_URL}/notifications`, gửi cookie JWT; backend không tin userId/userRole từ query. Kiểm tra thu hồi định kỳ 5 giây. Sự kiện: `notification:unread`, `notification:new`, `notification:unread_count`, `notification:mark_read`, `notification:mark_all_read`, `dashboard:update`, `exam:registration_approved`, `exam:student_added`, `exam:registration_requested`.
 - **SSE:** `ENDPOINTS.EXAM_RUNTIME.EVENTS` (sinh viên) và `MONITOR_EVENTS` (giảng viên giám sát).
 - **CORS:** backend chỉ chấp nhận origin trong `FRONTEND_URL`; chạy frontend ở origin khác sẽ bị chặn cookie/CORS.
 

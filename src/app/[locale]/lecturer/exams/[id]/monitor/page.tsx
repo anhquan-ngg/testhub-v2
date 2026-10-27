@@ -28,6 +28,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import SessionTransferPanel from "@/components/common/SessionTransferPanel";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 
@@ -565,6 +566,8 @@ export default function ExamMonitorPage() {
             {t("refresh")}</Button>
         </div>
       </div>
+
+      <SessionTransferPanel examId={examId} />
 
       {/* Summary strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

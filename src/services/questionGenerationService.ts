@@ -71,7 +71,11 @@ export const questionGenerationService = {
   },
   async commit(id: string, items: { id: string; revision: number }[]) {
     return (
-      await apiClient.post<GenerationCommitResult>(routes.COMMIT(id), { items })
+      await apiClient.post<GenerationCommitResult>(
+        routes.COMMIT(id),
+        { items },
+        { timeout: 90_000 },
+      )
     ).data;
   },
 };

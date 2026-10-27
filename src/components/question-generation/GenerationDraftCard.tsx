@@ -104,6 +104,12 @@ export function GenerationDraftCard({
         </span>
       </CardHeader>
       <CardContent className="space-y-4">
+        {item.provenance?.knowledge_title && (
+          <div className="rounded border p-3 text-sm">
+            <p className="font-medium">{item.provenance.knowledge_title}</p>
+            <p>{item.provenance.objective}</p>
+          </div>
+        )}
         {item.provenance && (
           <details className="rounded border p-3 text-sm">
             <summary className="cursor-pointer font-medium">
