@@ -38,7 +38,12 @@ export async function proxy(request: NextRequest) {
       const verified = (
         await jwtVerify(token, secretKey, { algorithms: ["HS256"] })
       ).payload;
-      if (typeof verified.sid === "string" && verified.token_use === "access")
+      if (
+        typeof verified.sid === "string" &&
+        verified.token_use === "access" &&
+        typeof verified.role === "string" &&
+        Object.prototype.hasOwnProperty.call(roleBasedRoutes, verified.role)
+      )
         payload = verified;
     }
   } catch {

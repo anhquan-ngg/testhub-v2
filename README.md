@@ -30,7 +30,7 @@ Mở **Ngân hàng câu hỏi → Tài liệu học tập** hoặc
 speaker notes opt-in, lịch sử phiên bản, polling, xem text theo trang/slide và thu
 hồi quyền truy cập. Cần backend migration mới, AI service có parser và tiến trình
 `npm run start:document-worker` riêng. Xem
-[hướng dẫn chạy/demo](../testhub-v2-backend/docs/learning-documents.md).
+[hướng dẫn chạy/demo](https://github.com/anhquan-ngg/testhub-v2-backend/blob/dev/docs/learning-documents.md).
 EXTRACTED chưa phải index RAG; lập chỉ mục tài liệu để dùng trong luồng sinh câu hỏi từ file.
 
 ## AI generation và review
@@ -48,7 +48,7 @@ document-indexes, `20261023090000_add_document_question_generation` và migratio
 `question_configs` mới nhất. Chạy API, Redis, FastAPI cùng **cả hai worker**:
 `npm run start:document-worker` (trích xuất/lập chỉ mục) và `npm run start:ai-worker`
 (chuẩn bị nguồn/sinh câu hỏi) sau khi build. Xem
-[hướng dẫn RAG mục 4](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/rag-indexing.md#4-generate-questions-directly-from-an-attached-file-2026-10-23). Xem [hướng dẫn tích hợp/demo](../testhub-v2-backend/docs/ai-question-generation.md).
+[hướng dẫn RAG mục 4](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/rag-indexing.md#4-generate-questions-directly-from-an-attached-file-2026-10-23). Xem [hướng dẫn tích hợp/demo](https://github.com/anhquan-ngg/testhub-v2-backend/blob/dev/docs/ai-question-generation.md).
 Frontend dùng session cookie hiện có, không cần Gemini key hoặc internal token.
 API từ văn bản được giữ để tương thích với consumer và lịch sử cũ; QuestionGenerationScreen dùng tệp đính kèm.
 

@@ -38,10 +38,21 @@ const jose = require('jose');
     { role: 'STUDENT', sid: 123, token_use: 'access' },
     { role: 'STUDENT', sid: 'fixture-session' },
     { role: 'STUDENT', sid: 'fixture-session', token_use: 'refresh' },
+    ...[undefined, null, 123, [], {}, 'UNKNOWN', 'student', 'constructor', 'toString', '__proto__']
+      .map(role => ({ role, sid: 'fixture-session', token_use: 'access' })),
   ]) {
     const invalid = await new jose.SignJWT(claims).setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('15m').sign(new TextEncoder().encode(key));
     assert.equal(new URL((await send('/vi/home', invalid)).headers.get('location')).pathname, '/vi/auth/session-recovery');
+    assert.equal((await send('/vi/login', invalid)).status, 200);
+  }
+  for (const [role, home] of [['ADMIN', '/dashboard'], ['LECTURER', '/lecturer'], ['STUDENT', '/home']]) {
+    const valid = await new jose.SignJWT({ role, sid: 'fixture-session', token_use: 'access' })
+      .setProtectedHeader({ alg: 'HS256' }).setExpirationTime('15m').sign(new TextEncoder().encode(key));
+    assert.equal((await send('/vi' + home, valid)).status, 200);
+    assert.equal(new URL((await send('/vi/login', valid)).headers.get('location')).pathname, '/vi' + home);
+    const otherHome = role === 'ADMIN' ? '/lecturer' : '/dashboard';
+    assert.equal(new URL((await send('/vi' + otherHome, valid)).headers.get('location')).pathname, '/vi' + home);
   }
   for (const invalid of [
     'malformed-token',
@@ -54,5 +65,5 @@ const jose = require('jose');
   ]) {
     assert.equal(new URL((await send('/vi/home', invalid)).headers.get('location')).pathname, '/vi/auth/session-recovery');
   }
-  console.log('PASS: eight navigation + seven invalid-token checks; real NextRequest/jose, isolated i18n, zero network calls.');
+  console.log('PASS: navigation, valid-role homes, invalid/inherited role recovery and JWT rejection; real NextRequest/jose, isolated i18n, zero network calls.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
