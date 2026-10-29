@@ -14,6 +14,8 @@ export const ENDPOINTS = {
   CHAPTERS: {
     BASE: "/chapters",
     DETAIL: (id: string) => `/chapters/${id}`,
+    SUBTREE: (id: string) => `/chapters/${id}/subtree`,
+    ANCESTORS: (id: string) => `/chapters/${id}/ancestors`,
   },
   USERS: {
     BASE: "/users",

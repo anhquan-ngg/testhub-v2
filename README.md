@@ -1,5 +1,13 @@
 # TESTHUB - Hệ thống Thi trực tuyến
 
+## Cây chương nhiều cấp (2026-10-27)
+
+Cấu hình đề theo chương cho phép tìm/chọn chương ở mọi cấp và luôn bao gồm
+toàn bộ chương con. Các nhánh được phép chồng lấn; backend bảo đảm không trùng
+câu giữa các dòng và báo lỗi nếu không đủ câu. Đường dẫn được dựng bằng vòng
+lặp; danh sách chọn phân trang 50 mục, không giới hạn độ sâu nghiệp vụ.
+Kiểm tra logic bằng `node scripts/check-chapter-tree.cjs`.
+
 ## Knowledge matrix authoring (2026-10-25)
 
 - Generation uploads topic-owned documents without selecting a chapter. Create/resume a durable plan via ?plan=id, edit tree and topic x cognition matrix, save, confirm, then generate.
