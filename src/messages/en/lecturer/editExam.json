@@ -1,4 +1,8 @@
 {
+  "insufficientDistinctQuestions": "There are not enough distinct questions to satisfy every distribution row, including overlapping chapters. Reduce the quantities or add questions.",
+  "chooseChapterAtAnyDepth": "Choose a chapter at any depth",
+  "searchChapterPath": "Search chapter name or path",
+  "includesAllDescendants": "Includes all descendants. Questions are distinct across distribution rows.",
   "pleaseAddValidDistribution": "Add at least one distribution row with a positive whole-number quantity.",
   "chooseQuestionsForExam": "Choose questions for the exam: {title}",
   "questionMetadata": "Topic: {topic} · Type: {type} · Format: {format}",

@@ -1,5 +1,9 @@
 "use client";
 
+import axios from "axios";
+import { ChapterPicker } from "@/components/ChapterPicker";
+import { questionBearingChapterIds } from "@/lib/chapter-tree";
+
 import { useTranslations } from "next-intl";
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "@/i18n/navigation";
@@ -56,7 +60,6 @@ type ExamMode = "MANUAL" | "RANDOM_N" | "BY_TYPE" | "BY_CHAPTER";
 interface QuestionConfig {
   id: number;
   chapter_id?: string;
-  child_chapter_id?: string;
   question_type: QuestionType;
   question_format: QuestionFormat;
   quantity: number;
@@ -74,7 +77,8 @@ type ExamChapterDistributionConfig = {
 };
 
 type ExamDistributionConfig =
-  ExamTypeDistributionConfig | ExamChapterDistributionConfig;
+  | ExamTypeDistributionConfig
+  | ExamChapterDistributionConfig;
 
 type QuestionItem = {
   id: string;
@@ -136,10 +140,6 @@ const getExamTopicName = (topic: ExamDetail["topic"]) => {
 const ALL_CHAPTERS_VALUE = "ALL";
 
 const getConfigChapterId = (item: QuestionConfig) => {
-  if (item.child_chapter_id && item.child_chapter_id !== ALL_CHAPTERS_VALUE) {
-    return item.child_chapter_id;
-  }
-
   if (item.chapter_id && item.chapter_id !== ALL_CHAPTERS_VALUE) {
     return item.chapter_id;
   }
@@ -183,7 +183,6 @@ const mergeChapterQuestionConfigs = (
         acc[uniqueKey] = {
           ...current,
           chapter_id: chapterId ?? ALL_CHAPTERS_VALUE,
-          child_chapter_id: ALL_CHAPTERS_VALUE,
         };
       }
 
@@ -211,29 +210,33 @@ const formatToLocalISO = (dateString: string | Date) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
-const buildDistribution = (mode: ExamMode, rows: QuestionConfig[]): ExamDistributionConfig[] => {
-  rows = rows.filter((row) => Number.isSafeInteger(row.quantity) && row.quantity > 0);
+const buildDistribution = (
+  mode: ExamMode,
+  rows: QuestionConfig[],
+): ExamDistributionConfig[] => {
+  rows = rows.filter(
+    (row) => Number.isSafeInteger(row.quantity) && row.quantity > 0,
+  );
   return mode === "BY_CHAPTER"
-        ? mergeChapterQuestionConfigs(rows).flatMap((item) => {
-            const chapterId = getConfigChapterId(item);
+    ? mergeChapterQuestionConfigs(rows).flatMap((item) => {
+        const chapterId = getConfigChapterId(item);
 
-            if (!chapterId) {
-              return [];
-            }
+        if (!chapterId) {
+          return [];
+        }
 
-            return [
-              {
-                chapter_id: chapterId,
-                quantity: item.quantity,
-              },
-            ];
-          })
-        : mergeTypeQuestionConfigs(rows).map((item) => ({
-            question_type: item.question_type,
-            question_format: item.question_format,
+        return [
+          {
+            chapter_id: chapterId,
             quantity: item.quantity,
-          }));
-
+          },
+        ];
+      })
+    : mergeTypeQuestionConfigs(rows).map((item) => ({
+        question_type: item.question_type,
+        question_format: item.question_format,
+        quantity: item.quantity,
+      }));
 };
 
 export default function EditExamPage({ params }: EditExamPageProps) {
@@ -255,7 +258,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     {
       id: 1,
       chapter_id: ALL_CHAPTERS_VALUE,
-      child_chapter_id: ALL_CHAPTERS_VALUE,
       question_type: "SINGLE_CHOICE",
       question_format: "KNOWLEDGE",
       quantity: 0,
@@ -263,70 +265,13 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   ]);
 
   const [nextRowId, setNextRowId] = useState(2);
-  const questionChapterIds = useMemo(
-    () =>
-      new Set(
-        questionBank
-          .map((question) => question.chapter_id)
-          .filter((chapterId): chapterId is string => Boolean(chapterId)),
-      ),
-    [questionBank],
-  );
-  const parentChapterOptions = useMemo(() => {
-    const parentIdsWithQuestionChildren = new Set<string>();
-
-    chapters.forEach((chapter) => {
-      if (chapter.parent_id && questionChapterIds.has(chapter.id)) {
-        parentIdsWithQuestionChildren.add(chapter.parent_id);
-      }
-    });
-
-    return chapters.filter(
-      (chapter) =>
-        !chapter.parent_id &&
-        (questionChapterIds.has(chapter.id) ||
-          parentIdsWithQuestionChildren.has(chapter.id)),
-    );
-  }, [chapters, questionChapterIds]);
-  const childChaptersByParent = useMemo(
-    () =>
-      chapters.reduce((acc, chapter) => {
-        if (!chapter.parent_id || !questionChapterIds.has(chapter.id)) {
-          return acc;
-        }
-
-        const childChapters = acc.get(chapter.parent_id) ?? [];
-        childChapters.push(chapter);
-        acc.set(chapter.parent_id, childChapters);
-        return acc;
-      }, new Map<string, ChapterItem[]>()),
-    [chapters, questionChapterIds],
-  );
-
+  const chapterOptions = useMemo(() => {
+    const bearing = questionBearingChapterIds(chapters, questionBank);
+    return chapters.filter((chapter) => bearing.has(chapter.id));
+  }, [chapters, questionBank]);
   const resolveChapterSelection = useCallback(
-    (chapterId?: string) => {
-      if (!chapterId) {
-        return {
-          chapter_id: ALL_CHAPTERS_VALUE,
-          child_chapter_id: ALL_CHAPTERS_VALUE,
-        };
-      }
-
-      const chapter = chapters.find((item) => item.id === chapterId);
-
-      if (chapter?.parent_id) {
-        return {
-          chapter_id: chapter.parent_id,
-          child_chapter_id: chapter.id,
-        };
-      }
-
-      return {
-        chapter_id: chapterId,
-        child_chapter_id: ALL_CHAPTERS_VALUE,
-      };
-    },
-    [chapters],
+    (chapterId?: string) => ({ chapter_id: chapterId ?? ALL_CHAPTERS_VALUE }),
+    [],
   );
 
   const handleAddConfigRow = () => {
@@ -335,7 +280,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       {
         id: nextRowId,
         chapter_id: ALL_CHAPTERS_VALUE,
-        child_chapter_id: ALL_CHAPTERS_VALUE,
         question_type: "SINGLE_CHOICE",
         question_format: "KNOWLEDGE",
         quantity: 0,
@@ -355,9 +299,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
           ? {
               ...row,
               [field]: value,
-              ...(field === "chapter_id" && {
-                child_chapter_id: ALL_CHAPTERS_VALUE,
-              }),
             }
           : row,
       ),
@@ -426,40 +367,63 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     const topicId = examForm.topic_id;
     setQuestionBank([]);
     setIsLoadingQuestionBank(true);
-    if (!topicId) { setIsLoadingQuestionBank(false); return; }
+    if (!topicId) {
+      setIsLoadingQuestionBank(false);
+      return;
+    }
     try {
       // Questions only support chapter_id filtering; topic_id is stripped by the backend DTO.
-      const topicChapters = await fetchAllPages<ChapterItem>(ENDPOINTS.CHAPTERS.BASE, { topic_id: examForm.topic_id });
-      const lists = await Promise.all(topicChapters.map((chapter) =>
-        fetchAllPages<QuestionItem>(ENDPOINTS.QUESTIONS.BASE, { chapter_id: chapter.id }),
-      ));
-      if (topicIdRef.current !== topicId || requestId !== bankRequestId.current) return;
+      const topicChapters = await fetchAllPages<ChapterItem>(
+        ENDPOINTS.CHAPTERS.BASE,
+        { topic_id: examForm.topic_id },
+      );
+      const lists = await Promise.all(
+        topicChapters.map((chapter) =>
+          fetchAllPages<QuestionItem>(ENDPOINTS.QUESTIONS.BASE, {
+            chapter_id: chapter.id,
+          }),
+        ),
+      );
+      if (topicIdRef.current !== topicId || requestId !== bankRequestId.current)
+        return;
       setQuestionBank(lists.flat());
     } catch (error) {
-      if (topicIdRef.current !== topicId || requestId !== bankRequestId.current) return;
+      if (topicIdRef.current !== topicId || requestId !== bankRequestId.current)
+        return;
       toast.error(t("unableToLoadQuestionBank"));
       console.log(error);
     } finally {
-      if (topicIdRef.current === topicId && requestId === bankRequestId.current) setIsLoadingQuestionBank(false);
+      if (topicIdRef.current === topicId && requestId === bankRequestId.current)
+        setIsLoadingQuestionBank(false);
     }
   }, [examForm.topic_id, t]);
 
-  const fetchChapters = useCallback(async (topicId?: string) => {
-    const requestId = ++chapterRequestId.current;
-    if (!topicId) {
-      setChapters([]);
-      return;
-    }
+  const fetchChapters = useCallback(
+    async (topicId?: string) => {
+      const requestId = ++chapterRequestId.current;
+      if (!topicId) {
+        setChapters([]);
+        return;
+      }
 
-    try {
-      const chapters = await fetchAllPages<ChapterItem>(ENDPOINTS.CHAPTERS.BASE, { topic_id: topicId });
-      if (topicIdRef.current !== topicId || requestId !== chapterRequestId.current) return;
-      setChapters(chapters);
-    } catch (error) {
-      toast.error(t("unableToLoadChapterList"));
-      console.log(error);
-    }
-  }, [t]);
+      try {
+        const chapters = await fetchAllPages<ChapterItem>(
+          ENDPOINTS.CHAPTERS.BASE,
+          { topic_id: topicId },
+        );
+        if (
+          topicIdRef.current !== topicId ||
+          requestId !== chapterRequestId.current
+        )
+          return;
+        setChapters(chapters);
+      } catch (error) {
+        toast.error(t("unableToLoadChapterList"));
+        console.log(error);
+      }
+    },
+    [t],
+  );
   const existingQuestionIdsRef = useRef(existingQuestionIds);
   useEffect(() => {
     existingQuestionIdsRef.current = existingQuestionIds;
@@ -567,19 +531,30 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       toast.success(t("successfullyUpdatedExam"));
       router.push("/lecturer/exams");
     } catch (error) {
-      toast.error(t("updateFailedTestPleaseTryAgain"));
+      toast.error(
+        t(
+          axios.isAxiosError(error) &&
+            error.response?.data?.code === "CHAPTER_DISTRIBUTION_INSUFFICIENT"
+            ? "insufficientDistinctQuestions"
+            : "updateFailedTestPleaseTryAgain",
+        ),
+      );
       console.log(error);
     }
   };
   useEffect(() => {
-    void fetchAllPages<TopicItem>(ENDPOINTS.TOPICS.BASE, {}).then(setTopics).catch(() => toast.error(t("unableToLoadQuestionBank")));
+    void fetchAllPages<TopicItem>(ENDPOINTS.TOPICS.BASE, {})
+      .then(setTopics)
+      .catch(() => toast.error(t("unableToLoadQuestionBank")));
   }, [t]);
 
   useEffect(() => {
     void fetchExam();
   }, [fetchExam]);
 
-  useEffect(() => { void fetchQuestions(); }, [fetchQuestions]);
+  useEffect(() => {
+    void fetchQuestions();
+  }, [fetchQuestions]);
 
   useEffect(() => {
     void fetchChapters(examForm.topic_id);
@@ -615,7 +590,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
         return {
           id: index + 1,
           chapter_id: ALL_CHAPTERS_VALUE,
-          child_chapter_id: ALL_CHAPTERS_VALUE,
           question_type: item.question_type,
           question_format: item.question_format,
           quantity: item.quantity,
@@ -623,14 +597,19 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       });
       setConfigRows(configRowsWithIds);
       setNextRowId(configRowsWithIds.length + 1);
-      }
+    }
   }, [exam]);
 
-  // Kept apart from the effect above: resolveChapterSelection changes every
-  // time chapters are refetched (e.g. after an import), and that must not
-  // reset the form or the question selection.
+  // Reload stored chapter IDs independently from question-bank refreshes.
+  // A chapter may be at any depth; no root/direct-child remapping is needed.
   useEffect(() => {
-    if (!exam || examForm.topic_id !== exam.topic_id || exam.mode !== "BY_CHAPTER" || !exam.distribution) return;
+    if (
+      !exam ||
+      examForm.topic_id !== exam.topic_id ||
+      exam.mode !== "BY_CHAPTER" ||
+      !exam.distribution
+    )
+      return;
 
     const parsedDistribution = JSON.parse(
       exam.distribution,
@@ -659,15 +638,15 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       <Card className="bg-white border-gray-300">
         <CardHeader>
           <CardTitle>{t("examInformation")}</CardTitle>
-          <CardDescription>
-            {t("fillInTheDetailsToCreate")}</CardDescription>
+          <CardDescription>{t("fillInTheDetailsToCreate")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="exam-title">
-                  {t("testName")}<span className="text-red-500">*</span>
+                  {t("testName")}
+                  <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="exam-title"
@@ -681,20 +660,36 @@ export default function EditExamPage({ params }: EditExamPageProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="exam-topic">
-                  {t("topic")}<span className="text-red-500">*</span>
+                  {t("topic")}
+                  <span className="text-red-500">*</span>
                 </Label>
-                <Select value={examForm.topic_id} onValueChange={(topicId) => {
-                  topicIdRef.current = topicId;
-                  setQuestionBank([]);
-                  setChapters([]);
-                  setIsLoadingQuestionBank(true);
-                  setExamForm((current) => ({ ...current, topic_id: topicId }));
-                  setSelectedQuestions([]);
-                  setConfigRows([]);
-                }}>
-                  <SelectTrigger id="exam-topic" className="bg-white border-gray-300"><SelectValue /></SelectTrigger>
+                <Select
+                  value={examForm.topic_id}
+                  onValueChange={(topicId) => {
+                    topicIdRef.current = topicId;
+                    setQuestionBank([]);
+                    setChapters([]);
+                    setIsLoadingQuestionBank(true);
+                    setExamForm((current) => ({
+                      ...current,
+                      topic_id: topicId,
+                    }));
+                    setSelectedQuestions([]);
+                    setConfigRows([]);
+                  }}
+                >
+                  <SelectTrigger
+                    id="exam-topic"
+                    className="bg-white border-gray-300"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent className="bg-white border-gray-300">
-                    {topics.map((topic) => <SelectItem key={topic.id} value={topic.id}>{topic.name}</SelectItem>)}
+                    {topics.map((topic) => (
+                      <SelectItem key={topic.id} value={topic.id}>
+                        {topic.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -703,7 +698,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="start-time">
-                  {t("startTime")}<span className="text-red-500">*</span>
+                  {t("startTime")}
+                  <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="start-time"
@@ -720,7 +716,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="end-time">
-                  {t("endTime")}<span className="text-red-500">*</span>
+                  {t("endTime")}
+                  <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="end-time"
@@ -740,7 +737,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="duration">
-                  {t("durationMinutes")}<span className="text-red-500">*</span>
+                  {t("durationMinutes")}
+                  <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="duration"
@@ -769,7 +767,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                   </SelectTrigger>
                   <SelectContent className="bg-white border-gray-300">
                     <SelectItem value="test">{t("officialTest")}</SelectItem>
-                    <SelectItem value="practice">{t("practiceExam")}</SelectItem>
+                    <SelectItem value="practice">
+                      {t("practiceExam")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -789,7 +789,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                   htmlFor="is_public"
                   className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  {t("makeTheExamPublicStudentsCan")}</Label>
+                  {t("makeTheExamPublicStudentsCan")}
+                </Label>
               </div>
             </div>
 
@@ -813,8 +814,12 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                 </Button>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button disabled={isLoadingQuestionBank} className="bg-[#0066cc] hover:bg-[#0052a3] text-white">
-                      {t("selectQuestion")}</Button>
+                    <Button
+                      disabled={isLoadingQuestionBank}
+                      className="bg-[#0066cc] hover:bg-[#0052a3] text-white"
+                    >
+                      {t("selectQuestion")}
+                    </Button>
                   </DialogTrigger>
                   <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[calc(100vh-4rem)] overflow-y-auto bg-white border-gray-300">
                     <DialogHeader>
@@ -833,20 +838,26 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="bg-white border-gray-300">
-                        <SelectItem value="MANUAL">{t("manualSelection")}</SelectItem>
+                        <SelectItem value="MANUAL">
+                          {t("manualSelection")}
+                        </SelectItem>
                         <SelectItem value="RANDOM_N">
-                          {t("randomlySelectNSentences")}</SelectItem>
+                          {t("randomlySelectNSentences")}
+                        </SelectItem>
                         <SelectItem value="BY_TYPE">
-                          {t("configurableByTypeAndFormat")}</SelectItem>
+                          {t("configurableByTypeAndFormat")}
+                        </SelectItem>
                         <SelectItem value="BY_CHAPTER">
-                          {t("configureByChapter")}</SelectItem>
+                          {t("configureByChapter")}
+                        </SelectItem>
                       </SelectContent>
                     </Select>
 
                     {questionSelectionMode === "MANUAL" && (
                       <div className="space-y-2">
                         <div className="border border-gray-300 rounded-lg p-4 space-y-3 max-h-64 overflow-y-auto">
-                          {!isLoadingQuestionBank && questionBank?.length > 0 ? (
+                          {!isLoadingQuestionBank &&
+                          questionBank?.length > 0 ? (
                             questionBank.map((question) => (
                               <div
                                 key={question.id}
@@ -872,8 +883,12 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                   <div className="text-xs text-gray-500 mt-1">
                                     {t("questionMetadata", {
                                       topic: getQuestionTopicName(question),
-                                      type: enumLabel.questionType(question.question_type),
-                                      format: enumLabel.questionFormat(question.question_format),
+                                      type: enumLabel.questionType(
+                                        question.question_type,
+                                      ),
+                                      format: enumLabel.questionFormat(
+                                        question.question_format,
+                                      ),
                                     })}
                                   </div>
                                 </label>
@@ -881,11 +896,15 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                             ))
                           ) : (
                             <div className="text-center text-gray-500 py-4">
-                              {t("noQuestionsAsked")}</div>
+                              {t("noQuestionsAsked")}
+                            </div>
                           )}
                         </div>
                         <div className="text-sm text-gray-600">
-                          {t("selectedQuestionCount", { count: selectedQuestions.length })}</div>
+                          {t("selectedQuestionCount", {
+                            count: selectedQuestions.length,
+                          })}
+                        </div>
                       </div>
                     )}
 
@@ -894,7 +913,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                         <div className="grid grid-cols-3 gap-4 items-end">
                           <div className="space-y-2">
                             <Label htmlFor="random-count">
-                              {t("numberOfQuestions")}</Label>
+                              {t("numberOfQuestions")}
+                            </Label>
                             <Input
                               id="random-count"
                               type="number"
@@ -907,7 +927,10 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                           </div>
                         </div>
                         <div className="text-sm text-gray-600">
-                          {t("selectedQuestionCount", { count: selectedQuestions.length })}</div>
+                          {t("selectedQuestionCount", {
+                            count: selectedQuestions.length,
+                          })}
+                        </div>
                       </div>
                     )}
 
@@ -915,7 +938,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                       questionSelectionMode === "BY_CHAPTER") && (
                       <div className="min-w-0 space-y-4">
                         <Label className="text-base font-semibold block">
-                          {t("questionConfiguration")}</Label>
+                          {t("questionConfiguration")}
+                        </Label>
                         <div className="max-w-full overflow-x-auto rounded-lg border border-gray-300">
                           <Table
                             className={
@@ -931,23 +955,24 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                     <TableHead className="w-[210px]">
                                       {t("chapter")}
                                     </TableHead>
-                                    <TableHead className="w-[210px]">
-                                      {t("subchapter")}
-                                    </TableHead>
                                   </>
                                 )}
                                 {questionSelectionMode === "BY_TYPE" && (
                                   <>
                                     <TableHead className="w-[260px]">
-                                      {t("questionType")}</TableHead>
+                                      {t("questionType")}
+                                    </TableHead>
                                     <TableHead className="w-[190px]">
-                                      {t("format2")}</TableHead>
+                                      {t("format2")}
+                                    </TableHead>
                                   </>
                                 )}
                                 <TableHead className="w-[120px]">
-                                  {t("quantity")}</TableHead>
+                                  {t("quantity")}
+                                </TableHead>
                                 <TableHead className="w-[80px]">
-                                  {t("operation")}</TableHead>
+                                  {t("operation")}
+                                </TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody className="bg-white border-gray-300">
@@ -958,84 +983,24 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                 >
                                   {questionSelectionMode === "BY_CHAPTER" && (
                                     <>
-                                      <TableCell className="align-middle">
-                                        <Select
-                                          value={
-                                            row.chapter_id ?? ALL_CHAPTERS_VALUE
-                                          }
-                                          onValueChange={(value) =>
+                                      <TableCell
+                                        className="align-middle"
+                                        colSpan={1}
+                                      >
+                                        <ChapterPicker
+                                          chapters={chapterOptions}
+                                          value={row.chapter_id}
+                                          onChange={(value) =>
                                             handleUpdateConfigRow(
                                               row.id,
                                               "chapter_id",
                                               value,
                                             )
                                           }
-                                        >
-                                          <SelectTrigger className="w-full min-w-0 bg-white border-gray-300">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent className="bg-white border-gray-300">
-                                            <SelectItem
-                                              value={ALL_CHAPTERS_VALUE}
-                                            >
-                                              {t("allChapters")}</SelectItem>
-                                            {parentChapterOptions.map(
-                                              (chapter) => (
-                                                <SelectItem
-                                                  key={chapter.id}
-                                                  value={chapter.id}
-                                                >
-                                                  {chapter.name}
-                                                </SelectItem>
-                                              ),
-                                            )}
-                                          </SelectContent>
-                                        </Select>
-                                      </TableCell>
-                                      <TableCell className="align-middle">
-                                        <Select
-                                          value={
-                                            row.child_chapter_id ??
-                                            ALL_CHAPTERS_VALUE
-                                          }
-                                          disabled={
-                                            !row.chapter_id ||
-                                            row.chapter_id ===
-                                              ALL_CHAPTERS_VALUE ||
-                                            !childChaptersByParent.get(
-                                              row.chapter_id,
-                                            )?.length
-                                          }
-                                          onValueChange={(value) =>
-                                            handleUpdateConfigRow(
-                                              row.id,
-                                              "child_chapter_id",
-                                              value,
-                                            )
-                                          }
-                                        >
-                                          <SelectTrigger className="w-full min-w-0 bg-white border-gray-300">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent className="bg-white border-gray-300">
-                                            <SelectItem
-                                              value={ALL_CHAPTERS_VALUE}
-                                            >
-                                              {t("doNotSelect")}</SelectItem>
-                                            {(
-                                              childChaptersByParent.get(
-                                                row.chapter_id ?? "",
-                                              ) ?? []
-                                            ).map((chapter) => (
-                                              <SelectItem
-                                                key={chapter.id}
-                                                value={chapter.id}
-                                              >
-                                                {chapter.name}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
+                                        />
+                                        <p className="mt-2 text-xs text-muted-foreground">
+                                          {t("includesAllDescendants")}
+                                        </p>
                                       </TableCell>
                                     </>
                                   )}
@@ -1057,11 +1022,16 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                           </SelectTrigger>
                                           <SelectContent className="bg-white border-gray-300">
                                             <SelectItem value="SINGLE_CHOICE">
-                                              {t("multipleChoice1Answer")}</SelectItem>
+                                              {t("multipleChoice1Answer")}
+                                            </SelectItem>
                                             <SelectItem value="MULTIPLE_CHOICE">
-                                              {t("multipleChoiceTestWithMultipleAnswers")}</SelectItem>
+                                              {t(
+                                                "multipleChoiceTestWithMultipleAnswers",
+                                              )}
+                                            </SelectItem>
                                             <SelectItem value="ESSAY">
-                                              {t("essay")}</SelectItem>
+                                              {t("essay")}
+                                            </SelectItem>
                                           </SelectContent>
                                         </Select>
                                       </TableCell>
@@ -1081,13 +1051,17 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                           </SelectTrigger>
                                           <SelectContent className="bg-white border-gray-300">
                                             <SelectItem value="KNOWLEDGE">
-                                              {t("recognize")}</SelectItem>
+                                              {t("recognize")}
+                                            </SelectItem>
                                             <SelectItem value="UNDERSTANDING">
-                                              {t("understanding")}</SelectItem>
+                                              {t("understanding")}
+                                            </SelectItem>
                                             <SelectItem value="APPLYING">
-                                              {t("manipulate")}</SelectItem>
+                                              {t("manipulate")}
+                                            </SelectItem>
                                             <SelectItem value="ADVANCED">
-                                              {t("advanced")}</SelectItem>
+                                              {t("advanced")}
+                                            </SelectItem>
                                           </SelectContent>
                                         </Select>
                                       </TableCell>
@@ -1131,15 +1105,21 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                           variant="outline"
                           className="w-full border-gray-300 bg-white hover:cursor-pointer"
                         >
-                          <Plus className="h-3 w-3" strokeWidth={3} /> {t("addGoodsConfiguration")}</Button>
+                          <Plus className="h-3 w-3" strokeWidth={3} />{" "}
+                          {t("addGoodsConfiguration")}
+                        </Button>
 
                         <Button
                           onClick={handleSelectByConfig}
                           className="w-full bg-[#0066cc] hover:bg-[#0052a3] text-white"
                         >
-                          {t("takeRandomAccordingToConfiguration")}</Button>
+                          {t("takeRandomAccordingToConfiguration")}
+                        </Button>
                         <div className="text-sm text-gray-600">
-                          {t("selectedQuestionCount", { count: selectedQuestions.length })}</div>
+                          {t("selectedQuestionCount", {
+                            count: selectedQuestions.length,
+                          })}
+                        </div>
                       </div>
                     )}
                   </DialogContent>
@@ -1153,12 +1133,14 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                 onClick={() => router.push("/lecturer/exams")}
                 className="flex-1 border-gray-300 hover:bg-gray-100 hover:border-none hover:cursor-pointer"
               >
-                {t("cancel")}</Button>
+                {t("cancel")}
+              </Button>
               <Button
                 onClick={() => handleEditExam(examId)}
                 className="flex-1 bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
               >
-                {t("updateExam")}</Button>
+                {t("updateExam")}
+              </Button>
             </div>
           </div>
         </CardContent>

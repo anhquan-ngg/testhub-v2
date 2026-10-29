@@ -1,5 +1,7 @@
 "use client";
 
+import { buildChapterPaths } from "@/lib/chapter-tree";
+
 import { useTranslations } from "next-intl";
 import axios from "axios";
 import Image from "next/image";
@@ -90,27 +92,6 @@ const NEW_CHAPTER = "__NEW_CHAPTER__";
 const PATH_SEPARATOR = " > ";
 const CHAPTER_PAGE_SIZE = 100;
 
-/** Full "Parent > Child" label for each chapter, so same-named sub-chapters stay distinguishable. */
-const buildChapterPaths = (chapters: ChapterOption[]) => {
-  const byId = new Map(chapters.map((chapter) => [chapter.id, chapter]));
-  const paths = new Map<string, string>();
-  const pathOf = (chapter: ChapterOption, seen = new Set<string>()): string => {
-    const cached = paths.get(chapter.id);
-    if (cached) return cached;
-    const parent =
-      chapter.parent_id && !seen.has(chapter.id)
-        ? byId.get(chapter.parent_id)
-        : undefined;
-    seen.add(chapter.id);
-    const path = parent
-      ? `${pathOf(parent, seen)}${PATH_SEPARATOR}${chapter.name}`
-      : chapter.name;
-    paths.set(chapter.id, path);
-    return path;
-  };
-  chapters.forEach((chapter) => pathOf(chapter));
-  return paths;
-};
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const optionKeys = ["A", "B", "C", "D", "E", "F"];
 

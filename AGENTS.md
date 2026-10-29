@@ -1,5 +1,12 @@
 # AGENTS.md — testhub-v2 (frontend)
 
+## Chapter hierarchy (2026-10-27)
+
+- Use lib/chapter-tree.ts for iterative arbitrary-depth breadcrumbs and ancestor question visibility; avoid recursive rendering/traversal of unbounded trees.
+- Exam BY_CHAPTER rows store one chapter_id and include all descendants. ChapterPicker searches full paths and pages rendered options; truncating labels must never change stored IDs.
+- Backend handles globally distinct question allocation across overlapping branches and returns CHAPTER_DISTRIBUTION_INSUFFICIENT when quotas cannot all be filled.
+- Run node scripts/check-chapter-tree.cjs for deep-tree and bounded-render checks. Backend contract: ../testhub-v2-backend/docs/chapter-hierarchy.md.
+
 ## Knowledge matrix authoring (2026-10-25)
 
 - Generation uploads topic-owned documents without selecting a chapter. Create/resume a durable plan via ?plan=id, edit tree and topic x cognition matrix, save, confirm, then generate.
