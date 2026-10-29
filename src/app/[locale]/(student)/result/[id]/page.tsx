@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { useRouter } from "@/i18n/navigation";
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,11 +24,11 @@ import StudentMenu from "@/components/common/student/menu";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useAppSelector } from "@/store/hook";
 import {
-  calculateScorePerQuestion,
   calculateTotalQuesions,
   parseOptions,
 } from "@/lib/exam-utils";
 import { toast } from "sonner";
+import { useSocket } from "@/components/providers/SocketProvider";
 
 interface PageProps {
   params: Promise<{
@@ -233,6 +233,7 @@ export default function ResultDetailPage({ params }: PageProps) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const router = useRouter();
+  const { socket } = useSocket();
   const [isPrinting, setIsPrinting] = useState(false);
 
   const user = useAppSelector((state) => state.user);
@@ -241,29 +242,63 @@ export default function ResultDetailPage({ params }: PageProps) {
   const [submission, setSubmission] = useState<ResultSubmission | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<unknown>(null);
+  const fetchSubmissionRef = useRef<
+    ((background?: boolean) => Promise<void>) | null
+  >(null);
 
   useEffect(() => {
-    const fetchSubmission = async () => {
+    let active = true;
+    let generation = 0;
+    let controller: AbortController | null = null;
+    const fetchSubmission = async (background = false) => {
       if (!id) return;
-
-      setIsLoading(true);
-      setError(null);
+      const version = ++generation;
+      controller?.abort();
+      const abort = new AbortController();
+      controller = abort;
+      if (!background) {
+        setIsLoading(true);
+        setError(null);
+        setSubmission(null);
+      }
       try {
         const response = await apiClient.get<ResultSubmission>(
-          ENDPOINTS.SUBMISSIONS.DETAIL(id),
+          ENDPOINTS.SUBMISSIONS.DETAIL(id), { signal: abort.signal },
         );
+        if (!active || version !== generation) return;
         setSubmission(response.data);
+        setError(null);
       } catch (err) {
-        console.error("Fetch submission error:", err);
-        setError(err);
-        setSubmission(null);
+        if (!active || version !== generation || abort.signal.aborted) return;
+        if (!background) {
+          setError(err);
+          setSubmission(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (active && version === generation) setIsLoading(false);
       }
     };
-
+    fetchSubmissionRef.current = fetchSubmission;
     void fetchSubmission();
+    return () => {
+      active = false;
+      generation += 1;
+      controller?.abort();
+      fetchSubmissionRef.current = null;
+    };
   }, [id]);
+
+  useEffect(() => {
+    const onNotification = (notification: { target_id?: string; target_type?: string } | null) => {
+      if (notification?.target_type === "SUBMISSION" && notification.target_id === id) {
+        void fetchSubmissionRef.current?.(true);
+      }
+    };
+    socket?.on("notification:new", onNotification);
+    return () => {
+      socket?.off("notification:new", onNotification);
+    };
+  }, [id, socket]);
 
   const handlePrint = async () => {
     try {
@@ -516,7 +551,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                               className="font-semibold border-gray-300 text-gray-900 bg-white"
                             >
                               {(
-                                calculateScorePerQuestion(submission) *
+                                (10 / (submission.questions?.length || 1)) *
                                 Number(sq.score ?? 0)
                               ).toFixed(2)}{" "}
                               {t("point")}</Badge>
