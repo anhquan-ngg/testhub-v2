@@ -1,7 +1,11 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { chapterPath, type ChapterNode } from "@/lib/chapter-tree";
+import {
+  buildChapterPaths,
+  chapterPath,
+  type ChapterNode,
+} from "@/lib/chapter-tree";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
@@ -24,13 +28,12 @@ export function ChapterPicker({
     () => new Map(chapters.map((node) => [node.id, node])),
     [chapters],
   );
+  const paths = useMemo(() => buildChapterPaths(chapters), [chapters]);
   const matches = useMemo(() => {
-    const keyword = search.trim().toLocaleLowerCase();
-    if (!keyword) return chapters;
-    return chapters.filter((node) =>
-      chapterPath(node.id, byId).toLocaleLowerCase().includes(keyword),
-    );
-  }, [chapters, byId, search]);
+    if (!search.trim()) return chapters;
+    const ids = paths.search(search);
+    return chapters.filter((node) => ids.has(node.id));
+  }, [chapters, paths, search]);
   const selected = value ? byId.get(value) : undefined;
   const pages = Math.ceil(matches.length / 50),
     safePage = Math.min(page, Math.max(0, pages - 1));

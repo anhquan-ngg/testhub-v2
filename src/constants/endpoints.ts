@@ -75,6 +75,9 @@ export const ENDPOINTS = {
   SUBMISSIONS: {
     BASE: "/submission",
     DETAIL: (id: string) => `/submission/${id}`,
+    REGRADE: (id: string) => `/submission/${id}/regrade`,
+    REGRADE_DRAFT: (id: string) => `/submission/${id}/regrade/draft`,
+    REGRADE_PUBLISH: (id: string) => `/submission/${id}/regrade/publish`,
     START_EXAM: (examId: string) => `/submission/exams/${examId}/start`,
     EXAM_SESSION: (examId: string) => `/submission/exams/${examId}/session`,
     SUBMIT_QUESTION: "/submission/submit-by-question",
