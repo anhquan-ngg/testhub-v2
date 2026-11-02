@@ -1,4 +1,8 @@
 {
+  "insufficientDistinctQuestions": "Không đủ câu hỏi khác nhau để đáp ứng tất cả các hàng phân phối, kể cả khi các chương được chọn chồng nhánh. Hãy giảm số lượng hoặc bổ sung câu hỏi.",
+  "chooseChapterAtAnyDepth": "Chọn chương ở bất kỳ cấp nào",
+  "searchChapterPath": "Tìm theo tên hoặc đường dẫn chương",
+  "includesAllDescendants": "Bao gồm toàn bộ chương con. Câu hỏi giữa các hàng được chọn không trùng nhau.",
   "pleaseAddValidDistribution": "Thêm ít nhất một dòng phân phối có số lượng nguyên dương.",
   "chooseQuestionsForExam": "Chọn câu hỏi cho bài thi: {title}",
   "questionMetadata": "Chủ đề: {topic} · Loại: {type} · Định dạng: {format}",

@@ -1,5 +1,6 @@
 "use client";
 
+import { chapterPath } from "@/lib/chapter-tree";
 import { useLocale, useTranslations } from "next-intl";
 import { intlLocales } from "@/i18n/config";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
@@ -451,6 +452,8 @@ export default function LecturerQuestions() {
   useEffect(() => {
     setQuestionPage((prev) => Math.min(prev, Math.max(questionTotalPages, 1)));
   }, [questionTotalPages]);
+
+  const chaptersById = useMemo(()=>new Map(chapters.map(chapter=>[chapter.id,chapter])),[chapters]);
 
   const getChildCount = (chapterId: string) =>
     chapters.filter((chapter) => chapter.parent_id === chapterId).length;
@@ -1350,7 +1353,7 @@ export default function LecturerQuestions() {
                     )
                     .map((chapter) => (
                       <SelectItem key={chapter.id} value={chapter.id}>
-                        {chapter.name}
+                        {chapterPath(chapter.id,chaptersById,8)}
                       </SelectItem>
                     ))}
                 </SelectContent>

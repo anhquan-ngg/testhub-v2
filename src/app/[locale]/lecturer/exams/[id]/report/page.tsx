@@ -5,7 +5,7 @@ import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 
 import { useParams } from "next/navigation";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAppSelector } from "@/store/hook";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,7 @@ type ReportSubmission = {
 
 export default function ExamReportPage() {
   const t = useTranslations("lecturer.examReport");
+  const regrading = useTranslations("shared.regrading");
   const params = useParams();
   const router = useRouter();
   const examId = params.id as string;
@@ -397,6 +398,13 @@ export default function ExamReportPage() {
                           >
                             <Printer className="h-4 w-4" />
                           </Button>
+                          {userRole === "LECTURER" && (
+                            <Button asChild variant="outline" size="sm">
+                              <Link href={`/lecturer/exams/${examId}/report/${sub.id}/grade`}>
+                                {regrading("open")}
+                              </Link>
+                            </Button>
+                          )}
                           {!isAdmin && exam.practice === false && sub.student?.id && (
                             <Button
                               variant="ghost"

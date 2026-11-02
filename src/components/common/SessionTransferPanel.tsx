@@ -37,9 +37,7 @@ export default function SessionTransferPanel({ examId }: { examId?: string }) {
             ? error.response?.status
             : undefined;
           if (status === 403) setRequests([]);
-          setError(
-            status === 403 ? "forbidden" : status === undefined || status >= 500 ? "network" : false,
-          );
+          setError(status === 403 ? "forbidden" : "network");
         }
       }
     },
@@ -71,9 +69,7 @@ export default function SessionTransferPanel({ examId }: { examId?: string }) {
         await load();
         setTarget(null);
       } else {
-        setError(
-          status === 403 ? "forbidden" : status === undefined || status >= 500 ? "network" : false,
-        );
+        setError(status === 403 ? "forbidden" : "network");
       }
     } finally {
       setBusy(null);
