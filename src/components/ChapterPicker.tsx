@@ -24,11 +24,8 @@ export function ChapterPicker({
   const t = useTranslations("lecturer.editExam");
   const [search, setSearch] = useState(""),
     [page, setPage] = useState(0);
-  const byId = useMemo(
-    () => new Map(chapters.map((node) => [node.id, node])),
-    [chapters],
-  );
   const paths = useMemo(() => buildChapterPaths(chapters), [chapters]);
+  const { byId } = paths;
   const matches = useMemo(() => {
     if (!search.trim()) return chapters;
     const ids = paths.search(search);
@@ -41,7 +38,7 @@ export function ChapterPicker({
     <div className="space-y-2 min-w-0">
       <p
         className="break-words text-sm"
-        title={selected ? chapterPath(selected.id, byId) : undefined}
+        title={selected ? paths.get(selected.id) : undefined}
       >
         {selected
           ? chapterPath(selected.id, byId, 8)

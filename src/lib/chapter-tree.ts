@@ -22,8 +22,19 @@ export function chapterPath(
   return parts.reverse().join(" > ");
 }
 
-/** Index path searches with bounded suffixes and resolve full labels only on demand. */
-export function buildChapterPaths(chapters: ChapterNode[]) {
+type ChapterPathIndex = {
+  byId: Map<string, ChapterNode>;
+  size: number;
+  get(id: string): string | undefined;
+  search(query: string): Set<string>;
+};
+
+const pathIndexes = new WeakMap<ChapterNode[], ChapterPathIndex>();
+
+/** Share a lazy path index by array identity; replace the array when chapters change. */
+export function buildChapterPaths(chapters: ChapterNode[]): ChapterPathIndex {
+  const cached = pathIndexes.get(chapters);
+  if (cached) return cached;
   const byId = new Map(chapters.map((chapter) => [chapter.id, chapter]));
   const names = new Map(
     chapters.map((chapter) => [chapter.id, chapter.name.toLocaleLowerCase()]),
@@ -40,7 +51,8 @@ export function buildChapterPaths(chapters: ChapterNode[]) {
       roots.push(chapter);
     }
   }
-  return {
+  const index: ChapterPathIndex = {
+    byId,
     size: byId.size,
     get(id: string): string | undefined {
       if (!byId.has(id)) return undefined;
@@ -81,6 +93,8 @@ export function buildChapterPaths(chapters: ChapterNode[]) {
       return matches;
     },
   };
+  pathIndexes.set(chapters, index);
+  return index;
 }
 
 /** All ancestors with at least one bank question anywhere below them. */
@@ -92,9 +106,7 @@ export function questionBearingChapterIds(
     ids = new Set<string>();
   for (const question of questions) {
     let id = question.chapter_id;
-    const seen = new Set<string>();
-    while (id && !seen.has(id)) {
-      seen.add(id);
+    while (id && !ids.has(id)) {
       const node = byId.get(id);
       if (!node) break;
       ids.add(id);

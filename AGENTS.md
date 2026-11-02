@@ -5,7 +5,7 @@
 - Use lib/chapter-tree.ts for iterative arbitrary-depth breadcrumbs and ancestor question visibility; avoid recursive rendering/traversal of unbounded trees.
 - Exam BY_CHAPTER rows store one chapter_id and include all descendants. ChapterPicker searches full paths and pages rendered options; truncating labels must never change stored IDs.
 - Backend handles globally distinct question allocation across overlapping branches and returns CHAPTER_DISTRIBUTION_INSUFFICIENT when quotas cannot all be filled.
-- Run node scripts/check-chapter-tree.cjs for deep-tree and bounded-render checks. Backend contract: ../testhub-v2-backend/docs/chapter-hierarchy.md.
+- Verify deep-tree traversal, bounded rendering and saved chapter selections under section 7. Existing node scripts/check-chapter-tree.cjs provides only partial evidence; source/AST assertions do not prove behavior. Backend contract: ../testhub-v2-backend/docs/chapter-hierarchy.md.
 
 ## Knowledge matrix authoring (2026-10-25)
 
@@ -102,7 +102,7 @@ Giao diện web của hệ thống thi trực tuyến TestHub cho ba vai trò `A
 | Enum dùng chung | `src/types/backend-enums.ts`, đồng bộ giá trị với schema Prisma ở backend |
 | Package manager | npm (`package-lock.json`) |
 
-Chưa có framework test (không có Jest/Vitest/Playwright, không có file test).
+Chưa cấu hình framework test (Jest/Vitest/Playwright) hay package script `test`/`test:e2e`. Có các script kiểm tra trong `scripts/`; phạm vi và giới hạn sử dụng được quy định ở mục 7.
 
 ## 2. Cấu trúc thư mục quan trọng
 
@@ -170,7 +170,7 @@ Chạy tại thư mục gốc repo.
 
 - Ngôn ngữ: `vi` (mặc định, nguồn chuẩn) và `en`. Trang nằm dưới `src/app/[locale]/`; URL chưa có tiền tố được proxy chuyển hướng theo cookie/ngôn ngữ trình duyệt. `roleBasedRoutes` so khớp đường dẫn sau khi bỏ tiền tố locale.
 - Cấu hình: `src/i18n/config.ts` (danh sách locale, tên cookie), `src/i18n/routing.ts` (routing), `src/i18n/request.ts` (nạp message theo segment locale), `src/i18n/navigation.ts` (Link, router, pathname có locale), plugin trong `next.config.ts`. `RootLayout` bọc `NextIntlClientProvider` và đặt `<html lang>`.
-- Message nằm trong `src/messages/vi` và `src/messages/en`, chia theo `shared`, `public`, `admin`, `student`, `lecturer` và trang. Hai locale phải **cùng cấu trúc key**; chạy `node scripts/check-i18n.cjs` để kiểm tra. Key được kiểm tra kiểu theo `src/messages/vi/index.ts` (`src/types/next-intl.d.ts`), nên `t("sai.key")` báo lỗi khi typecheck.
+- Message nằm trong `src/messages/vi` và `src/messages/en`, chia theo `shared`, `public`, `admin`, `student`, `lecturer` và trang. Hai locale phải **cùng cấu trúc key**; khi sửa message, chạy công cụ có sẵn `node scripts/check-i18n.cjs` để kiểm tra key, placeholder và cú pháp ICU, không coi đây là kiểm tra hành vi hay giao diện. Key được kiểm tra kiểu theo `src/messages/vi/index.ts` (`src/types/next-intl.d.ts`), nên `t("sai.key")` báo lỗi khi typecheck.
 - Dùng trong component: `const t = useTranslations("namespace")` (Client Component) hoặc `await getTranslations("namespace")` (Server Component). Không hardcode chuỗi giao diện; thêm key vào cả hai file. Chuỗi có số lượng dùng ICU (`{count, plural, one {…} other {…}}`).
 - Enum backend → nhãn: dùng `useEnumLabels()` (`src/i18n/useEnumLabels.ts`, namespace `enums`). File `src/lib/constansts.ts` (map nhãn tiếng Việt cũ) đã bị xóa.
 - Nhãn menu: `nav-items.ts` chỉ giữ `labelKey` (namespace `nav`), component dịch lúc render.
@@ -200,15 +200,38 @@ Không có `.env.example`. Biến được đọc trong code: `NEXT_PUBLIC_API_U
 
 ## 7. Kiểm tra cần chạy theo phạm vi thay đổi
 
+### Nguyên tắc kiểm chứng
+
+- **Không tạo script xác minh dùng một lần** như `check_*.js`, `verify_*.js`, `validate_*.js` hoặc file tương đương dù đổi tên, ngôn ngữ hay thư mục. Không chuyển chúng sang thư mục tạm để lách quy tắc.
+- Không dùng script chỉ tìm chuỗi trong source, đếm đoạn code hoặc sao chép logic triển khai để kết luận tính năng đúng. Tìm kiếm source/AST được phép cho điều tra, không thay thế kiểm tra hành vi quan sát được.
+- Ưu tiên công cụ và package scripts có sẵn. Trước khi chọn lệnh, đọc `package.json`, `package-lock.json`, cấu hình Next.js, TypeScript, lint và test hiện tại; không tự đoán lệnh hoặc suy ra framework test từ dependency bắc cầu. Chạy kiểm tra tập trung trước, mở rộng khi ảnh hưởng code dùng chung, routing, cấu hình hoặc nhiều package/repo liên quan.
+- Với thay đổi nhỏ về text/giao diện: lint theo file, kiểm tra giao diện bằng trình duyệt/công cụ sẵn có, typecheck khi liên quan types/props. Không thêm test chỉ khẳng định chuỗi CSS hay cấu trúc triển khai nội bộ.
+- Với thay đổi hành vi/sửa bug: cập nhật test liên quan hoặc thêm regression test có giá trị theo framework và convention hiện có, kiểm tra kết quả quan sát được cùng trường hợp lỗi/biên phù hợp. Quy tắc này không cấm file test chính thức hay công cụ được duy trì có chủ đích; không dùng danh nghĩa đó để hợp thức hóa script dùng một lần.
+- Với API, authentication, authorization hoặc luồng nhiều bước: dùng integration/E2E phù hợp nếu có, gồm cả trường hợp bị từ chối (chưa đăng nhập, hết phiên, sai quyền). Đối chiếu source/contract và build thành công không chứng minh nghiệp vụ đúng.
+- Không tự cài framework test cho thay đổi nhỏ. Nếu thiếu công cụ hoặc môi trường kiểm tra, nêu rõ khoảng trống và các bước xác minh thủ công cụ thể (điều kiện, thao tác, kết quả mong đợi); không tạo script tạm để che giấu khoảng trống.
+- Next.js hiện khóa ở **16.1.1**, dùng **App Router** (`src/app/`); xác định lại phiên bản/router khi cấu hình thay đổi và giữ đúng ranh giới Server/Client Component. Dùng ESLint riêng: không mặc định `next lint` tồn tại hoặc `next build` đã chạy lint (Next.js 16 không chạy lint trong build). Không tắt typecheck, bỏ qua lỗi build hay nới lint để làm kiểm tra pass.
+- Không chạy lại kiểm tra tốn thời gian khi chưa có thay đổi hoặc bằng chứng mới cần kiểm chứng. Chạy test ở chế độ kết thúc sau một lượt theo runner thực tế; không để watch chạy ngoài ý muốn.
+- Các script có sẵn trong `scripts/` chỉ cung cấp bằng chứng đúng phạm vi chúng thực sự kiểm tra. Kiểm tra key/ICU không chứng minh giao diện đúng; assertion source/AST không chứng minh hành vi đúng. Không xóa hoặc viết lại script có sẵn chỉ vì tên file, và không nhân rộng chúng thành script dùng một lần mới.
+
+### Chọn kiểm tra theo thay đổi
+
 | Phạm vi | Kiểm tra tối thiểu |
 | --- | --- |
-| Chỉ tài liệu | Không cần build/test; rà lại đường dẫn và lệnh được nhắc tới |
-| Component/trang | `npx tsc --noEmit --incremental false` + `npx eslint <file đã sửa>` |
-| `src/proxy.ts`, `api-client.ts`, auth, socket | Typecheck + lint; kiểm tra thủ công luồng login/refresh/logout với backend local nếu có thể |
-| Endpoint / contract | Typecheck + đối chiếu controller backend (`../testhub-v2-backend/src/**/*.controller.ts`) |
-| Trước khi bàn giao thay đổi lớn | `npm run lint` + `npm run build` |
+| Chỉ tài liệu | Không cần build/test; rà lại đường dẫn, lệnh và diff |
+| Text/giao diện nhỏ | `npm run lint -- <file code đã sửa>`; kiểm tra giao diện nếu có công cụ; typecheck khi liên quan types/props; sửa message thì chạy kiểm tra key/ICU ở mục 4a |
+| Component/trang có đổi hành vi | `npx tsc --noEmit --incremental false` + lint theo file; test hành vi/regression theo công cụ hiện có, hoặc ghi rõ khoảng trống và bước kiểm tra thủ công |
+| `src/proxy.ts`, `api-client.ts`, auth, socket | Typecheck + lint; integration/E2E nếu có, nếu thiếu thì kiểm tra thủ công login/refresh/logout với backend local, gồm lỗi/hết phiên/sai quyền và phục hồi |
+| Endpoint / contract, luồng nhiều bước | Typecheck + lint + đối chiếu controller/DTO backend (`../testhub-v2-backend/src/`); integration/E2E nếu có cho luồng thành công và bị từ chối, hoặc bước kiểm tra thủ công cụ thể |
+| Code dùng chung, routing, cấu hình, nhiều package/repo hoặc thay đổi lớn | Mở rộng lint/typecheck và kiểm tra hành vi tới các nơi bị ảnh hưởng; `npm run lint` + `npm run build` khi cần kiểm tra toàn ứng dụng, không thay thế test nghiệp vụ |
 
-Lint toàn repo hiện đang có lỗi tồn đọng (xem `CONTINUITY.md`); đánh giá theo file đã sửa thay vì yêu cầu toàn repo sạch. Ghi kết quả thực tế vào `CONTINUITY.md`; không báo pass khi chưa chạy.
+Repo hiện chưa có test runner, script `test`/`test:e2e` hay cấu hình integration/E2E; không tự chạy các lệnh đó. Ví dụ khi thiếu E2E cho luồng được sửa: dùng backend local và tài khoản thử đúng vai trò, thực hiện luồng từ đầu tới cuối và đối chiếu UI/response mong đợi; lặp lại khi chưa đăng nhập/hết phiên/sai vai trò, xác nhận không đọc hoặc ghi được dữ liệu trái quyền. Báo rõ nếu thiếu backend/tài khoản nên chưa thực hiện được; điều chỉnh các bước theo tính năng thực tế.
+
+Lint toàn repo hiện đang có lỗi tồn đọng (xem `CONTINUITY.md`); phân biệt lỗi có sẵn với lỗi do thay đổi, không yêu cầu dọn lỗi ngoài phạm vi hoặc nới rule để pass. CI chạy lint riêng với `continue-on-error: true`, nên CI/build xanh không đồng nghĩa lint sạch.
+
+### Trước khi hoàn tất
+
+- Kiểm tra `git diff`, diff staged nếu có và `git status --short --untracked-files=all`. Chỉ dọn artifact không cần thiết do chính agent tạo trong nhiệm vụ hiện tại; không xóa hàng loạt theo tên `check_*` hay xóa/sửa file có sẵn của người dùng.
+- Báo cáo ngắn gọn thay đổi, **lệnh thực sự đã chạy**, kết quả và phần chưa xác minh (kèm bước kiểm tra thủ công khi thiếu công cụ). Không tuyên bố đã test hoặc kiểm tra giao diện nếu chưa thực hiện. Cập nhật `CONTINUITY.md` theo phạm vi ở mục 0, không ghi pass suy đoán.
 
 ## 8. An toàn: secrets, dữ liệu, môi trường thật
 

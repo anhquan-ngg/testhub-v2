@@ -24,6 +24,7 @@ import StudentMenu from "@/components/common/student/menu";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useAppSelector } from "@/store/hook";
 import {
+  calculateScorePerQuestion,
   calculateTotalQuesions,
   parseOptions,
 } from "@/lib/exam-utils";
@@ -249,14 +250,16 @@ export default function ResultDetailPage({ params }: PageProps) {
   useEffect(() => {
     let active = true;
     let generation = 0;
+    let hasSubmission = false;
     let controller: AbortController | null = null;
     const fetchSubmission = async (background = false) => {
       if (!id) return;
+      const silent = background && hasSubmission;
       const version = ++generation;
       controller?.abort();
       const abort = new AbortController();
       controller = abort;
-      if (!background) {
+      if (!silent) {
         setIsLoading(true);
         setError(null);
         setSubmission(null);
@@ -266,16 +269,17 @@ export default function ResultDetailPage({ params }: PageProps) {
           ENDPOINTS.SUBMISSIONS.DETAIL(id), { signal: abort.signal },
         );
         if (!active || version !== generation) return;
+        hasSubmission = true;
         setSubmission(response.data);
         setError(null);
       } catch (err) {
         if (!active || version !== generation || abort.signal.aborted) return;
-        if (!background) {
+        if (!silent) {
           setError(err);
           setSubmission(null);
         }
       } finally {
-        if (active && version === generation) setIsLoading(false);
+        if (!silent && active && version === generation) setIsLoading(false);
       }
     };
     fetchSubmissionRef.current = fetchSubmission;
@@ -551,7 +555,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                               className="font-semibold border-gray-300 text-gray-900 bg-white"
                             >
                               {(
-                                (10 / (submission.questions?.length || 1)) *
+                                calculateScorePerQuestion(submission) *
                                 Number(sq.score ?? 0)
                               ).toFixed(2)}{" "}
                               {t("point")}</Badge>

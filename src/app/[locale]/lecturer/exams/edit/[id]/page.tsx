@@ -267,8 +267,11 @@ export default function EditExamPage({ params }: EditExamPageProps) {
   const [nextRowId, setNextRowId] = useState(2);
   const chapterOptions = useMemo(() => {
     const bearing = questionBearingChapterIds(chapters, questionBank);
-    return chapters.filter((chapter) => bearing.has(chapter.id));
-  }, [chapters, questionBank]);
+    const selected = new Set(configRows.map((row) => row.chapter_id));
+    return chapters.filter(
+      (chapter) => bearing.has(chapter.id) || selected.has(chapter.id),
+    );
+  }, [chapters, questionBank, configRows]);
   const resolveChapterSelection = useCallback(
     (chapterId?: string) => ({ chapter_id: chapterId ?? ALL_CHAPTERS_VALUE }),
     [],
