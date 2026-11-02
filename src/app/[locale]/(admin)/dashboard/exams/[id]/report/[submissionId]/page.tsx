@@ -31,6 +31,8 @@ import {
 } from "@/lib/exam-utils";
 import { toast } from "sonner";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { ratingClass } from "@/lib/exam-style";
+import { questionTypeClass } from "@/lib/regrading";
 
 // Helper function to calculate time taken
 function calculateTimeTaken(
@@ -168,21 +170,6 @@ export default function AdminResultDetailPage() {
       : t("minutes", duration)
     : "N/A";
 
-  const getRatingColor = (rating: string | null) => {
-    switch (rating) {
-      case "EXCELLENT":
-        return "bg-green-500";
-      case "GOOD":
-        return "bg-blue-500";
-      case "AVERAGE":
-        return "bg-yellow-500";
-      case "POOR":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
   return (
     <div className="space-y-6 max-w-5xl mx-auto print:p-0">
       {/* Action Buttons */}
@@ -205,7 +192,7 @@ export default function AdminResultDetailPage() {
       </div>
 
       {/* Student & Exam Info Header */}
-      <Card className="shadow-lg bg-white border border-gray-300 overflow-hidden">
+      <Card className="overflow-hidden border-gray-300 bg-white shadow-sm">
         <div className="bg-[#0066cc] p-6 text-white">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-4">
@@ -214,9 +201,9 @@ export default function AdminResultDetailPage() {
                   <User className="w-7 h-7" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold">
+                  <h2 className="text-2xl font-bold">
                     {submission.student?.full_name}
-                  </h1>
+                  </h2>
                   <div className="flex items-center gap-2 text-blue-100 text-sm">
                     <Mail className="w-3.5 h-3.5" />
                     {submission.student?.email}
@@ -239,9 +226,8 @@ export default function AdminResultDetailPage() {
                   <span className="text-sm">
                     {t("rating")}{" "}
                     <Badge
-                      className={`${getRatingColor(
-                        submission.rating,
-                      )} border-none text-white ml-1`}
+                      variant="outline"
+                      className={`${ratingClass(submission.rating)} ml-1`}
                     >
                       {submission.rating || "N/A"}
                     </Badge>
@@ -265,7 +251,7 @@ export default function AdminResultDetailPage() {
         <CardContent className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <Clock className="w-5 h-5 text-blue-600" />
+              <Clock className="w-5 h-5 text-sky-600" />
               <div>
                 <p className="text-xs text-gray-500 uppercase font-bold tracking-tight">
                   {t("timeToDoHomework")}</p>
@@ -274,7 +260,7 @@ export default function AdminResultDetailPage() {
             </div>
 
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <CheckCircle className="w-5 h-5 text-green-600" />
+              <CheckCircle className="w-5 h-5 text-emerald-600" />
               <div>
                 <p className="text-xs text-gray-500 uppercase font-bold tracking-tight">
                   {t("status")}</p>
@@ -287,7 +273,7 @@ export default function AdminResultDetailPage() {
             </div>
 
             <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <FileText className="w-5 h-5 text-blue-600" />
+              <FileText className="w-5 h-5 text-violet-600" />
               <div>
                 <p className="text-xs text-gray-500 uppercase font-bold tracking-tight">
                   {t("numberOfQuestions")}</p>
@@ -303,8 +289,8 @@ export default function AdminResultDetailPage() {
       {/* Questions Detail */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-blue-600" />
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-neutral-900">
+            <CheckCircle className="w-5 h-5 text-[#0066cc]" />
             {t("detailedAnswer")}</h2>
         </div>
 
@@ -315,10 +301,10 @@ export default function AdminResultDetailPage() {
           return (
             <Card
               key={sq.id}
-              className={`border-2 shadow-sm ${
+              className={`border shadow-sm ${
                 sq.is_correct
-                  ? "border-green-200 bg-green-100/70"
-                  : "border-red-200 bg-red-100/70"
+                  ? "border-emerald-200 bg-emerald-50/60"
+                  : "border-red-200 bg-red-50/60"
               }`}
             >
               <CardHeader className="pb-3">
@@ -327,12 +313,24 @@ export default function AdminResultDetailPage() {
                     <span className="font-bold text-gray-900 text-lg">
                       {t("questionNumber", { number: index + 1 })}
                     </span>
+                    <Badge
+                      variant="outline"
+                      className={questionTypeClass(sq.question.question_type)}
+                    >
+                      {sq.question.question_type}
+                    </Badge>
                     {sq.is_correct ? (
-                      <Badge className="bg-green-500 text-white hover:bg-green-500">
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                      >
                         <CheckCircle className="w-3.5 h-3.5 mr-1" />
                         {t("correct")}</Badge>
                     ) : (
-                      <Badge className="bg-red-500 text-white hover:bg-red-500">
+                      <Badge
+                        variant="outline"
+                        className="border-red-200 bg-red-50 text-red-700"
+                      >
                         <XCircle className="w-3.5 h-3.5 mr-1" />
                         {t("incorrect")}
                       </Badge>
@@ -367,16 +365,16 @@ export default function AdminResultDetailPage() {
               <CardContent className="pt-0">
                 {sq.question.question_type === "ESSAY" ? (
                   <div className="space-y-3">
-                    <div className="p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                      <p className="text-xs font-bold text-gray-400 uppercase mb-2">
+                    <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-4 shadow-sm">
+                      <p className="mb-2 text-xs font-bold uppercase text-sky-700">
                         {t("studentAnswers")}</p>
                       <p className="text-gray-700 whitespace-pre-wrap">
                         {sq.answer || t("noAnswer")}
                       </p>
                     </div>
                     {sq.question.correct_answer && (
-                      <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                        <p className="text-xs font-bold text-green-700 uppercase mb-2">
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                        <p className="mb-2 text-xs font-bold uppercase text-emerald-700">
                           {t("sampleAnswer")}</p>
                         <div className="text-gray-700">
                           <MathRenderer content={sq.question.correct_answer} />
@@ -393,17 +391,17 @@ export default function AdminResultDetailPage() {
                       );
                       const isCorrect = option.isCorrect === true;
 
-                      let borderClass = "border-gray-100";
+                      let borderClass = "border-gray-200";
                       let bgClass = "bg-white";
                       let textColor = "text-gray-700";
                       let checkIcon = null;
 
                       if (isCorrect) {
-                        borderClass = "border-green-400";
-                        bgClass = "bg-green-50";
-                        textColor = "text-green-900";
+                        borderClass = "border-emerald-400";
+                        bgClass = "bg-emerald-50";
+                        textColor = "text-emerald-900";
                         checkIcon = (
-                          <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                         );
                       }
 
@@ -424,7 +422,7 @@ export default function AdminResultDetailPage() {
                             <div className="flex-shrink-0">
                               <Badge
                                 variant="outline"
-                                className="text-xs font-bold border-gray-300 text-gray-900 bg-white px-3 py-1 rounded-full whitespace-nowrap"
+                                className="whitespace-nowrap rounded-full border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700"
                               >
                                 {t("candidatesChoose")}</Badge>
                             </div>

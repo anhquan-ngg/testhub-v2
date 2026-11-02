@@ -5,7 +5,9 @@
     "account": "Tài khoản",
     "overview": "Tổng quan",
     "examManagement": "Quản lý bài thi",
-    "questionBank": "Ngân hàng câu hỏi"
+    "questionBank": "Ngân hàng câu hỏi",
+    "scoreAnalytics": "Phân tích điểm",
+    "userManagement": "Quản lý người dùng"
   },
   "layout": {
     "openNavigation": "Mở menu điều hướng",
@@ -17,6 +19,9 @@
     "lecturerMenu": "Menu điều hướng giảng viên",
     "defaultStudentName": "Học viên",
     "defaultLecturerName": "Giảng viên",
+    "adminMenu": "Menu điều hướng quản trị viên",
+    "defaultAdminName": "Quản trị viên",
+    "adminPortal": "Admin Portal",
     "profile": "Thông tin cá nhân"
   }
 }

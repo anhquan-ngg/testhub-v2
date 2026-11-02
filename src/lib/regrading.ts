@@ -28,6 +28,17 @@ export function regradeTotal(scores: RegradeScore[]): number {
   return scores.length ? scores.reduce((sum, item) => sum + item.score, 0) * 10 / scores.length : 0;
 }
 
+const QUESTION_TYPE_CLASSES: Record<string, string> = {
+  SINGLE_CHOICE: "border-indigo-200 bg-indigo-50 text-indigo-700",
+  MULTIPLE_CHOICE: "border-violet-200 bg-violet-50 text-violet-700",
+  ESSAY: "border-orange-200 bg-orange-50 text-orange-700",
+};
+
+/** Badge colors per question type; unknown types fall back to neutral gray. */
+export function questionTypeClass(type: string): string {
+  return QUESTION_TYPE_CLASSES[type] ?? "border-gray-200 bg-gray-50 text-gray-700";
+}
+
 export type RegradeOption = { text: string; isCorrect: boolean };
 
 /** Parse option JSON defensively without rendering untrusted HTML. */

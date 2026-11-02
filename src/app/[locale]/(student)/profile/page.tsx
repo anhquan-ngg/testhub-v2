@@ -301,7 +301,7 @@ export default function StudentProfile() {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Profile Picture Card */}
-              <Card className="shadow-lg bg-white border-gray-300">
+              <Card className="shadow-sm bg-white border-gray-300">
                 <CardContent className="p-6 flex flex-col items-center space-y-4">
                   <div className="relative">
                     <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300 overflow-hidden">
@@ -341,10 +341,10 @@ export default function StudentProfile() {
               </Card>
 
               {/* Tests Completed Card */}
-              <Card className="shadow-lg bg-white border-gray-300">
+              <Card className="shadow-sm bg-white border-gray-300">
                 <CardContent className="p-6 flex flex-col items-center justify-center space-y-6">
-                  <div className="w-16 h-16 rounded-full bg-teal-100 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-teal-600">
+                  <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                    <span className="text-2xl font-bold text-emerald-700">
                       {submissionCount || 0}
                     </span>
                   </div>
@@ -353,10 +353,10 @@ export default function StudentProfile() {
               </Card>
 
               {/* Tests To Do Card */}
-              <Card className="shadow-lg bg-white border-gray-300">
+              <Card className="shadow-sm bg-white border-gray-300">
                 <CardContent className="p-6 flex flex-col items-center justify-center space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
-                    <span className="text-2xl font-bold text-orange-500">
+                  <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center">
+                    <span className="text-2xl font-bold text-amber-700">
                       {isPendingCountIncomplete ? "—" : pendingExamsCount}
                     </span>
                   </div>
@@ -371,9 +371,9 @@ export default function StudentProfile() {
             {/* Profile Information Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Personal Information Form */}
-              <Card className="shadow-lg bg-white border-gray-300">
+              <Card className="shadow-sm bg-white border-gray-300">
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-6">
                     {t("personalInformation")}</h3>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
@@ -438,7 +438,7 @@ export default function StudentProfile() {
 
                     <Button
                       type="submit"
-                      className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer"
+                      className="w-full bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
                     >
                       {t("updateInformation")}</Button>
                   </form>
@@ -446,9 +446,9 @@ export default function StudentProfile() {
               </Card>
 
               {/* Change Password Form */}
-              <Card className="shadow-lg bg-white border-gray-300">
+              <Card className="shadow-sm bg-white border-gray-300">
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-6">
                     {t("changePassword")}</h3>
                   <form onSubmit={handlePasswordSubmit} className="space-y-4">
                     <div className="space-y-2">
@@ -548,7 +548,7 @@ export default function StudentProfile() {
 
                     <Button
                       type="submit"
-                      className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer"
+                      className="w-full bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
                     >
                       {t("changePassword")}</Button>
                   </form>

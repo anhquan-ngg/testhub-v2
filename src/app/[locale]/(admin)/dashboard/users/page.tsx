@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -64,6 +63,7 @@ import {
 import { useEnumLabels } from "@/i18n/useEnumLabels";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { userRoleClass } from "@/lib/exam-style";
 
 type PageResult<T> = {
   data: T[];
@@ -209,8 +209,11 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900">{t("userManagement")}</h2>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-bold text-neutral-900">{t("userManagement")}</h2>
+          <p className="mt-1 text-sm text-neutral-500">{t("addEditDeleteAndChangeUser")}</p>
+        </div>
         <Dialog>
           <DialogTrigger asChild>
             <Button className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer">
@@ -327,20 +330,16 @@ export default function UsersPage() {
         </Dialog>
       </div>
 
-      <Card className="bg-white border-gray-300">
+      <Card className="border-gray-300 bg-white shadow-sm">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>{t("listOfAccounts")}</CardTitle>
-              <CardDescription>
-                {t("addEditDeleteAndChangeUser")}</CardDescription>
-            </div>
-          </div>
+          <CardTitle className="text-lg font-semibold text-neutral-900">
+            {t("listOfAccounts")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4 flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground text-gray-500" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
               <Input
                 placeholder={t("searchForUsers")}
                 className="pl-10 border-gray-300 bg-white w-full"
@@ -387,9 +386,10 @@ export default function UsersPage() {
             </div>
           </div>
           {isLoading && <div className="flex justify-center py-4"><Spinner /></div>}
+          <div className="overflow-x-auto rounded-lg border border-gray-300 bg-white">
           <Table>
             <TableHeader>
-              <TableRow className="border-gray-300">
+              <TableRow className="border-gray-300 bg-gray-50">
                 <TableHead>{t("fullName")}</TableHead>
                 <TableHead>{t("email")}</TableHead>
                 <TableHead>{t("phoneNumber")}</TableHead>
@@ -406,15 +406,7 @@ export default function UsersPage() {
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user?.phone || t("notUpdatedYet")}</TableCell>
                   <TableCell>
-                    <Badge
-                      className={`px-2 py-1 text-white rounded-lg ${
-                        user.role === "ADMIN"
-                          ? "text-red-500 bg-red-100"
-                          : user.role === "LECTURER"
-                            ? "text-green-500 bg-green-100"
-                            : "text-blue-500 bg-blue-100"
-                      }`}
-                    >
+                    <Badge variant="outline" className={userRoleClass(user.role)}>
                       {enumLabel.userRole(user.role)}
                     </Badge>
                   </TableCell>
@@ -428,7 +420,7 @@ export default function UsersPage() {
                             onClick={() =>
                               setSelectedRole(user.role as UserRole)
                             }
-                            className="hover:cursor-pointer"
+                            className="text-[#0066cc] hover:bg-sky-50 hover:text-[#0052a3] hover:cursor-pointer"
                           >
                             <UserCog className="h-4 w-4" />
                           </Button>
@@ -509,6 +501,7 @@ export default function UsersPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           {totalPages > 0 && (
             <div className="flex items-center justify-end space-x-2 py-4">

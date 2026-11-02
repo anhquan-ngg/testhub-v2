@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -28,6 +27,8 @@ import { toast } from "sonner";
 import { parseOptions } from "@/lib/exam-utils";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { questionFormatClass } from "@/lib/exam-style";
+import { questionTypeClass } from "@/lib/regrading";
 
 type PageResult<T> = {
   data: T[];
@@ -81,22 +82,21 @@ export default function QuestionsPage() {
 
   return (
     <div className="space-y-6 w-full max-w-full overflow-hidden">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900">{t("questionBank")}</h2>
+      <div>
+        <h2 className="text-2xl font-bold text-neutral-900">{t("questionBank")}</h2>
+        <p className="mt-1 text-sm text-neutral-500">{t("seeListOfQuestionsInThe")}</p>
       </div>
 
-      <Card className="bg-white border-gray-300">
+      <Card className="border-gray-300 bg-white shadow-sm">
         <CardHeader>
-          <div>
-            <CardTitle>{t("questionBank")}</CardTitle>
-            <CardDescription>
-              {t("seeListOfQuestionsInThe")}</CardDescription>
-          </div>
+          <CardTitle className="text-lg font-semibold text-neutral-900">
+            {t("questionBank")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
               <Input
                 placeholder={t("searchQuestions")}
                 className="pl-10 bg-white border-gray-300"
@@ -109,10 +109,10 @@ export default function QuestionsPage() {
             </div>
           </div>
 
-          <div className="w-full">
+          <div className="w-full overflow-x-auto rounded-lg border border-gray-300 bg-white">
             <Table className="w-full table-fixed">
               <TableHeader>
-                <TableRow className="border-gray-300">
+                <TableRow className="border-gray-300 bg-gray-50">
                   <TableHead className="w-[30%]">{t("question")}</TableHead>
                   <TableHead className="w-[10%]">{t("creator")}</TableHead>
                   <TableHead className="w-[10%]">{t("topic")}</TableHead>
@@ -137,28 +137,16 @@ export default function QuestionsPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        className={`px-2 py-1 text-white rounded-lg ${
-                          question.question_type === "SINGLE_CHOICE"
-                            ? "text-red-500 bg-red-100"
-                            : question.question_type === "MULTIPLE_CHOICE"
-                              ? "text-green-500 bg-green-100"
-                              : "text-blue-500 bg-blue-100"
-                        }`}
+                        variant="outline"
+                        className={questionTypeClass(question.question_type)}
                       >
                         {enumLabel.questionType(question.question_type)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        className={`px-2 py-1 text-white rounded-lg ${
-                          question.question_format === "ADVANCED"
-                            ? "text-red-500 bg-red-100"
-                            : question.question_format === "APPLYING"
-                              ? "text-orange-500 bg-orange-100"
-                              : question.question_format === "UNDERSTANDING"
-                                ? "text-green-500 bg-green-100"
-                                : "text-blue-500 bg-blue-100"
-                        }`}
+                        variant="outline"
+                        className={questionFormatClass(question.question_format)}
                       >
                         {enumLabel.questionFormat(question.question_format)}
                       </Badge>

@@ -76,17 +76,17 @@ export default function SessionTransferPanel({ examId }: { examId?: string }) {
     }
   };
   return (
-    <section className="space-y-3 rounded-xl border bg-white p-4">
-      <h3 className="font-semibold">{t("staffTitle")}</h3>
-      <p className="text-sm text-muted-foreground">{t("staffDescription")}</p>
-      {error && <p role="alert">{t(error === "forbidden" ? "forbidden" : "networkError")}</p>}
-      {!error && !requests.length && <p className="text-sm">{t("noRequests")}</p>}
+    <section className="space-y-3 rounded-lg border border-gray-300 bg-white p-4 shadow-sm">
+      <h3 className="text-base font-semibold text-neutral-900">{t("staffTitle")}</h3>
+      <p className="text-sm text-neutral-500">{t("staffDescription")}</p>
+      {error && <p role="alert" className="text-sm text-red-600">{t(error === "forbidden" ? "forbidden" : "networkError")}</p>}
+      {!error && !requests.length && <p className="text-sm text-neutral-500">{t("noRequests")}</p>}
       {requests.map((request) => (
         <div
           key={request.id}
-          className="flex items-center justify-between gap-3 border-t pt-3"
+          className="flex items-center justify-between gap-3 border-t border-gray-200 pt-3"
         >
-          <span>{request.user.full_name}</span>
+          <span className="text-sm font-medium text-neutral-900">{request.user.full_name}</span>
           <Button
             variant="outline"
             disabled={Boolean(busy) || Boolean(request.approved_at)}
@@ -100,10 +100,10 @@ export default function SessionTransferPanel({ examId }: { examId?: string }) {
         <div
           role="alertdialog"
           aria-label={t("approve")}
-          className="space-y-3 rounded border p-4"
+          className="space-y-3 rounded-lg border border-amber-200 bg-amber-50/60 p-4"
         >
-          <p>{t("approveDescription", { name: target.user.full_name })}</p>
-          <Button disabled={Boolean(busy)} onClick={() => void approve()}>
+          <p className="text-sm text-neutral-700">{t("approveDescription", { name: target.user.full_name })}</p>
+          <Button className="bg-[#0066cc] hover:bg-[#0052a3]" disabled={Boolean(busy)} onClick={() => void approve()}>
             {t("approve")}
           </Button>{" "}
           <Button

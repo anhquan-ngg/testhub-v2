@@ -3,6 +3,7 @@
   "open": "Regrade submission",
   "back": "Back to report",
   "reload": "Reload current workspace",
+  "retry": "Retry",
   "loading": "Loading grading workspace…",
   "saving": "Saving private draft…",
   "publishing": "Publishing saved grades…",

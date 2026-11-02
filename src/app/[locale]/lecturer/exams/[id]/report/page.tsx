@@ -241,15 +241,15 @@ export default function ExamReportPage() {
   const getRatingColor = (rating: string | null) => {
     switch (rating) {
       case "EXCELLENT":
-        return "bg-green-500";
+        return "border-emerald-200 bg-emerald-50 text-emerald-700";
       case "GOOD":
-        return "bg-blue-500";
+        return "border-sky-200 bg-sky-50 text-sky-700";
       case "AVERAGE":
-        return "bg-yellow-500";
+        return "border-amber-200 bg-amber-50 text-amber-700";
       case "POOR":
-        return "bg-red-500";
+        return "border-red-200 bg-red-50 text-red-700";
       default:
-        return "bg-gray-500";
+        return "border-gray-200 bg-gray-50 text-gray-700";
     }
   };
 
@@ -272,7 +272,7 @@ export default function ExamReportPage() {
   }
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto print:p-0">
+    <div className="space-y-6 print:p-0">
       {isLoadingSubmissions && (
         <Loader2
           className="h-6 w-6 animate-spin"
@@ -291,9 +291,9 @@ export default function ExamReportPage() {
             <ChevronLeft className="h-4 w-4 text-gray-700" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-neutral-900">
               {t("reportingResultsLecturer")}</h1>
-            <p className="text-gray-500">
+            <p className="mt-1 text-sm text-neutral-500">
               {t("examSummary", { title: exam.title, count: submissions?.length || 0 })}
             </p>
           </div>
@@ -302,9 +302,9 @@ export default function ExamReportPage() {
           <Button
             onClick={handlePrintReport}
             disabled={isPrinting}
-            className="flex items-center gap-2 bg-[#0066cc] hover:bg-[#0052a3] hover:cursor-pointer text-white"
+            className="flex cursor-pointer items-center gap-1.5 bg-[#0066cc] text-white hover:bg-[#0052a3]"
           >
-            <Printer className="h-4 w-4 mr-2" />
+            <Printer className="h-4 w-4" />
             {isPrinting ? t("preparing") : t("printReport")}
           </Button>
         </div>
@@ -313,15 +313,17 @@ export default function ExamReportPage() {
       <Card className="bg-white border-gray-300 shadow-sm overflow-hidden">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <History className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-700">
+                <History className="h-4 w-4" />
+              </span>
               {t("listOfExamResults")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50/50 border-gray-300">
+              <TableRow className="bg-gray-50 border-gray-300">
                 <TableHead>{t("fullName")}</TableHead>
                 <TableHead>{t("point")}</TableHead>
                 <TableHead>{t("time")}</TableHead>
@@ -373,7 +375,8 @@ export default function ExamReportPage() {
                       </TableCell>
                       <TableCell>
                         <Badge
-                          className={`${getRatingColor(sub.rating ?? null)} text-white`}
+                          variant="outline"
+                          className={getRatingColor(sub.rating ?? null)}
                         >
                           {getRatingText(sub.rating)}
                         </Badge>
@@ -399,7 +402,7 @@ export default function ExamReportPage() {
                             <Printer className="h-4 w-4" />
                           </Button>
                           {userRole === "LECTURER" && (
-                            <Button asChild variant="outline" size="sm">
+                            <Button asChild variant="outline" size="sm" className="cursor-pointer border-gray-300 bg-white">
                               <Link href={`/lecturer/exams/${examId}/report/${sub.id}/grade`}>
                                 {regrading("open")}
                               </Link>

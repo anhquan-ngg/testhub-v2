@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -68,6 +67,7 @@ import {
 import { useAppSelector } from "@/store/hook";
 import { useSocket } from "@/components/providers/SocketProvider";
 import apiClient from "@/lib/api-client";
+import { examStatusClass, examTypeClass, registrationStatusClass } from "@/lib/exam-style";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { PrintExamDialog } from "@/components/exam-print/PrintExamDialog";
 
@@ -258,13 +258,8 @@ function StudentManagementDialog({
                     <TableCell>{reg.student?.email}</TableCell>
                     <TableCell>
                       <Badge
-                        className={`px-2 py-1 text-white rounded-lg ${
-                          reg.status === "PENDING"
-                            ? "bg-yellow-500 hover:bg-yellow-600"
-                            : reg.status === "APPROVED"
-                              ? "bg-green-500 hover:bg-green-600"
-                              : "bg-red-500 hover:bg-red-600"
-                        }`}
+                        variant="outline"
+                        className={registrationStatusClass(reg.status)}
                       >
                         {reg.status === "PENDING"
                           ? t("waiting")
@@ -398,7 +393,10 @@ export default function LecturerExams() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900">{t("examManagement")}</h2>
+        <div>
+          <h2 className="text-2xl font-bold text-neutral-900">{t("examManagement")}</h2>
+          <p className="mt-1 text-sm text-neutral-500">{t("manageAndEditExams")}</p>
+        </div>
         <Button
           onClick={() => router.push("/lecturer/exams/create")}
           className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
@@ -407,12 +405,11 @@ export default function LecturerExams() {
           {t("addTest")}</Button>
       </div>
 
-      <Card className="bg-white border-gray-300 space-y-4">
+      <Card className="bg-white border-gray-300 shadow-sm space-y-4">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>{t("yourExams")}</CardTitle>
-              <CardDescription>{t("manageAndEditExams")}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -432,9 +429,10 @@ export default function LecturerExams() {
             </div>
           </div>
 
+          <div className="overflow-x-auto rounded-lg border border-gray-300 bg-white">
           <Table>
             <TableHeader>
-              <TableRow className="border-gray-300">
+              <TableRow className="border-gray-300 bg-gray-50">
                 <TableHead>{t("testName")}</TableHead>
                 <TableHead>{t("topic")}</TableHead>
                 <TableHead>{t("begin")}</TableHead>
@@ -461,8 +459,10 @@ export default function LecturerExams() {
                       {new Date(exam.exam_end_time).toLocaleString(intlLocales[locale])}
                     </TableCell>
                     <TableCell>{t("durationMinutes", { minutes: exam.duration })}</TableCell>
-                    <TableCell className="text-xs">
-                      {exam.practice ? t("practice") : t("official")}
+                    <TableCell>
+                      <Badge variant="outline" className={examTypeClass(exam.practice)}>
+                        {exam.practice ? t("practice") : t("official")}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Select
@@ -490,11 +490,7 @@ export default function LecturerExams() {
                         }}
                       >
                         <SelectTrigger
-                          className={`h-7 w-[100px] text-xs font-medium border-0 hover:cursor-pointer ${
-                            getExamStatus(exam) === "ACTIVE"
-                              ? "bg-green-100 text-green-700 hover:bg-green-200"
-                              : "bg-red-100 text-red-700 hover:bg-red-200"
-                          }`}
+                          className={`h-7 w-[100px] border text-xs font-medium hover:cursor-pointer ${examStatusClass(getExamStatus(exam))}`}
                         >
                           <SelectValue />
                         </SelectTrigger>
@@ -640,6 +636,7 @@ export default function LecturerExams() {
               )}
             </TableBody>
           </Table>
+          </div>
 
           {totalPages > 0 && (
             <div className="flex items-center justify-end space-x-2 py-4">

@@ -581,7 +581,7 @@ export default function ExamMonitorPage() {
             [t("absent"), liveSummary.absent, "text-neutral-600"],
           ] as const
         ).map(([label, value, cls]) => (
-          <Card key={label} className="border-neutral-200">
+          <Card key={label} className="border-gray-300 bg-white shadow-sm">
             <CardContent className="px-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
                 {label}
@@ -612,7 +612,7 @@ export default function ExamMonitorPage() {
         />
       </div>
 
-      <Card className="border-neutral-200 py-0">
+      <Card className="border-gray-300 bg-white py-0 shadow-sm">
         <CardContent className="divide-y divide-neutral-100 px-0">
           {visibleRows.length === 0 ? (
             <div className="px-6 py-14 text-center text-sm text-neutral-500">

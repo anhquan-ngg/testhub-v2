@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -37,6 +36,7 @@ import {
 import { calculateTotalQuesions } from "@/lib/exam-utils";
 import { toast } from "sonner";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { ratingClass } from "@/lib/exam-style";
 
 type PageResult<T> = {
   data: T[];
@@ -161,25 +161,10 @@ export default function AdminExamReportPage() {
     return t("elapsedTime", { minutes, seconds });
   };
 
-  const getRatingColor = (rating: string | null) => {
-    switch (rating) {
-      case "EXCELLENT":
-        return "bg-green-500";
-      case "GOOD":
-        return "bg-blue-500";
-      case "AVERAGE":
-        return "bg-yellow-500";
-      case "POOR":
-        return "bg-red-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#0066cc]" />
       </div>
     );
   }
@@ -187,7 +172,7 @@ export default function AdminExamReportPage() {
   if (!exam) {
     return (
       <div className="p-8 text-center">
-        <h2 className="text-2xl font-bold">{t("noTestFound")}</h2>
+        <h2 className="text-2xl font-bold text-neutral-900">{t("noTestFound")}</h2>
         <Button
           onClick={() => router.back()}
           className="mt-4 bg-white border-gray-300"
@@ -198,7 +183,7 @@ export default function AdminExamReportPage() {
   }
 
   return (
-    <div className="p-8 space-y-6 max-w-7xl mx-auto print:p-0">
+    <div className="mx-auto max-w-7xl space-y-6 print:p-0">
       <div className="flex items-center justify-between no-print">
         <div className="flex items-center gap-4">
           <Button
@@ -210,9 +195,9 @@ export default function AdminExamReportPage() {
             <ChevronLeft className="h-4 w-4 text-gray-700" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              {t("reportResultsAdmin")}</h1>
-            <p className="text-gray-500">
+            <h2 className="text-2xl font-bold text-neutral-900">
+              {t("reportResultsAdmin")}</h2>
+            <p className="mt-1 text-sm text-neutral-500">
               {t("examSummary", { title: exam.title, count: submissions?.length || 0 })}
             </p>
           </div>
@@ -227,23 +212,24 @@ export default function AdminExamReportPage() {
         </Button>
       </div>
 
-      <Card className="bg-white border-gray-300 shadow-sm overflow-hidden">
+      <Card className="overflow-hidden border-gray-300 bg-white shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xl flex items-center gap-2">
-              <History className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-lg font-semibold text-neutral-900">
+              <History className="h-5 w-5 text-[#0066cc]" />
               {t("listOfExamResults")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
+          <div className="overflow-x-auto rounded-lg border border-gray-300 bg-white">
           <Table>
             <TableHeader>
-              <TableRow className="bg-gray-50/50 border-gray-300">
+              <TableRow className="border-gray-300 bg-gray-50">
                 <TableHead>{t("fullName")}</TableHead>
                 <TableHead>{t("point")}</TableHead>
                 <TableHead>{t("time")}</TableHead>
                 <TableHead>{t("rating")}</TableHead>
-                <TableHead className="text-green-600">
+                <TableHead className="text-emerald-600">
                   <div className="flex items-center justify-center gap-1">
                     <CheckCircle2 className="h-3 w-3" /> {t("correct")}</div>
                 </TableHead>
@@ -279,7 +265,7 @@ export default function AdminExamReportPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="font-bold text-blue-700">
+                      <TableCell className="font-bold text-[#0066cc]">
                         {Number(sub.total_score || 0).toFixed(2)}
                       </TableCell>
                       <TableCell>
@@ -289,13 +275,11 @@ export default function AdminExamReportPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          className={`${getRatingColor(sub.rating)} text-white`}
-                        >
+                        <Badge variant="outline" className={ratingClass(sub.rating)}>
                           {sub.rating || "N/A"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-semibold text-green-600 text-center">
+                      <TableCell className="font-semibold text-emerald-600 text-center">
                         {stats.correct}
                       </TableCell>
                       <TableCell className="font-semibold text-red-600 text-center">
@@ -309,7 +293,7 @@ export default function AdminExamReportPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-blue-600 hover:cursor-pointer"
+                            className="h-8 w-8 text-[#0066cc] hover:bg-sky-50 hover:cursor-pointer"
                             onClick={() =>
                               router.push(
                                 `/dashboard/exams/${examId}/report/${sub.id}`,
@@ -335,6 +319,7 @@ export default function AdminExamReportPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

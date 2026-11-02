@@ -4,6 +4,8 @@ import {
   User,
   HelpCircle,
   LayoutDashboard,
+  BarChart3,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -14,7 +16,9 @@ export type NavLabelKey =
   | "account"
   | "overview"
   | "examManagement"
-  | "questionBank";
+  | "questionBank"
+  | "scoreAnalytics"
+  | "userManagement";
 
 export type NavItem = {
   href: string;
@@ -70,3 +74,38 @@ export const lecturerNavItems: NavItem[] = [
     match: (pathname) => pathname === "/lecturer/profile",
   },
 ];
+
+export const adminNavItems: NavItem[] = [
+  {
+    href: "/dashboard",
+    labelKey: "scoreAnalytics",
+    icon: BarChart3,
+    match: (pathname) => pathname === "/dashboard",
+  },
+  {
+    href: "/dashboard/users",
+    labelKey: "userManagement",
+    icon: Users,
+    match: (pathname) => pathname.startsWith("/dashboard/users"),
+  },
+  {
+    href: "/dashboard/exams",
+    labelKey: "examManagement",
+    icon: FileText,
+    match: (pathname) => pathname.startsWith("/dashboard/exams"),
+  },
+  {
+    href: "/dashboard/questions",
+    labelKey: "questionBank",
+    icon: HelpCircle,
+    match: (pathname) => pathname.startsWith("/dashboard/questions"),
+  },
+];
+
+export type AppRole = "student" | "lecturer" | "admin";
+
+export const navItemsByRole: Record<AppRole, NavItem[]> = {
+  student: studentNavItems,
+  lecturer: lecturerNavItems,
+  admin: adminNavItems,
+};

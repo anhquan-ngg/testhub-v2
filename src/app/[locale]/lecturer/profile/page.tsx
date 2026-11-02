@@ -193,7 +193,7 @@ export default function LecturerProfile() {
   return (
     <div className="space-y-6">
       {/* Profile Picture Card */}
-      <Card className="shadow-lg bg-white border-gray-300">
+      <Card className="shadow-sm bg-white border-gray-300">
         <CardContent className="p-6">
           <h3 className="text-xl font-semibold text-gray-900 mb-6">
             {t("personalPhoto")}</h3>
@@ -243,7 +243,7 @@ export default function LecturerProfile() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Personal Information Form */}
-        <Card className="shadow-lg bg-white border-gray-300">
+        <Card className="shadow-sm bg-white border-gray-300">
           <CardContent className="p-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-6">
               {t("personalInformation")}</h3>
@@ -284,7 +284,7 @@ export default function LecturerProfile() {
         </Card>
 
         {/* Change Password Form */}
-        <Card className="shadow-lg bg-white border-gray-300">
+        <Card className="shadow-sm bg-white border-gray-300">
           <CardContent className="p-6">
             <h3 className="text-xl font-semibold text-gray-900 mb-6">
               {t("changePassword")}</h3>

@@ -171,21 +171,25 @@ export default function LecturerHome() {
       label: t("statManagedExams"),
       value: exams.length,
       icon: FileText,
+      chip: "bg-sky-50 text-sky-700",
     },
     {
       label: t("statLiveExams"),
       value: liveExams.length,
       icon: PlayCircle,
+      chip: "bg-emerald-50 text-emerald-700",
     },
     {
       label: t("statPendingRegistrations"),
       value: pendingCount,
       icon: Users,
+      chip: "bg-amber-50 text-amber-700",
     },
     {
       label: t("statApprovedRegistrations"),
       value: approvedCount,
       icon: BarChart3,
+      chip: "bg-violet-50 text-violet-700",
     },
   ];
 
@@ -244,7 +248,7 @@ export default function LecturerHome() {
       <div>
         <span className="text-xs font-semibold uppercase tracking-wide text-accent-600">
           {t("overview")}</span>
-        <h2 className="mt-1 text-3xl font-bold text-neutral-900">
+        <h2 className="mt-1 text-2xl font-bold text-neutral-900">
           {t("greeting", { name: user.full_name || t("friend") })}
         </h2>
         <p className="mt-1 text-sm text-neutral-500">
@@ -257,7 +261,7 @@ export default function LecturerHome() {
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.label} className="border-neutral-200">
+          <Card key={stat.label} className="border-gray-300 bg-white shadow-sm">
             <CardContent className="flex items-start justify-between px-5">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -267,7 +271,9 @@ export default function LecturerHome() {
                   {stat.value}
                 </p>
               </div>
-              <stat.icon className="h-5 w-5 text-accent-600" />
+              <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${stat.chip}`}>
+                <stat.icon className="h-5 w-5" />
+              </span>
             </CardContent>
           </Card>
         ))}
@@ -278,7 +284,7 @@ export default function LecturerHome() {
         <div>
           <h3 className="mb-3 text-lg font-semibold text-neutral-900">
             {t("theExamIsAboutToTake")}</h3>
-          <Card className="border-neutral-200 py-0">
+          <Card className="border-gray-300 bg-white py-0 shadow-sm">
             <CardContent className="divide-y divide-neutral-100 px-0">
               {spotlightExams.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
@@ -296,7 +302,7 @@ export default function LecturerHome() {
                       className="flex flex-wrap items-center gap-4 px-6 py-4"
                     >
                       {isLive ? (
-                        <Badge className="shrink-0 bg-green-600 text-white hover:bg-green-700">
+                        <Badge variant="outline" className="shrink-0 border-emerald-200 bg-emerald-50 text-emerald-700">
                           {t("open")}</Badge>
                       ) : regInfo?.pending ? (
                         <Badge
@@ -341,7 +347,7 @@ export default function LecturerHome() {
         <div>
           <h3 className="mb-3 text-lg font-semibold text-neutral-900">
             {t("scoreSpectrumTestBeingAdministered")}</h3>
-          <Card className="border-neutral-200">
+          <Card className="border-gray-300 bg-white shadow-sm">
             <CardContent className="px-5">
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">

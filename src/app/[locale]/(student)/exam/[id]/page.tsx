@@ -1,153 +1,106 @@
 "use client";
 
-import { useLocale, useTranslations } from "next-intl";
-import { intlLocales } from "@/i18n/config";
-import { useState, useEffect, useRef, useSyncExternalStore } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Clock,
-  Calendar,
-  AlertCircle,
-  CheckCircle2,
-  FileText,
-  ChevronLeft,
-  ChevronRight,
-  Flag,
-  Menu,
-  Printer,
-  FileDown,
-  Video,
-  Volume2,
-  ExternalLink,
-  Maximize,
-} from "lucide-react";
-import { Link } from "@/i18n/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { toast } from "sonner";
 import { useRouter } from "@/i18n/navigation";
-import type { QuestionType } from "@/types/backend-enums";
-import { MathRenderer } from "@/components/MathRenderer";
-import { useSelector, useDispatch } from "react-redux";
-import { RootState } from "@/store";
+import type { RootState } from "@/store";
 import { startTest, endTest } from "@/store/slices/examSlice";
 import { useAppSelector } from "@/store/hook";
-import { toast } from "sonner";
 import apiClient from "@/lib/api-client";
-import { ExamData } from "@/types/exam";
-import { isAxiosError } from "axios";
 import { parseOptions } from "@/lib/exam-utils";
 import { ENDPOINTS } from "@/constants/endpoints";
+import type { ExamData } from "@/types/exam";
+import type { QuestionType } from "@/types/backend-enums";
+import { ExamLoadingSpinner } from "./_components/ExamLoadingSpinner";
+import {
+  ExamClosedCard,
+  ExamCompletionCard,
+  ExamNotFound,
+} from "./_components/ExamStatusScreens";
+import { ExamLanding } from "./_components/ExamLanding";
+import { ExamHeader, formatTime } from "./_components/ExamHeader";
+import { QuestionNavigator } from "./_components/QuestionNavigator";
+import { QuestionCard } from "./_components/QuestionCard";
+import { FullscreenBlockedDialog } from "./_components/FullscreenBlockedDialog";
+import type {
+  AnswerMap,
+  AnswerValue,
+  ExamQuestionItem,
+} from "./_components/types";
+import { useFullscreen } from "./_hooks/useFullscreen";
+import { useExamPresence } from "./_hooks/useExamPresence";
+import { useExamProctoring } from "./_hooks/useExamProctoring";
+import { useQuestionFiles } from "./_hooks/useQuestionFiles";
+import { getErrorReason } from "./_hooks/errors";
 
-interface QuestionFile {
-  id: string;
-  url: string;
-  name: string;
-  type: "IMAGE" | "VIDEO" | "AUDIO" | "DOCUMENT" | string;
-  order?: number;
-}
-
-interface Question {
-  id: string;
-  question_text: string;
-  image_url: string;
-  files?: QuestionFile[];
-  options: any[];
-  question_type: QuestionType;
-  submitted_answer?: string | null;
-  submitted_options?: string | null;
-  answered?: boolean;
-}
-
-interface ResolvedQuestionFile {
-  id: string;
-  url: string;
-  name: string;
-  type: "IMAGE" | "VIDEO" | "AUDIO" | "DOCUMENT" | string;
-}
-
-import { useS3 } from "@/hooks/useS3";
-
-// Fullscreen state read straight from the DOM so the UI can never drift from
-// what the browser actually shows (Esc / F11 exit without any React handler).
-const subscribeFullscreen = (onChange: () => void) => {
-  document.addEventListener("fullscreenchange", onChange);
-  return () => document.removeEventListener("fullscreenchange", onChange);
+type SubmitQuestionPayload = {
+  submission_id: string;
+  question_id: string;
+  options?: string;
+  answer?: string;
 };
-const subscribeNoop = () => () => {};
-const getIsFullscreen = () => Boolean(document.fullscreenElement);
-// Browsers without the Fullscreen API (e.g. iPhone Safari) skip the
-// requirement instead of locking the student out of the exam.
-const getFullscreenSupported = () => Boolean(document.fullscreenEnabled);
 
+/**
+ * Student exam-taking page: loads the session, runs the timer and proctoring
+ * hooks, and wires the presentational components together.
+ */
 export default function ExamPage() {
   const t = useTranslations("student.exam");
-  const locale = useLocale();
-  const params = useParams();
   const router = useRouter();
   const dispatch = useDispatch();
-  const userId = useAppSelector((state) => state.user.id);
+  const params = useParams();
+  const userId = useAppSelector((s) => s.user.id);
   const examId = params.id as string;
-  const { getViewUrl } = useS3("questions-images");
-
   const testStarted = useSelector((state: RootState) => state.exam.testStarted);
+
   const [exam, setExam] = useState<ExamData | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
-  const [submittedQuestionIds, setSubmittedQuestionIds] = useState<
-    Set<string>
-  >(new Set());
+  const [answers, setAnswers] = useState<AnswerMap>({});
+  const [submittedQuestionIds, setSubmittedQuestionIds] = useState<Set<string>>(
+    new Set(),
+  );
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [questions, setQuestions] = useState<ExamQuestionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [startTime, setStartTime] = useState<Date | null>(null);
-  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
-  const [currentResolvedFiles, setCurrentResolvedFiles] = useState<
-    ResolvedQuestionFile[]
-  >([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [examClosed, setExamClosed] = useState(false);
+  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
+  const [hasExitedFullscreen, setHasExitedFullscreen] = useState(false);
+  const [isPrinting, setIsPrinting] = useState(false);
+
   const timerInitialized = useRef(false);
   const dataFetched = useRef(false);
   const questionsInitialized = useRef(false);
-  const isFullscreen = useSyncExternalStore(
-    subscribeFullscreen,
-    getIsFullscreen,
-    () => false,
+  const startingRef = useRef(false);
+
+  const {
+    isFullscreen,
+    fullscreenSupported,
+    intentionalFullscreenExit,
+    enterFullscreen,
+    leaveFullscreen,
+  } = useFullscreen();
+
+  const handleFullscreenExited = useCallback(
+    () => setHasExitedFullscreen(true),
+    [],
   );
-  const fullscreenSupported = useSyncExternalStore(
-    subscribeNoop,
-    getFullscreenSupported,
-    () => true,
-  );
-  const [showFullscreenPrompt, setShowFullscreenPrompt] = useState(false);
-  const [hasExitedFullscreen, setHasExitedFullscreen] = useState(false);
-  // Set right before the page itself leaves fullscreen (after submitting), so
-  // that exit is not reported to the lecturer as a violation.
-  const intentionalFullscreenExit = useRef(false);
-  const [isPrinting, setIsPrinting] = useState(false);
+
+  const currentQuestion: ExamQuestionItem | undefined =
+    questions[currentQuestionIndex];
+
   const handlePrint = async () => {
     if (!examId) return;
+    setIsPrinting(true);
     try {
-      setIsPrinting(true);
       const response = await apiClient.get(`/submission/exam/${examId}/pdf`, {
         responseType: "blob",
       });
-
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const a = document.createElement("a");
       a.href = url;
@@ -165,59 +118,18 @@ export default function ExamPage() {
     }
   };
 
-  const [printableQuestions, setPrintableQuestions] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchPrintData = async () => {
-      if (!exam?.questions) return;
-
-      const processed = await Promise.all(
-        exam.questions.map(async (q) => {
-          let opts = q.options;
-          if (typeof opts === "string") {
-            try {
-              opts = JSON.parse(opts);
-            } catch {}
-          }
-
-          let imageUrl = q.image_url;
-          if (imageUrl && !imageUrl.startsWith("http")) {
-            try {
-              const resolved = await getViewUrl(imageUrl);
-              if (resolved) imageUrl = resolved;
-            } catch (e) {
-              console.error("Error resolving print image:", e);
-            }
-          }
-
-          return {
-            ...q,
-            options: Array.isArray(opts) ? opts : [],
-            image_url: imageUrl,
-          };
-        }),
-      );
-      setPrintableQuestions(processed);
-    };
-
-    fetchPrintData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exam]);
-
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const sessionResponse = await apiClient.get(
+      const response = await apiClient.get(
         ENDPOINTS.SUBMISSIONS.EXAM_SESSION(examId),
       );
-      const sessionData = sessionResponse.data.data;
+      const sessionData = response.data.data;
 
       if (sessionData?.hasActiveSubmission) {
         setExam(sessionData);
         setStartTime(
-          sessionData.entered_at
-            ? new Date(sessionData.entered_at)
-            : new Date(),
+          sessionData.entered_at ? new Date(sessionData.entered_at) : new Date(),
         );
         dispatch(startTest());
         return;
@@ -234,18 +146,15 @@ export default function ExamPage() {
         return;
       }
 
-      const response = await apiClient.get<ExamData>(ENDPOINTS.EXAMS.DETAIL(examId));
-      setExam(response.data);
+      const detail = await apiClient.get<ExamData>(
+        ENDPOINTS.EXAMS.DETAIL(examId),
+      );
+      setExam(detail.data);
     } catch (error) {
-      const errorReason =
-        (error as any)?.response?.data?.reason ??
-        (error as any)?.response?.data?.data?.reason;
-
-      if (errorReason === "EXAM_CLOSED") {
+      if (getErrorReason(error) === "EXAM_CLOSED") {
         setExamClosed(true);
         return;
       }
-
       toast.error(t("errorLoadingTestData"));
       console.log(error);
     } finally {
@@ -258,88 +167,75 @@ export default function ExamPage() {
       dataFetched.current = true;
       fetchData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [examId, userId]);
 
   useEffect(() => {
     if (exam && testStarted && !questionsInitialized.current) {
       questionsInitialized.current = true;
 
-      const prefilledAnswers: Record<string, string | string[]> = {};
+      // Restore answers already submitted via submit-by-question (e.g. after a
+      // page reload). `submitted_options[].isCorrect` here means "the student
+      // picked this option" — not the real answer key — so it's safe to use for
+      // prefill without leaking correctness.
+      const prefilledAnswers: AnswerMap = {};
       const prefilledSubmittedIds = new Set<string>();
 
-      const questionsWithParsedOptions = exam.questions.map((question) => {
-        const clonedQuestion: any = { ...question };
+      const parsedQuestions = exam.questions.map((question) => {
+        const q = { ...question } as unknown as ExamQuestionItem;
 
-        if (
-          clonedQuestion.options &&
-          clonedQuestion.options !== null &&
-          typeof clonedQuestion.options === "string"
-        ) {
+        if (question.options && typeof question.options === "string") {
           try {
-            clonedQuestion.options = JSON.parse(clonedQuestion.options);
-            if (
-              clonedQuestion.options &&
-              Array.isArray(clonedQuestion.options)
-            ) {
-              clonedQuestion.options = clonedQuestion.options.map(
-                (option: any, index: number) => ({
-                  ...option,
-                  id: String(index + 1),
-                }),
-              );
+            const parsed: unknown = JSON.parse(question.options);
+            if (Array.isArray(parsed)) {
+              q.options = parsed.map((option, index) => ({
+                ...option,
+                id: String(index + 1),
+              }));
             }
           } catch (error) {
             console.error("Failed to parse options:", error);
           }
         }
 
-        // Restore answers already submitted via submit-by-question (e.g. after a page reload).
-        // `submitted_options[].isCorrect` here means "the student picked this option" — not the
-        // real answer key — so it's safe to use for prefill without leaking correctness.
-        if (clonedQuestion.answered) {
-          if (clonedQuestion.question_type === "ESSAY") {
-            prefilledAnswers[clonedQuestion.id] =
-              clonedQuestion.submitted_answer ?? "";
-            prefilledSubmittedIds.add(clonedQuestion.id);
-          } else if (Array.isArray(clonedQuestion.options)) {
-            // The question was submitted server-side regardless of whether we can
-            // reconstruct which option(s) were picked (e.g. all options unselected,
-            // or option text changed since submission) — reflect that in the sidebar.
-            prefilledSubmittedIds.add(clonedQuestion.id);
-
-            const submittedOptions = parseOptions(
-              clonedQuestion.submitted_options,
-            ) as { text: string; isCorrect?: boolean }[];
+        if (q.answered) {
+          if (q.question_type === "ESSAY") {
+            prefilledAnswers[q.id] = q.submitted_answer ?? "";
+            prefilledSubmittedIds.add(q.id);
+          } else if (Array.isArray(q.options)) {
+            // The question was submitted server-side regardless of whether we
+            // can reconstruct which option(s) were picked.
+            prefilledSubmittedIds.add(q.id);
+            const submittedOptions = parseOptions(q.submitted_options ?? null) as {
+              text: string;
+              isCorrect?: boolean;
+            }[];
             const chosenTexts = new Set(
-              submittedOptions
-                .filter((opt) => opt.isCorrect)
-                .map((opt) => opt.text),
+              submittedOptions.filter((o) => o.isCorrect).map((o) => o.text),
             );
-            const matchedIds = clonedQuestion.options
-              .filter((opt: any) => chosenTexts.has(opt.text))
-              .map((opt: any) => String(opt.id));
-
+            const matchedIds = q.options
+              .filter((o) => chosenTexts.has(o.text))
+              .map((o) => String(o.id));
             if (matchedIds.length > 0) {
-              prefilledAnswers[clonedQuestion.id] =
-                clonedQuestion.question_type === "MULTIPLE_CHOICE"
+              prefilledAnswers[q.id] =
+                q.question_type === "MULTIPLE_CHOICE"
                   ? matchedIds
                   : matchedIds[0];
             }
           }
         }
 
-        return clonedQuestion;
+        return q;
       });
 
-      // Question order is now decided and persisted once by the backend (randomized per
-      // student, stable across reloads) — no client-side shuffling here anymore.
-      setQuestions(questionsWithParsedOptions as any[]);
+      // Question order is now decided and persisted once by the backend, so the
+      // list is used as received.
+      setQuestions(parsedQuestions);
       setAnswers(prefilledAnswers);
       setSubmittedQuestionIds(prefilledSubmittedIds);
 
-      // Prefer the server's per-attempt deadline (auto_submit_at) — it
-      // reflects any "extend time" grant from the lecturer. Fall back to
-      // entered_at + duration for older sessions that predate the field.
+      // Prefer the server's per-attempt deadline (auto_submit_at) so a reload
+      // or a second device cannot extend the time.
       const endsAt = exam.auto_submit_at
         ? new Date(exam.auto_submit_at).getTime()
         : (exam.entered_at ? new Date(exam.entered_at).getTime() : Date.now()) +
@@ -350,287 +246,50 @@ export default function ExamPage() {
 
   useEffect(() => {
     if (timeLeft > 0 && testStarted) {
-      // Mark timer as initialized only when it actually starts running
-      if (!timerInitialized.current) {
-        timerInitialized.current = true;
-      }
-      const timer = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
+      if (!timerInitialized.current) timerInitialized.current = true;
+      const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
       return () => clearInterval(timer);
     }
   }, [timeLeft, testStarted]);
 
-  // Presence: a plain REST ping on the same cookie-authenticated axios
-  // client every request on this page already uses. The previous socket.io
-  // heartbeat connected to a namespace that only ever accepted a token via
-  // `handshake.auth`/an Authorization header — this app never sends either
-  // (the access token is httpOnly), so the server disconnected the socket
-  // immediately on every connection and no heartbeat was ever actually
-  // recorded. REST also means a token refresh mid-exam (the access-token
-  // cookie lasts 15 minutes) is handled for free by the existing axios
-  // 401-retry interceptor, unlike a raw WebSocket.
-  useEffect(() => {
-    if (!exam?.submissionId || !testStarted) return;
-
-    const submissionId = exam.submissionId;
-    const PING_INTERVAL_MS = 20_000;
-    const PING_JITTER_MS = 3_000;
-    let stopped = false;
-    let timeoutId: number | undefined;
-
-    const ping = () => {
-      if (stopped) return;
-      apiClient
-        .post(ENDPOINTS.EXAM_RUNTIME.PING(submissionId))
-        .then((response) => {
-          // Resyncs the countdown from the server's deadline on every ping —
-          // the only way an already-open tab picks up a lecturer's "extend
-          // time" grant without a dedicated push channel.
-          const autoSubmitAt = response?.data?.autoSubmitAt;
-          if (!stopped && autoSubmitAt) {
-            const secondsLeft = Math.max(
-              0,
-              Math.ceil((new Date(autoSubmitAt).getTime() - Date.now()) / 1000),
-            );
-            setTimeLeft(secondsLeft);
-          }
-        })
-        .catch((error) => {
-          // A single failed ping isn't alarming by itself — the lecturer's
-          // monitor judges presence from the *age* of the last successful
-          // ping server-side, not from client retry logic.
-          console.error("Exam ping failed:", error);
-        });
-    };
-
-    const scheduleNext = () => {
-      if (stopped) return;
-      // Jitter keeps 200 students who all pressed "start" in the same
-      // second from pinging in lockstep forever.
-      const jitter = (Math.random() * 2 - 1) * PING_JITTER_MS;
-      timeoutId = window.setTimeout(() => {
-        ping();
-        scheduleNext();
-      }, PING_INTERVAL_MS + jitter);
-    };
-
-    ping();
-    scheduleNext();
-
-    const handleVisibility = () => {
-      if (!document.hidden) ping();
-    };
-    const handleOnline = () => ping();
-
-    // A suspended laptop's timers just stop dead. Detect the wall-clock
-    // jump on resume and ping immediately, instead of leaving the student
-    // marked OFFLINE for up to a full interval after they wake it back up.
-    let lastTick = Date.now();
-    const clockCheck = window.setInterval(() => {
-      const now = Date.now();
-      if (now - lastTick > 5_000) ping();
-      lastTick = now;
-    }, 1_000);
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("online", handleOnline);
-
-    return () => {
-      stopped = true;
-      if (timeoutId) window.clearTimeout(timeoutId);
-      window.clearInterval(clockCheck);
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("online", handleOnline);
-    };
-  }, [exam?.submissionId, testStarted]);
-
-  // Proctoring signals. Self-reported, client-debounced (the server
-  // debounces and caps independently too — this just avoids firing a
-  // request for every one of the 2-4 events a single alt-tab produces).
-  // Honesty check: any of these listeners can be trivially removed via
-  // devtools, so their absence is not proof of anything — only the
-  // *silence* of pings (judged server-side) is tamper-resistant.
-  useEffect(() => {
-    if (!exam?.submissionId || !testStarted) return;
-
-    const submissionId = exam.submissionId;
-    const DEBOUNCE_MS: Record<string, number> = {
-      TAB_HIDDEN: 10_000,
-      WINDOW_BLUR: 10_000,
-      FULLSCREEN_EXIT: 5_000,
-      COPY: 30_000,
-      PASTE: 30_000,
-    };
-    const lastSentAt: Record<string, number> = {};
-
-    const report = (type: keyof typeof DEBOUNCE_MS) => {
-      const now = Date.now();
-      if (now - (lastSentAt[type] ?? 0) < DEBOUNCE_MS[type]) return;
-      lastSentAt[type] = now;
-      apiClient
-        .post(ENDPOINTS.EXAM_RUNTIME.VIOLATIONS(submissionId), { type })
-        .catch(() => {
-          // Best-effort — the server enforces its own debounce/budget too.
-        });
-    };
-
-    const handleVisibility = () => {
-      if (document.hidden) report("TAB_HIDDEN");
-    };
-    const handleBlur = () => report("WINDOW_BLUR");
-    const handleFullscreenChange = () => {
-      if (document.fullscreenElement) return;
-      if (intentionalFullscreenExit.current) {
-        intentionalFullscreenExit.current = false;
-        return;
-      }
-      setHasExitedFullscreen(true);
-      report("FULLSCREEN_EXIT");
-    };
-    const handleCopy = () => report("COPY");
-    const handlePaste = () => report("PASTE");
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    window.addEventListener("blur", handleBlur);
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    document.addEventListener("copy", handleCopy);
-    document.addEventListener("paste", handlePaste);
-
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-      window.removeEventListener("blur", handleBlur);
-      document.removeEventListener(
-        "fullscreenchange",
-        handleFullscreenChange,
-      );
-      document.removeEventListener("copy", handleCopy);
-      document.removeEventListener("paste", handlePaste);
-    };
-  }, [exam?.submissionId, testStarted]);
+  useExamPresence(exam?.submissionId, testStarted, setTimeLeft);
+  useExamProctoring(
+    exam?.submissionId,
+    testStarted,
+    intentionalFullscreenExit,
+    handleFullscreenExited,
+  );
 
   // Auto submit when timer runs out
   useEffect(() => {
     if (timeLeft === 0 && testStarted && timerInitialized.current) {
       handleSubmit();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, testStarted]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchFiles = async () => {
-      const currentQ = questions[currentQuestionIndex];
-      if (!currentQ) {
-        if (!cancelled) {
-          setCurrentResolvedFiles([]);
-          setCurrentImageUrl(null);
-        }
-        return;
-      }
-
-      const resolved: ResolvedQuestionFile[] = [];
-
-      if (
-        currentQ.files &&
-        Array.isArray(currentQ.files) &&
-        currentQ.files.length > 0
-      ) {
-        const sortedFiles = [...currentQ.files].sort(
-          (a, b) => (a.order ?? 0) - (b.order ?? 0),
-        );
-        for (const file of sortedFiles) {
-          let resolvedUrl = file.url;
-          if (file.url && !file.url.startsWith("http")) {
-            try {
-              const url = await getViewUrl(file.url);
-              if (url) resolvedUrl = url;
-            } catch (e) {
-              console.error("Error resolving file URL:", e);
-            }
-          }
-          resolved.push({
-            id: file.id || file.url,
-            url: resolvedUrl,
-            name: file.name || t("attachedFiles"),
-            type: file.type || "IMAGE",
-          });
-        }
-      }
-
-      if (currentQ.image_url) {
-        let imageUrl = currentQ.image_url;
-        if (!imageUrl.startsWith("http")) {
-          try {
-            const url = await getViewUrl(imageUrl);
-            if (url) imageUrl = url;
-          } catch (e) {
-            console.error("Error resolving legacy image URL:", e);
-          }
-        }
-        if (cancelled) return;
-        setCurrentImageUrl(imageUrl);
-        if (!resolved.some((f) => f.url === imageUrl)) {
-          resolved.unshift({
-            id: "legacy-image",
-            url: imageUrl,
-            name: t("questionImage"),
-            type: "IMAGE",
-          });
-        }
-      } else {
-        if (cancelled) return;
-        setCurrentImageUrl(null);
-      }
-
-      if (!cancelled) {
-        setCurrentResolvedFiles(resolved);
-      }
-    };
-
-    if (testStarted && questions.length > 0) {
-      fetchFiles();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentQuestionIndex, questions, testStarted, getViewUrl, t]);
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
-  };
+  const currentFiles = useQuestionFiles(
+    currentQuestion,
+    testStarted && questions.length > 0,
+  );
 
   const handleAnswer = (
     questionId: string,
-    value: string,
+    value: AnswerValue,
     type: QuestionType = "SINGLE_CHOICE",
   ) => {
     setAnswers((prev) => {
       if (type === "MULTIPLE_CHOICE") {
-        const currentAnswers = (prev[questionId] as string[]) || [];
-        if (currentAnswers.includes(value)) {
-          return {
-            ...prev,
-            [questionId]: currentAnswers.filter((v) => v !== value),
-          };
-        } else {
-          return {
-            ...prev,
-            [questionId]: [...currentAnswers, value],
-          };
-        }
+        const current = (prev[questionId] as string[]) || [];
+        const next = current.includes(value as string)
+          ? current.filter((v) => v !== value)
+          : [...current, value as string];
+        return { ...prev, [questionId]: next };
       }
-      return {
-        ...prev,
-        [questionId]: value,
-      };
+      return { ...prev, [questionId]: value };
     });
-    // The displayed answer no longer matches what's on the server until re-submitted.
+    // The displayed answer no longer matches what's on the server until
+    // re-submitted.
     setSubmittedQuestionIds((prev) => {
       if (!prev.has(questionId)) return prev;
       const next = new Set(prev);
@@ -639,34 +298,31 @@ export default function ExamPage() {
     });
   };
 
-  const handleSubmitQuestion = async (index: number = currentQuestionIndex) => {
-    if (!exam?.submissionId) return;
-
+  const handleSubmitQuestion = async (index = currentQuestionIndex) => {
     const question = questions[index];
-    if (!question) return;
+    if (!exam?.submissionId || !question) return;
 
     const answer = answers[question.id];
-
-    const payload: any = {
+    const payload: SubmitQuestionPayload = {
       submission_id: exam.submissionId,
       question_id: question.id,
     };
 
     if (
-      question.question_type === "SINGLE_CHOICE" ||
-      question.question_type === "MULTIPLE_CHOICE"
+      (question.question_type === "SINGLE_CHOICE" ||
+        question.question_type === "MULTIPLE_CHOICE") &&
+      Array.isArray(question.options)
     ) {
-      if (Array.isArray(question.options)) {
-        payload.options = question.options.map((opt: any) => ({
+      payload.options = JSON.stringify(
+        question.options.map((opt) => ({
           text: opt.text,
           isCorrect: Array.isArray(answer)
             ? answer.includes(String(opt.id))
             : answer === String(opt.id),
-        }));
-        payload.options = JSON.stringify(payload.options);
-      }
+        })),
+      );
     } else if (question.question_type === "ESSAY") {
-      payload.answer = answer || "";
+      payload.answer = (answer as string) || "";
     }
 
     try {
@@ -681,21 +337,17 @@ export default function ExamPage() {
 
   const handleSubmit = async () => {
     if (!exam?.submissionId) return;
-
-    const payload = {
-      start_time: startTime || new Date(),
-      end_time: new Date(),
-      submission_id: exam.submissionId,
-      question_length: questions.length,
-    };
-
     try {
-      await apiClient.post(ENDPOINTS.SUBMISSIONS.SUBMIT_EXAM, payload);
+      await apiClient.post(ENDPOINTS.SUBMISSIONS.SUBMIT_EXAM, {
+        start_time: startTime || new Date(),
+        end_time: new Date(),
+        submission_id: exam.submissionId,
+        question_length: questions.length,
+      });
       toast.success(t("submittedSuccessfully"));
       leaveFullscreen();
       dispatch(endTest());
       setIsSubmitted(true);
-      // router.push("/home");
     } catch (error) {
       toast.error(t("submissionFailed"));
       console.error(error);
@@ -706,45 +358,21 @@ export default function ExamPage() {
   // dropped), so only they require fullscreen.
   const requiresFullscreen = !!exam && !exam.practice && fullscreenSupported;
 
-  // Must be called synchronously from a click handler: browsers only grant
-  // fullscreen in response to a user gesture.
-  const enterFullscreen = async () => {
-    try {
-      intentionalFullscreenExit.current = false;
-      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
-      return true;
-    } catch (error) {
-      console.error("Fullscreen request failed:", error);
-      toast.error(t("fullscreenRequestFailed"));
-      return false;
-    }
-  };
-
-  const leaveFullscreen = () => {
-    if (!document.fullscreenElement) return;
-    intentionalFullscreenExit.current = true;
-    document.exitFullscreen().catch(() => {
-      intentionalFullscreenExit.current = false;
-    });
-  };
-
-  const startingRef = useRef(false);
   const beginTest = async () => {
     if (startingRef.current) return;
     startingRef.current = true;
     try {
-      const response = await apiClient.post<{ data: ExamData }>(ENDPOINTS.SUBMISSIONS.START_EXAM(examId));
+      const response = await apiClient.post<{ data: ExamData }>(
+        ENDPOINTS.SUBMISSIONS.START_EXAM(examId),
+      );
       const session = response.data.data;
       setExam(session);
-      setStartTime(session.entered_at ? new Date(session.entered_at) : new Date());
+      setStartTime(
+        session.entered_at ? new Date(session.entered_at) : new Date(),
+      );
       dispatch(startTest());
     } catch (error: unknown) {
-      const data: unknown = isAxiosError<unknown>(error) ? error.response?.data : undefined;
-      const detail = typeof data === "object" && data !== null && "data" in data ? data.data : undefined;
-      const reason = (typeof data === "object" && data !== null && "reason" in data
-        ? data.reason
-        : undefined) ?? (typeof detail === "object" && detail !== null && "reason" in detail ? detail.reason : undefined);
-      if (reason === "EXAM_CLOSED") {
+      if (getErrorReason(error) === "EXAM_CLOSED") {
         setExam(null);
         setExamClosed(true);
         return;
@@ -769,735 +397,104 @@ export default function ExamPage() {
     void beginTest();
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  const handleBack = () => {
+    dispatch(endTest());
+    router.push("/home");
+  };
 
-  if (!exam) {
-    if (examClosed) {
-      return (
-        <div
-          className="min-h-screen flex items-center justify-center p-4"
-          style={{
-            background: "linear-gradient(to bottom right, #f8d7da, #fef2f2)",
-          }}
-        >
-          <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/95 backdrop-blur text-center">
-            <CardHeader className="pt-10 pb-4">
-              <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <AlertCircle className="w-10 h-10 text-red-600" />
-              </div>
-              <CardTitle className="text-3xl font-bold text-gray-900">
-                {t("theExamIsClosed")}</CardTitle>
-            </CardHeader>
-            <CardContent className="px-8 pb-10 space-y-6">
-              <div className="space-y-2 text-gray-600">
-                <p className="text-lg">
-                  {t("thisTestIsNoLongerOpen")}</p>
-                <p>
-                  {t("pleaseReturnToTheHomePage")}</p>
-              </div>
+  if (isLoading) return <ExamLoadingSpinner />;
 
-              <div className="pt-4">
-                <Button
-                  size="lg"
-                  className="w-full bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all"
-                  asChild
-                >
-                  <Link href="/home">{t("returnToHomepage")}</Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+  if (!exam) return examClosed ? <ExamClosedCard /> : <ExamNotFound />;
 
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {t("noTestFound")}</h2>
-          <Button className="mt-4" asChild>
-            <Link href="/home">{t("returnToHomepage")}</Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Completion View
   if (isSubmitted) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{
-          background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
-        }}
-      >
-        <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/95 backdrop-blur text-center">
-          <CardHeader className="pt-10 pb-4">
-            <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle2 className="w-10 h-10 text-green-600" />
-            </div>
-            <CardTitle className="text-3xl font-bold text-gray-900">
-              {t("submittedSuccessfully")}</CardTitle>
-          </CardHeader>
-          <CardContent className="px-8 pb-10 space-y-6">
-            <div className="space-y-2 text-gray-600">
-              <p className="text-lg">
-                {t("youHaveCompletedTheExam")}<strong>{exam.title}</strong>.
-              </p>
-              <p>
-                {t("theSystemHasRecordedYourResults")}{" "}
-                <Link
-                  href={exam.submissionId ? `/result/${exam.submissionId}` : "/result"}
-                  className="font-semibold text-blue-600 hover:underline"
-                >
-                  {t("examResults")}</Link>{" "}
-                {t("toSeeDetailedScores")}</p>
-            </div>
-
-            <div className="pt-4">
-              <Button
-                size="lg"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all"
-                asChild
-              >
-                <Link href="/home">{t("returnToHomepage")}</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ExamCompletionCard
+        examTitle={exam.title}
+        submissionId={exam.submissionId}
+      />
     );
   }
 
-  // Landing page view (when testStarted is false)
   if (!testStarted) {
     return (
-      <div
-        className="min-h-screen flex"
-        style={{
-          background: "linear-gradient(to bottom right, #a8c5e6, #d4e4f7)",
-        }}
-      >
-        <div className="flex-1 flex flex-col">
-          <main className="flex-1 px-8 pb-8 flex items-center justify-center">
-            <Card className="w-full max-w-4xl shadow-2xl border-0 bg-white/95 backdrop-blur">
-              <CardHeader className="p-8">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <Badge
-                      className={`border-0 mb-4 text-white ${
-                        exam.practice ? "bg-purple-500" : "bg-blue-500"
-                      }`}
-                    >
-                      {exam.practice ? t("practice") : t("officialTest")}
-                    </Badge>
-                    <CardTitle className="text-3xl font-bold mb-4">
-                      {exam.title}
-                    </CardTitle>
-                    <p className="text-lg opacity-90">
-                      <span className="font-semibold">{t("topic")}</span>{" "}
-                      {typeof exam.topic === "string"
-                        ? exam.topic
-                        : ((exam.topic as any)?.name ?? "N/A")}
-                    </p>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="px-8 space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-blue-50 border border-blue-100">
-                    <div className="p-3 bg-blue-100 rounded-full text-blue-600">
-                      <Clock className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t("timeToDoHomework")}</p>
-                      <p className="font-semibold text-gray-900">
-                        {exam.duration} {t("minute")}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-green-50 border border-green-100">
-                    <div className="p-3 bg-green-100 rounded-full text-green-600">
-                      <Calendar className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t("startTime")}</p>
-                      <p className="font-semibold text-gray-900">
-                        {new Date(exam.exam_start_time).toLocaleDateString(
-                          intlLocales[locale],
-                        )}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-4 p-4 rounded-lg bg-purple-50 border border-purple-100">
-                    <div className="p-3 bg-purple-100 rounded-full text-purple-600">
-                      <FileText className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{t("numberOfQuestions")}</p>
-                      <p className="font-semibold text-gray-900">
-                        {exam.questions?.length || 0} {t("sentence")}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-blue-600" />
-                    {t("examRoomRules")}</h3>
-                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                      <p className="text-gray-700">
-                        <span className="font-semibold">{t("note")}</span> {t("examOfficiallyOnlyAllowedOnceArticle")}</p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                      <p className="text-gray-700">
-                        {t("unauthorizedUseOfMaterialsIsNot")}</p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                      <p className="text-gray-700">
-                        {t("theSystemWillAutomaticallySubmitThe")}</p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                      <p className="text-gray-700">
-                        {t("ensureAStableInternetConnectionThroughout")}</p>
-                    </div>
-                    {requiresFullscreen && (
-                      <div className="flex items-start gap-3">
-                        <Maximize className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                        <p className="text-gray-700">{t("fullscreenRule")}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-4 pt-4">
-                  {exam.practice && (
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="gap-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:cursor-pointer"
-                      onClick={handlePrint}
-                      disabled={isPrinting}
-                    >
-                      {isPrinting ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700"></div>
-                      ) : (
-                        <Printer className="w-5 h-5" />
-                      )}
-                      {isPrinting ? t("creatingPrints") : t("printExamQuestions")}
-                    </Button>
-                  )}
-                  <Button variant="outline" size="lg" className="px-8" asChild>
-                    <Link href="/home">{t("comeBack")}</Link>
-                  </Button>
-                  <Button
-                    size="lg"
-                    className="px-12 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl hover:cursor-pointer transition-all"
-                    onClick={handleStartTest}
-                  >
-                    {t("doYourHomeworkNow")}</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </main>
-        </div>
-
-        {/* Hidden Printable Content Removed (Now using Backend) */}
-
-        <Dialog
-          open={showFullscreenPrompt}
-          onOpenChange={setShowFullscreenPrompt}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Maximize className="w-5 h-5 text-blue-600" />
-                {t("fullscreenPromptTitle")}
-              </DialogTitle>
-              <DialogDescription>
-                {t("fullscreenPromptDescription")}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowFullscreenPrompt(false)}
-              >
-                {t("fullscreenPromptCancel")}
-              </Button>
-              <Button
-                className="bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
-                onClick={handleConfirmFullscreenStart}
-              >
-                {t("fullscreenPromptConfirm")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <ExamLanding
+        exam={exam}
+        requiresFullscreen={requiresFullscreen}
+        isPrinting={isPrinting}
+        showFullscreenPrompt={showFullscreenPrompt}
+        onShowFullscreenPromptChange={setShowFullscreenPrompt}
+        onPrint={handlePrint}
+        onStart={handleStartTest}
+        onConfirmFullscreenStart={handleConfirmFullscreenStart}
+      />
     );
   }
 
-  // Exam interface view (when testStarted is true)
-  const currentQuestion = questions[currentQuestionIndex];
-
-  if (!currentQuestion) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  if (!currentQuestion) return <ExamLoadingSpinner />;
 
   // Official exam outside fullscreen: hide the questions behind a dialog the
   // student can only leave by going back to fullscreen. The timer keeps running.
   const fullscreenBlocked = requiresFullscreen && !isFullscreen;
 
   return (
-    <div
-      className={`min-h-screen flex flex-col bg-gray-50 ${
-        fullscreenBlocked ? "invisible" : ""
-      }`}
-      aria-hidden={fullscreenBlocked}
-    >
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 h-16 px-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              dispatch(endTest());
-              router.push("/home");
-            }}
-            className="text-gray-500 hover:text-gray-700 gap-2"
-            title={t("returnToHomePage")}
-            hidden={exam.practice === false}
-          >
-            <ChevronLeft className="w-5 h-5" />
-            {t("returnToHomepage")}</Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="lg:hidden"
-          >
-            <Menu className="w-5 h-5" />
-          </Button>
-          <h1 className="text-lg font-bold text-gray-800 truncate max-w-[200px] md:max-w-md">
-            {exam.title}
-          </h1>
-        </div>
+    <>
+      <div
+        className={`flex min-h-screen flex-col bg-neutral-100 ${
+          fullscreenBlocked ? "invisible" : ""
+        }`}
+        aria-hidden={fullscreenBlocked}
+      >
+        <ExamHeader
+          title={exam.title}
+          timeLeft={timeLeft}
+          hideBackButton={exam.practice === false}
+          onBack={handleBack}
+          onToggleSidebar={() => setIsSidebarOpen((v) => !v)}
+          onSubmit={handleSubmit}
+        />
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full border border-blue-100">
-            <Clock className="w-5 h-5 text-blue-600" />
-            <span className="font-mono font-bold text-blue-700 text-lg">
-              {formatTime(timeLeft)}
-            </span>
-          </div>
-          <Button
-            onClick={handleSubmit}
-            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all"
-          >
-            {t("submitYourAssignment")}</Button>
-        </div>
-      </header>
+        <div className="flex flex-1 overflow-hidden">
+          <QuestionNavigator
+            questions={questions}
+            answers={answers}
+            submittedQuestionIds={submittedQuestionIds}
+            currentQuestionIndex={currentQuestionIndex}
+            isOpen={isSidebarOpen}
+            onSelect={setCurrentQuestionIndex}
+          />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Question Navigation Sidebar */}
-        <aside
-          className={`${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } lg:translate-x-0 fixed lg:relative z-40 w-72 h-[calc(100vh-64px)] bg-white border-r border-gray-200 transition-transform duration-300 ease-in-out flex flex-col shadow-lg lg:shadow-none`}
-        >
-          <div className="p-4 border-b border-gray-100 bg-gray-50">
-            <h3 className="font-semibold text-gray-700">{t("listOfQuestions")}</h3>
-            <div className="flex flex-wrap gap-4 mt-2 text-xs text-gray-500">
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-white border border-gray-300 rounded-sm"></div>
-                <span>{t("havenTDoneItYet")}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-amber-400 rounded-sm"></div>
-                <span>{t("selectedNotSubmitted")}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-green-600 rounded-sm"></div>
-                <span>{t("submitted")}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-3 h-3 bg-blue-100 border border-blue-400 rounded-sm"></div>
-                <span>{t("watching")}</span>
-              </div>
-            </div>
-          </div>
-
-          <ScrollArea className="flex-1 p-4">
-            <div className="grid grid-cols-5 gap-2">
-              {questions.map((q, index) => {
-                const isCurrent = index === currentQuestionIndex;
-                const isQuestionSubmitted = submittedQuestionIds.has(q.id);
-                const answerValue = answers[q.id];
-                const hasLocalAnswer =
-                  answerValue !== undefined &&
-                  answerValue !== "" &&
-                  !(Array.isArray(answerValue) && answerValue.length === 0);
-                const isAnsweredLocally = !isQuestionSubmitted && hasLocalAnswer;
-
-                let bgClass =
-                  "bg-white hover:bg-gray-50 border-gray-300 text-gray-700";
-                if (isCurrent) {
-                  bgClass =
-                    "bg-blue-100 border-blue-500 text-blue-700 font-bold ring-1 ring-blue-500";
-                } else if (isQuestionSubmitted) {
-                  bgClass =
-                    "bg-green-600 border-green-600 text-white hover:bg-green-700";
-                } else if (isAnsweredLocally) {
-                  bgClass =
-                    "bg-amber-400 border-amber-400 text-white hover:bg-amber-500";
+          <main className="flex-1 overflow-y-auto p-4 md:p-8">
+            <div className="mx-auto max-w-3xl">
+              <QuestionCard
+                question={currentQuestion}
+                index={currentQuestionIndex}
+                total={questions.length}
+                answer={answers[currentQuestion.id]}
+                files={currentFiles}
+                onAnswer={(value, type) =>
+                  handleAnswer(currentQuestion.id, value, type)
                 }
-
-                return (
-                  <button
-                    key={q.id}
-                    onClick={() => setCurrentQuestionIndex(index)}
-                    className={`h-10 w-10 rounded-md border flex items-center justify-center text-sm transition-all ${bgClass}`}
-                  >
-                    {index + 1}
-                  </button>
-                );
-              })}
-            </div>
-          </ScrollArea>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50/50">
-          <div className="max-w-3xl mx-auto space-y-6">
-            <Card className="border-0 shadow-md bg-white">
-              <CardContent className="p-6 md:p-8">
-                <div className="mb-4 flex justify-between items-start">
-                  <h2 className="text-xl font-bold text-gray-800">
-                    {t("questionNumber", { number: currentQuestionIndex + 1 })}
-                  </h2>
-                </div>
-
-                <div className="prose max-w-none mb-4">
-                  <div className="text-lg text-gray-800 leading-relaxed mb-4">
-                    <MathRenderer
-                      content={currentQuestion?.question_text || ""}
-                    />
-                  </div>
-                  {/* Question Files (IMAGE, VIDEO, AUDIO, DOCUMENT) */}
-                  {currentResolvedFiles.length > 0 && (
-                    <div className="mb-4 space-y-4 not-prose">
-                      {/* IMAGE Files */}
-                      {currentResolvedFiles.some((f) => f.type === "IMAGE") && (
-                        <div className="flex flex-wrap justify-center gap-4">
-                          {currentResolvedFiles
-                            .filter((f) => f.type === "IMAGE")
-                            .map((file) => (
-                              <div
-                                key={file.id}
-                                className="relative max-w-full"
-                              >
-                                <img
-                                  src={file.url}
-                                  alt={file.name || "Question Image"}
-                                  className="max-h-96 w-auto object-contain rounded-lg shadow-sm border border-gray-200"
-                                />
-                              </div>
-                            ))}
-                        </div>
-                      )}
-
-                      {/* VIDEO Files */}
-                      {currentResolvedFiles.some((f) => f.type === "VIDEO") && (
-                        <div className="space-y-3">
-                          {currentResolvedFiles
-                            .filter((f) => f.type === "VIDEO")
-                            .map((file) => (
-                              <div
-                                key={file.id}
-                                className="rounded-lg overflow-hidden border border-gray-200 bg-black shadow-sm"
-                              >
-                                <div className="px-3 py-1.5 bg-gray-900 text-gray-200 text-xs font-medium flex items-center gap-2">
-                                  <Video className="w-4 h-4 text-blue-400" />
-                                  <span className="truncate">{file.name}</span>
-                                </div>
-                                <video
-                                  controls
-                                  className="w-full max-h-96"
-                                  preload="metadata"
-                                >
-                                  <source src={file.url} />
-                                  {t("yourBrowserDoesNotSupportVideo")}</video>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-
-                      {/* AUDIO Files */}
-                      {currentResolvedFiles.some((f) => f.type === "AUDIO") && (
-                        <div className="space-y-3">
-                          {currentResolvedFiles
-                            .filter((f) => f.type === "AUDIO")
-                            .map((file) => (
-                              <div
-                                key={file.id}
-                                className="p-3 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-2"
-                              >
-                                <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
-                                  <Volume2 className="w-4 h-4 text-blue-600" />
-                                  <span className="truncate">
-                                    {file.name || t("audioFiles")}
-                                  </span>
-                                </div>
-                                <audio controls className="w-full">
-                                  <source src={file.url} />
-                                  {t("yourBrowserDoesNotSupportAudio")}</audio>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-
-                      {/* DOCUMENT / OTHER Files */}
-                      {currentResolvedFiles.some(
-                        (f) =>
-                          f.type !== "IMAGE" &&
-                          f.type !== "VIDEO" &&
-                          f.type !== "AUDIO",
-                      ) && (
-                        <div className="space-y-2">
-                          {currentResolvedFiles
-                            .filter(
-                              (f) =>
-                                f.type !== "IMAGE" &&
-                                f.type !== "VIDEO" &&
-                                f.type !== "AUDIO",
-                            )
-                            .map((file) => (
-                              <div
-                                key={file.id}
-                                className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm"
-                              >
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                  <FileText className="w-5 h-5 text-gray-500 shrink-0" />
-                                  <span className="font-medium text-gray-800 truncate">
-                                    {file.name}
-                                  </span>
-                                </div>
-                                <Button
-                                  asChild
-                                  variant="outline"
-                                  size="sm"
-                                  className="shrink-0 gap-1"
-                                >
-                                  <a
-                                    href={file.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                  >
-                                    <ExternalLink className="w-4 h-4" /> {t("viewDownload")}</a>
-                                </Button>
-                              </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {currentQuestion.question_type === "SINGLE_CHOICE" && (
-                  <RadioGroup
-                    value={(answers[currentQuestion.id] as string) || ""}
-                    onValueChange={(value) =>
-                      handleAnswer(currentQuestion.id, value)
-                    }
-                    className="space-y-4"
-                  >
-                    {currentQuestion.options.map((option: any) => (
-                      <div
-                        key={option.id}
-                        className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                          answers[currentQuestion.id] === String(option.id)
-                            ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
-                            : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                        }`}
-                        onClick={() =>
-                          handleAnswer(currentQuestion.id, String(option.id))
-                        }
-                      >
-                        <RadioGroupItem
-                          value={String(option.id)}
-                          id={String(option.id)}
-                          className="text-blue-600"
-                        />
-                        <Label
-                          htmlFor={String(option.id)}
-                          className="flex-1 cursor-pointer font-medium text-gray-700"
-                        >
-                          <MathRenderer content={option.text} />
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-
-                {currentQuestion.question_type === "MULTIPLE_CHOICE" && (
-                  <div className="space-y-4">
-                    {currentQuestion.options.map((option: any) => (
-                      <div
-                        key={option.id}
-                        className={`flex items-center space-x-3 p-4 rounded-lg border transition-all cursor-pointer ${
-                          (answers[currentQuestion.id] as string[])?.includes(
-                            String(option.id),
-                          )
-                            ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500"
-                            : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                        }`}
-                        onClick={() =>
-                          handleAnswer(
-                            currentQuestion.id,
-                            String(option.id),
-                            "MULTIPLE_CHOICE",
-                          )
-                        }
-                      >
-                        <Checkbox
-                          checked={(
-                            (answers[currentQuestion.id] as string[]) || []
-                          ).includes(String(option.id))}
-                          onCheckedChange={() =>
-                            handleAnswer(
-                              currentQuestion.id,
-                              String(option.id),
-                              "MULTIPLE_CHOICE",
-                            )
-                          }
-                          id={String(option.id)}
-                          className="text-blue-600"
-                        />
-                        <Label
-                          htmlFor={String(option.id)}
-                          className="flex-1 cursor-pointer font-medium text-gray-700"
-                        >
-                          <MathRenderer content={option.text} />
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {currentQuestion.question_type === "ESSAY" && (
-                  <div className="space-y-4">
-                    <Textarea
-                      placeholder={t("enterYourAnswer")}
-                      value={(answers[currentQuestion.id] as string) || ""}
-                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                        handleAnswer(
-                          currentQuestion.id,
-                          e.target.value,
-                          "ESSAY",
-                        )
-                      }
-                      className="min-h-[200px] p-4 bg-white border-gray-300 text-base"
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <div className="flex justify-between items-center pt-4">
-              <Button
-                variant="outline"
-                onClick={() =>
+                onPrevious={() =>
                   setCurrentQuestionIndex((prev) => Math.max(0, prev - 1))
                 }
-                disabled={currentQuestionIndex === 0}
-                className="w-32 hover:cursor-pointer"
-              >
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                {t("previousSentence")}</Button>
-
-              <Button
-                onClick={() => {
-                  handleSubmitQuestion();
-                }}
-                className="w-36 bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
-              >
-                {t("submitThisQuestion")}</Button>
-
-              <Button
-                onClick={() => {
-                  if (currentQuestionIndex < questions.length - 1) {
-                    setCurrentQuestionIndex((prev) => prev + 1);
-                  }
-                }}
-                variant="outline"
-                className="w-32 hover:cursor-pointer"
-                disabled={currentQuestionIndex === questions.length - 1}
-              >
-                {t("nextSentence")}<ChevronRight className="w-4 h-4 ml-2" />
-              </Button>
+                onNext={() =>
+                  setCurrentQuestionIndex((prev) =>
+                    prev < questions.length - 1 ? prev + 1 : prev,
+                  )
+                }
+                onSubmitQuestion={() => handleSubmitQuestion()}
+              />
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
 
-      <Dialog open={fullscreenBlocked}>
-        <DialogContent
-          showCloseButton={false}
-          onEscapeKeyDown={(event) => event.preventDefault()}
-          onInteractOutside={(event) => event.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle
-                className={`w-5 h-5 ${
-                  hasExitedFullscreen ? "text-red-600" : "text-blue-600"
-                }`}
-              />
-              {hasExitedFullscreen
-                ? t("fullscreenExitedTitle")
-                : t("fullscreenRequiredTitle")}
-            </DialogTitle>
-            <DialogDescription>
-              {hasExitedFullscreen
-                ? t("fullscreenExitedDescription")
-                : t("fullscreenRequiredDescription")}
-            </DialogDescription>
-          </DialogHeader>
-          <p className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-            <Clock className="w-4 h-4" />
-            {t("fullscreenTimeLeft", { time: formatTime(Math.max(0, timeLeft)) })}
-          </p>
-          <DialogFooter>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white hover:cursor-pointer"
-              onClick={enterFullscreen}
-            >
-              <Maximize className="w-4 h-4 mr-2" />
-              {t("fullscreenResume")}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+      <FullscreenBlockedDialog
+        open={fullscreenBlocked}
+        hasExitedFullscreen={hasExitedFullscreen}
+        timeLabel={formatTime(Math.max(0, timeLeft))}
+        onResume={() => void enterFullscreen()}
+      />
+    </>
   );
 }

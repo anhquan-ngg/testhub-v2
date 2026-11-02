@@ -7,9 +7,12 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   ArrowLeft,
   CheckCheck,
+  ClipboardCheck,
+  History,
   Loader2,
   RefreshCw,
   Sparkles,
+  Wand2,
 } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
@@ -41,6 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { GenerationDraftCard } from "./GenerationDraftCard";
+import { batchStatusClass, questionTypeClass } from "./generation-style";
 import {
   QuestionConfigTable,
   newQuestionConfigRow,
@@ -385,29 +389,45 @@ export function QuestionGenerationScreen() {
     <div className="mx-auto max-w-6xl space-y-6 pb-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Button asChild variant="ghost" className="mb-3 -ml-3">
-            <Link href="/lecturer/questions">
-              <ArrowLeft className="size-4" />
-              {t("back")}
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="mb-3">
-            <Link href="/lecturer/questions/documents">
-              {documentText("title")}
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold tracking-tight">{t("title")}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+          <Link
+            href="/lecturer/questions"
+            className="mb-2 flex cursor-pointer items-center gap-1 text-sm text-neutral-500 hover:text-neutral-800"
+          >
+            <ArrowLeft className="size-4" />
+            {t("back")}
+          </Link>
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-neutral-900">
+            <Sparkles className="size-6 text-violet-500" />
+            {t("title")}
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm text-neutral-500">
             {t("description")}
           </p>
+          <Badge
+            variant="outline"
+            className="mt-3 border-violet-200 bg-violet-50 text-violet-700"
+          >
+            {t("textOnly")}
+          </Badge>
         </div>
-        <Badge variant="secondary" className="mt-4">
-          {t("textOnly")}
-        </Badge>
+        <Button
+          asChild
+          variant="outline"
+          className="cursor-pointer gap-1.5 border-gray-300 bg-white"
+        >
+          <Link href="/lecturer/questions/documents">
+            {documentText("title")}
+          </Link>
+        </Button>
       </div>
-      <Card>
+      <Card className="border-gray-300 bg-white shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg">{t("createTitle")}</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-lg text-neutral-900">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+              <Wand2 className="size-4" />
+            </span>
+            {t("createTitle")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form
@@ -416,7 +436,10 @@ export function QuestionGenerationScreen() {
           >
             <div className="space-y-4">
               {targetError && (
-                <p role="alert" className="text-sm text-destructive">
+                <p
+                  role="alert"
+                  className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                >
                   {t("targetError")}
                 </p>
               )}
@@ -424,7 +447,7 @@ export function QuestionGenerationScreen() {
                 <Label htmlFor="ai-topic">{t("topic")}</Label>
                 <select
                   id="ai-topic"
-                  className="w-full rounded-md border bg-background p-2 text-sm"
+                  className="h-9 w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20 disabled:cursor-not-allowed disabled:opacity-60"
                   value={topicId}
                   disabled={creating}
                   onChange={(event) => {
@@ -445,6 +468,7 @@ export function QuestionGenerationScreen() {
                   id="ai-source-file"
                   type="file"
                   accept=".pdf,.pptx"
+                  className="cursor-pointer border-gray-300 bg-white"
                   disabled={creating}
                   onChange={(event) => {
                     setFile(event.target.files?.[0] ?? null);
@@ -453,7 +477,7 @@ export function QuestionGenerationScreen() {
                 />
                 <p className="text-xs text-muted-foreground">{t("fileHint")}</p>
                 {file && (
-                  <p className="break-words text-sm">
+                  <p className="break-words rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
                     {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
                   </p>
                 )}
@@ -484,24 +508,30 @@ export function QuestionGenerationScreen() {
                   setInvalidCommand(false);
                 }}
               />
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3">
                 <Checkbox
                   id="ai-consent"
                   checked={consent}
                   disabled={creating}
                   onCheckedChange={(value) => setConsent(value === true)}
                 />
-                <Label htmlFor="ai-consent" className="text-xs leading-relaxed">
+                <Label
+                  htmlFor="ai-consent"
+                  className="text-xs leading-relaxed text-amber-900"
+                >
                   {t("consent")}
                 </Label>
               </div>
               {invalidCommand && (
-                <p role="alert" className="text-sm text-destructive">
+                <p
+                  role="alert"
+                  className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                >
                   {t("invalidCommand")}
                 </p>
               )}
               <Button
-                className="w-full"
+                className="w-full cursor-pointer bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-violet-200 disabled:text-violet-700 disabled:opacity-100"
                 type="submit"
                 disabled={
                   creating || busy || Boolean(editingId) || !consent || !file
@@ -531,9 +561,14 @@ export function QuestionGenerationScreen() {
       />
       <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="space-y-5">
-          <Card>
+          <Card className="border-gray-300 bg-white shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">{t("history")}</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg text-neutral-900">
+                <span className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                  <History className="size-4" />
+                </span>
+                {t("history")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {historyError ? (
@@ -550,14 +585,19 @@ export function QuestionGenerationScreen() {
                     key={record.id}
                     disabled={busy || creating || Boolean(editingId)}
                     onClick={() => openBatch(record.id)}
-                    className={`w-full rounded-md border p-3 text-left text-sm hover:bg-muted ${batchId === record.id ? "border-primary bg-muted" : ""}`}
+                    className={`w-full cursor-pointer rounded-md border p-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${batchId === record.id ? "border-violet-300 bg-violet-50 ring-1 ring-violet-200" : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"}`}
                   >
                     <span className="block font-medium">
                       {topics.find((topic) => topic.id === record.topic_id)
                         ?.name ?? t("batchLabel")}
                     </span>
-                    <span className="mt-1 block text-xs text-muted-foreground">
-                      {t(`batchStatus.${record.status}`)} ·{" "}
+                    <span className="mt-1.5 flex items-center gap-2 text-xs text-neutral-500">
+                      <Badge
+                        variant="outline"
+                        className={batchStatusClass(record.status)}
+                      >
+                        {t(`batchStatus.${record.status}`)}
+                      </Badge>
                       {record.requested_count}
                     </span>
                     <time
@@ -597,27 +637,35 @@ export function QuestionGenerationScreen() {
         </aside>
         <section className="min-w-0 space-y-4" aria-live="polite">
           {!batchId ? (
-            <div className="rounded-xl border border-dashed p-10 text-center">
-              <Sparkles className="mx-auto mb-4 size-10 text-primary/60" />
-              <h2 className="font-semibold">{t("emptyTitle")}</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50/40 p-10 text-center">
+              <Sparkles className="mx-auto mb-4 size-10 text-violet-400" />
+              <h2 className="font-semibold text-neutral-900">{t("emptyTitle")}</h2>
+              <p className="mt-2 text-sm text-neutral-500">
                 {t("emptyDescription")}
               </p>
             </div>
           ) : (
             <>
-              <Card>
+              <Card className="border-gray-300 bg-white shadow-sm">
                 <CardContent className="space-y-4 pt-6">
                   <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="font-semibold">{t("reviewTitle")}</h2>
-                      <p className="mt-1 break-all text-xs text-muted-foreground">
-                        {batchId}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                        <ClipboardCheck className="size-4" />
+                      </span>
+                      <div>
+                        <h2 className="font-semibold text-neutral-900">
+                          {t("reviewTitle")}
+                        </h2>
+                        <p className="mt-0.5 break-all text-xs text-neutral-500">
+                          {batchId}
+                        </p>
+                      </div>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
+                      className="cursor-pointer gap-1.5 border-gray-300 bg-white"
                       disabled={busy || loading || Boolean(editingId)}
                       onClick={() => setRefresh((value) => value + 1)}
                     >
@@ -626,31 +674,31 @@ export function QuestionGenerationScreen() {
                     </Button>
                   </div>
                   {loading && (
-                    <p className="flex items-center gap-2 text-sm">
-                      <Loader2 className="size-4 animate-spin" />
+                    <p className="flex items-center gap-2 text-sm text-neutral-600">
+                      <Loader2 className="size-4 animate-spin text-accent-600" />
                       {t("loading")}
                     </p>
                   )}
                   {loadError && (
-                    <p role="alert" className="text-sm text-destructive">
+                    <p
+                      role="alert"
+                      className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                    >
                       {t("loadError")}
                     </p>
                   )}
                   {batch && (
                     <>
                       <Badge
-                        variant={
-                          batch.status === "FAILED"
-                            ? "destructive"
-                            : "secondary"
-                        }
+                        variant="outline"
+                        className={batchStatusClass(batch.status)}
                       >
                         {t(`batchStatus.${batch.status}`)}
                       </Badge>
                       {["WAITING_SOURCE", "QUEUED", "GENERATING"].includes(
                         batch.status,
                       ) && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
                           {t("processing")}
                         </p>
                       )}
@@ -658,7 +706,12 @@ export function QuestionGenerationScreen() {
                         <ul className="flex flex-wrap gap-2">
                           {batch.question_configs.map((config, index) => (
                             <li key={index}>
-                              <Badge variant="outline">
+                              <Badge
+                                variant="outline"
+                                className={questionTypeClass(
+                                  config.question_type,
+                                )}
+                              >
                                 {t("configSummary", {
                                   count: config.count,
                                   type: questionType(config.question_type),
@@ -680,29 +733,35 @@ export function QuestionGenerationScreen() {
                         </p>
                       )}
                       {batch.status === "WAITING_SOURCE" && (
-                        <p role="status" className="text-sm">
+                        <p
+                          role="status"
+                          className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800"
+                        >
                           {t(
                             `preparationStage.${batch.preparation_stage ?? "EXTRACTING"}`,
                           )}
                         </p>
                       )}
                       {batch.status === "FAILED" && (
-                        <p role="alert" className="text-sm text-destructive">
+                        <p
+                          role="alert"
+                          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                        >
                           {t("failed")}{" "}
                           <span className="font-mono">{batch.error_code}</span>
                         </p>
                       )}
                       {batch.status === "COMPLETED" && (
-                        <p className="text-sm text-emerald-700">
+                        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                           {t("completed")}
                         </p>
                       )}
                       {!!items.length && (
                         <>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-neutral-500">
                             {t("reviewHint")}
                           </p>
-                          <p className="text-sm">
+                          <p className="text-sm font-medium text-neutral-800">
                             {t("summary", {
                               total: items.length,
                               approved: stats.approved,
@@ -712,6 +771,7 @@ export function QuestionGenerationScreen() {
                           <div className="flex flex-wrap gap-2">
                             <Button
                               variant="outline"
+                              className="cursor-pointer gap-1.5 border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                               disabled={
                                 !editable ||
                                 busy ||
@@ -733,6 +793,7 @@ export function QuestionGenerationScreen() {
                               {t("selectApproved")}
                             </Button>
                             <Button
+                              className="cursor-pointer gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
                               disabled={
                                 !editable ||
                                 busy ||

@@ -8,8 +8,14 @@ import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandLogo } from "./brand-logo";
 import { useSidebarCollapsed, useMobileSidebarOpen } from "./sidebar-store";
-import { lecturerNavItems, studentNavItems } from "./nav-items";
-import type { NavItem } from "./nav-items";
+import { navItemsByRole } from "./nav-items";
+import type { AppRole, NavItem } from "./nav-items";
+
+const MENU_LABEL_KEY = {
+  student: "studentMenu",
+  lecturer: "lecturerMenu",
+  admin: "adminMenu",
+} as const;
 
 function NavLinks({
   items,
@@ -58,12 +64,13 @@ function NavLinks({
   );
 }
 
-export function AppSidebar({ role }: { role: "student" | "lecturer" }) {
+export function AppSidebar({ role }: { role: AppRole }) {
   const t = useTranslations("layout");
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useSidebarCollapsed();
   const [mobileOpen, setMobileOpen] = useMobileSidebarOpen();
-  const items = role === "student" ? studentNavItems : lecturerNavItems;
+  const items = navItemsByRole[role];
+  const subtitle = role === "admin" ? t("adminPortal") : undefined;
 
   // Close the mobile drawer on route change and on Escape, and stop the
   // background from scrolling while it's open — the minimum a modal
@@ -101,7 +108,7 @@ export function AppSidebar({ role }: { role: "student" | "lecturer" }) {
             collapsed && "justify-center px-0",
           )}
         >
-          <BrandLogo collapsed={collapsed} />
+          <BrandLogo collapsed={collapsed} subtitle={subtitle} />
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2.5">
@@ -140,11 +147,11 @@ export function AppSidebar({ role }: { role: "student" | "lecturer" }) {
           <div
             role="dialog"
             aria-modal="true"
-            aria-label={role === "student" ? t("studentMenu") : t("lecturerMenu")}
+            aria-label={t(MENU_LABEL_KEY[role])}
             className="absolute inset-y-0 left-0 flex h-full w-72 max-w-[80vw] flex-col bg-white shadow-xl"
           >
             <div className="flex h-16 items-center justify-between border-b border-neutral-200 px-4">
-              <BrandLogo collapsed={false} />
+              <BrandLogo collapsed={false} subtitle={subtitle} />
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
