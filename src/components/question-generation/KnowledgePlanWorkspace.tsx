@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Network, Trash2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
@@ -15,6 +15,7 @@ import type {
   SourceUnit,
 } from "@/types/knowledge-plan";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +24,7 @@ import {
   GENERATION_QUESTION_TYPES as types,
 } from "./generation-validation";
 import { planMatrixSchema } from "./plan-validation";
+import { planStatusClass } from "./generation-style";
 
 const unitKey = (unit: SourceUnit) => `${unit.kind}:${unit.position}`;
 const unitText = (units: SourceUnit[]) => units.map(unitKey).join(", ");
@@ -228,14 +230,22 @@ export function KnowledgePlanWorkspace({
     );
   };
   return (
-    <Card className="min-w-0">
+    <Card className="min-w-0 border-gray-300 bg-white shadow-sm">
       <CardHeader>
-        <CardTitle>{t("title")}</CardTitle>
+        <CardTitle className="flex items-center gap-2 text-lg text-neutral-900">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+            <Network className="size-4" />
+          </span>
+          {t("title")}
+        </CardTitle>
       </CardHeader>
       <CardContent className="min-w-0 space-y-5">
-        <p className="text-sm text-muted-foreground">{t("explanation")}</p>
+        <p className="text-sm text-neutral-500">{t("explanation")}</p>
         {error && (
-          <p role="alert" className="text-destructive">
+          <p
+            role="alert"
+            className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+          >
             {t("error")}
           </p>
         )}
@@ -246,6 +256,7 @@ export function KnowledgePlanWorkspace({
               key={value.id}
               variant="outline"
               size="sm"
+              className={`cursor-pointer gap-1.5 border-gray-300 bg-white ${value.id === plan?.id ? "border-violet-300 bg-violet-50 ring-1 ring-violet-200" : ""}`}
               disabled={busy || disabled}
             >
               <Link
@@ -257,7 +268,13 @@ export function KnowledgePlanWorkspace({
                   }
                 }}
               >
-                {value.sourceVersion.file_name} · {t(`status.${value.status}`)}
+                {value.sourceVersion.file_name}
+                <Badge
+                  variant="outline"
+                  className={planStatusClass(value.status)}
+                >
+                  {t(`status.${value.status}`)}
+                </Badge>
               </Link>
             </Button>
           ))}
@@ -267,6 +284,7 @@ export function KnowledgePlanWorkspace({
             <Button
               type="button"
               variant="outline"
+              className="cursor-pointer gap-1.5 border-gray-300 bg-white"
               disabled={busy || disabled}
               onClick={() =>
                 void mutate(async () => accept(await api.get(plan.id)))
@@ -274,11 +292,25 @@ export function KnowledgePlanWorkspace({
             >
               {t("reload")}
             </Button>
-            <p className="font-medium">
-              {plan.sourceVersion.file_name} · {t(`status.${plan.status}`)} ·{" "}
-              {t("revision", { revision: plan.revision })}
-            </p>
-            {plan.error_code && <p role="alert">{plan.error_code}</p>}
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+              <span className="font-medium text-neutral-900">
+                {plan.sourceVersion.file_name}
+              </span>
+              <Badge variant="outline" className={planStatusClass(plan.status)}>
+                {t(`status.${plan.status}`)}
+              </Badge>
+              <span className="text-xs text-neutral-500">
+                {t("revision", { revision: plan.revision })}
+              </span>
+            </div>
+            {plan.error_code && (
+              <p
+                role="alert"
+                className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
+                {plan.error_code}
+              </p>
+            )}
             {plan.matrix && plan.content_map && (
               <form
                 onSubmit={handleSubmit(
@@ -291,11 +323,13 @@ export function KnowledgePlanWorkspace({
                 className="min-w-0 space-y-5"
               >
                 <fieldset disabled={!editable} className="min-w-0 space-y-3">
-                  <legend className="font-semibold">{t("tree")}</legend>
-                  <p className="text-xs text-muted-foreground">
+                  <legend className="font-semibold text-neutral-900">
+                    {t("tree")}
+                  </legend>
+                  <p className="text-xs text-neutral-500">
                     {t("sourceHint")}
                   </p>
-                  <div className="max-h-[480px] space-y-3 overflow-auto rounded border p-3">
+                  <div className="max-h-[480px] space-y-3 overflow-auto rounded-md border border-gray-300 bg-gray-50/60 p-3">
                     {matrix.nodes.map((node, index) => {
                       const origin = plan.content_map?.nodes.find(
                         (value) => value.id === node.id,
@@ -306,28 +340,51 @@ export function KnowledgePlanWorkspace({
                       return (
                         <div
                           key={node.id}
-                          className="space-y-2 rounded border p-3"
+                          className="space-y-2 rounded-md border border-gray-200 bg-white p-3 shadow-sm"
                         >
-                          <p className="break-words text-xs">
-                            {path(node.id)} ·{" "}
-                            {origin
-                              ? t(
-                                  origin.origin === "HEADING"
-                                    ? "heading"
-                                    : "inferred",
-                                )
-                              : t("edited")}{" "}
-                            ·{" "}
-                            {t(
-                              match?.ambiguous
-                                ? "ambiguous"
-                                : match?.chapter_id
-                                  ? "existing"
-                                  : "new",
-                            )}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="break-words text-sm font-medium text-neutral-900">
+                              {path(node.id)}
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={
+                                !origin
+                                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                                  : origin.origin === "HEADING"
+                                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                                    : "border-violet-200 bg-violet-50 text-violet-700"
+                              }
+                            >
+                              {origin
+                                ? t(
+                                    origin.origin === "HEADING"
+                                      ? "heading"
+                                      : "inferred",
+                                  )
+                                : t("edited")}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={
+                                match?.ambiguous
+                                  ? "border-amber-200 bg-amber-50 text-amber-700"
+                                  : match?.chapter_id
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                    : "border-sky-200 bg-sky-50 text-sky-700"
+                              }
+                            >
+                              {t(
+                                match?.ambiguous
+                                  ? "ambiguous"
+                                  : match?.chapter_id
+                                    ? "existing"
+                                    : "new",
+                              )}
+                            </Badge>
+                          </div>
                           {origin && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-xs text-neutral-500">
                               {origin.evidence}
                             </p>
                           )}
@@ -335,6 +392,7 @@ export function KnowledgePlanWorkspace({
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="cursor-pointer border-gray-300 bg-white"
                             onClick={() =>
                               setActiveNode(
                                 activeNode === node.id ? null : node.id,
@@ -352,7 +410,7 @@ export function KnowledgePlanWorkspace({
                                 />
                                 <select
                                   aria-label={t("parent")}
-                                  className="min-w-0 rounded border bg-background p-2"
+                                  className="h-9 min-w-0 cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20"
                                   value={node.parent_id ?? ""}
                                   onChange={(event) =>
                                     setValue(
@@ -430,8 +488,10 @@ export function KnowledgePlanWorkspace({
                   disabled={!editable}
                   className="@container/matrix min-w-0 space-y-3"
                 >
-                  <legend className="font-semibold">{t("matrix")}</legend>
-                  <div className="min-w-0 rounded border">
+                  <legend className="font-semibold text-neutral-900">
+                    {t("matrix")}
+                  </legend>
+                  <div className="min-w-0 rounded-md border border-gray-300 bg-white">
                     <table className="block w-full min-w-0 text-sm @min-[64rem]/matrix:table @min-[64rem]/matrix:table-fixed">
                       <colgroup className="hidden @min-[64rem]/matrix:table-column-group">
                         <col className="w-[18%]" />
@@ -443,7 +503,7 @@ export function KnowledgePlanWorkspace({
                         ))}
                         <col className="w-[6%]" />
                       </colgroup>
-                      <thead className="hidden bg-muted/40 @min-[64rem]/matrix:table-header-group [&_th]:break-words [&_th]:px-2 [&_th]:py-3 [&_th]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium">
+                      <thead className="hidden bg-violet-50/60 text-violet-900 @min-[64rem]/matrix:table-header-group [&_th]:break-words [&_th]:px-2 [&_th]:py-3 [&_th]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium">
                         <tr>
                           <th>{t("tree")}</th>
                           <th>{t("objective")}</th>
@@ -461,7 +521,7 @@ export function KnowledgePlanWorkspace({
                         {matrix.rows.map((row, index) => (
                           <tr
                             key={row.id}
-                            className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border p-3 align-top sm:grid-cols-2 @min-[64rem]/matrix:table-row @min-[64rem]/matrix:rounded-none @min-[64rem]/matrix:border-x-0 @min-[64rem]/matrix:p-0"
+                            className="grid min-w-0 grid-cols-1 gap-3 rounded-lg border border-gray-200 bg-white p-3 align-top sm:grid-cols-2 @min-[64rem]/matrix:table-row @min-[64rem]/matrix:rounded-none @min-[64rem]/matrix:border-x-0 @min-[64rem]/matrix:p-0"
                           >
                             <td className="min-w-0 space-y-1.5 @min-[64rem]/matrix:p-2">
                               <span className="block text-xs font-medium @min-[64rem]/matrix:hidden">
@@ -470,7 +530,7 @@ export function KnowledgePlanWorkspace({
                               <select
                                 aria-label={t("tree")}
                                 title={path(row.node_id)}
-                                className="h-9 w-full min-w-0 max-w-full rounded border bg-background px-2 text-sm"
+                                className="h-9 w-full min-w-0 max-w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20"
                                 {...register(`rows.${index}.node_id`, {
                                   onChange: (event) => {
                                     const target = matrix.nodes.find(
@@ -528,7 +588,7 @@ export function KnowledgePlanWorkspace({
                               </span>
                               <select
                                 aria-label={t("type")}
-                                className="h-9 w-full min-w-0 max-w-full rounded border bg-background px-2 text-sm"
+                                className="h-9 w-full min-w-0 max-w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20"
                                 {...register(`rows.${index}.question_type`)}
                               >
                                 {types.map((type) => (
@@ -588,6 +648,7 @@ export function KnowledgePlanWorkspace({
                   <Button
                     type="button"
                     variant="outline"
+                    className="cursor-pointer border-gray-300 bg-white"
                     disabled={
                       !editable ||
                       matrix.rows.length >= 20 ||
@@ -619,18 +680,29 @@ export function KnowledgePlanWorkspace({
                     {t("addRow")}
                   </Button>
                 </fieldset>
-                <p>{t("total", { total, uncovered })}</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="inline-block rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-sm font-medium text-violet-700">
+                  {t("total", { total, uncovered })}
+                </p>
+                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                   {t("reviewWarning")}
                 </p>
-                {isDirty && <p className="text-sm">{t("unsaved")}</p>}
+                {isDirty && (
+                  <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+                    {t("unsaved")}
+                  </p>
+                )}
                 <div className="flex flex-wrap gap-3">
-                  <Button type="submit" disabled={!editable || !isDirty}>
+                  <Button
+                    type="submit"
+                    className="cursor-pointer bg-accent-600 text-white hover:bg-accent-700"
+                    disabled={!editable || !isDirty}
+                  >
                     {t("save")}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
+                    className="cursor-pointer gap-1.5 border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                     disabled={
                       !editable ||
                       plan.status !== "REVIEW_REQUIRED" ||
@@ -645,6 +717,7 @@ export function KnowledgePlanWorkspace({
                   </Button>
                   <Button
                     type="button"
+                    className="cursor-pointer gap-1.5 bg-violet-600 text-white hover:bg-violet-700"
                     disabled={
                       plan.status !== "APPROVED" || isDirty || busy || disabled
                     }

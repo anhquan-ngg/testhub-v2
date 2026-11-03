@@ -23,6 +23,9 @@ import StudentSideBar from "@/components/common/student/sidebar";
 import StudentMenu from "@/components/common/student/menu";
 import { MathRenderer } from "@/components/MathRenderer";
 import { useAppSelector } from "@/store/hook";
+import { examTypeClass } from "@/lib/exam-style";
+import { questionTypeClass } from "@/lib/regrading";
+import { useEnumLabels } from "@/i18n/useEnumLabels";
 import {
   calculateScorePerQuestion,
   calculateTotalQuesions,
@@ -231,6 +234,7 @@ function QuestionFiles({ files }: { files?: ResultSubmissionQuestionFile[] }) {
 
 export default function ResultDetailPage({ params }: PageProps) {
   const t = useTranslations("student.resultDetail");
+  const labels = useEnumLabels();
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const router = useRouter();
@@ -341,7 +345,7 @@ export default function ResultDetailPage({ params }: PageProps) {
         <StudentSideBar />
         <div className="flex-1 flex flex-col">
           <StudentMenu />
-          <main className="flex-1 p-8">
+          <main className="flex-1 px-6 pb-10 pt-7 md:px-8">
             <div className="max-w-4xl mx-auto">
               <Card className="p-8 text-center">
                 <p className="text-red-600 text-lg">
@@ -362,7 +366,7 @@ export default function ResultDetailPage({ params }: PageProps) {
         <StudentSideBar />
         <div className="flex-1 flex flex-col">
           <StudentMenu />
-          <main className="flex-1 p-8">
+          <main className="flex-1 px-6 pb-10 pt-7 md:px-8">
             <div className="max-w-4xl mx-auto">
               <Card className="p-8 text-center">
                 <p className="text-gray-600">{t("loading")}</p>
@@ -380,7 +384,7 @@ export default function ResultDetailPage({ params }: PageProps) {
         <StudentSideBar />
         <div className="flex-1 flex flex-col">
           <StudentMenu />
-          <main className="flex-1 p-8">
+          <main className="flex-1 px-6 pb-10 pt-7 md:px-8">
             <div className="max-w-4xl mx-auto">
               <Card className="p-8 text-center">
                 <p className="text-red-600 text-lg">
@@ -411,7 +415,7 @@ export default function ResultDetailPage({ params }: PageProps) {
       <StudentSideBar />
       <div className="flex-1 flex flex-col">
         <StudentMenu />
-        <main className="flex-1 p-8">
+        <main className="flex-1 px-6 pb-10 pt-7 md:px-8">
           <div className="mx-auto space-y-6">
             {/* Back Button */}
             <div className="flex items-center justify-between no-print">
@@ -434,18 +438,18 @@ export default function ResultDetailPage({ params }: PageProps) {
             </div>
 
             {/* Header Card */}
-            <Card className="shadow-lg bg-white border border-gray-300">
-              <CardHeader className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+            <Card className="gap-0 overflow-hidden border border-gray-300 bg-white py-0 shadow-sm">
+              <CardHeader className="p-6 border-b border-gray-200 bg-gray-50">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <FileText className="w-6 h-6 text-blue-600" />
+                      <FileText className="w-6 h-6 text-[#0066cc]" />
                       <h1 className="text-2xl font-bold text-gray-900">
                         {submission.exam.title}
                       </h1>
                       <Badge
                         variant="default"
-                        className="bg-purple-50 text-purple-600 border-purple-200"
+                        className={examTypeClass(isPractice)}
                       >
                         {isPractice ? t("practice") : t("official")}
                       </Badge>
@@ -455,7 +459,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="flex items-center gap-2 text-3xl font-bold text-blue-600">
+                    <div className="flex items-center gap-2 text-3xl font-bold text-[#0066cc]">
                       {submission.total_score !== null
                         ? Number(submission.total_score).toFixed(2)
                         : "0.00"}
@@ -467,16 +471,16 @@ export default function ResultDetailPage({ params }: PageProps) {
 
               <CardContent className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <Clock className="w-5 h-5 text-blue-600" />
+                  <div className="flex items-center gap-3 p-4 bg-sky-50 rounded-lg border border-sky-200">
+                    <Clock className="w-5 h-5 text-sky-700" />
                     <div>
                       <p className="text-sm text-gray-600">{t("timeToDoHomework")}</p>
                       <p className="font-semibold text-gray-900">{timeTaken}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                    <CheckCircle className="w-5 h-5 text-emerald-700" />
                     <div>
                       <p className="text-sm text-gray-600">{t("status")}</p>
                       <p className="font-semibold text-gray-900">
@@ -487,8 +491,8 @@ export default function ResultDetailPage({ params }: PageProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
-                    <FileText className="w-5 h-5 text-purple-600" />
+                  <div className="flex items-center gap-3 p-4 bg-violet-50 rounded-lg border border-violet-200">
+                    <FileText className="w-5 h-5 text-violet-700" />
                     <div>
                       <p className="text-sm text-gray-600">{t("numberOfQuestions")}</p>
                       <p className="font-semibold text-gray-900">
@@ -505,7 +509,7 @@ export default function ResultDetailPage({ params }: PageProps) {
               submission.questions &&
               submission.questions.length > 0 && (
                 <div className="space-y-4">
-                  <h2 className="text-xl font-bold text-gray-900">
+                  <h2 className="text-lg font-semibold text-neutral-900">
                     {t("detailedAnswer")}</h2>
 
                   {submission.questions.map((sq, index) => {
@@ -519,10 +523,10 @@ export default function ResultDetailPage({ params }: PageProps) {
                     return (
                       <Card
                         key={sq.id}
-                        className={`border-2 ${
+                        className={`border ${
                           sq.is_correct
-                            ? "border-green-200 bg-green-100/70"
-                            : "border-red-200 bg-red-100/70"
+                            ? "border-emerald-200 bg-emerald-50/60"
+                            : "border-red-200 bg-red-50/60"
                         }`}
                       >
                         <CardHeader className="pb-3">
@@ -533,15 +537,18 @@ export default function ResultDetailPage({ params }: PageProps) {
                                   {t("questionNumber", { number: index + 1 })}
                                 </span>
                                 {sq.is_correct ? (
-                                  <Badge className="bg-green-500 text-white">
+                                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
                                     <CheckCircle className="w-3 h-3 mr-1" />
                                     {t("correct")}</Badge>
                                 ) : (
-                                  <Badge className="bg-red-500 text-white">
+                                  <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700">
                                     <XCircle className="w-3 h-3 mr-1" />
                                     {t("incorrect")}
                                   </Badge>
                                 )}
+                                <Badge variant="outline" className={questionTypeClass(sq.question.question_type)}>
+                                  {labels.questionType(sq.question.question_type)}
+                                </Badge>
                               </div>
                               <div className="text-gray-800 leading-relaxed">
                                 <MathRenderer
@@ -564,16 +571,16 @@ export default function ResultDetailPage({ params }: PageProps) {
                         <CardContent>
                           {sq.question.question_type === "ESSAY" ? (
                             <div className="space-y-3">
-                              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                <p className="text-sm font-semibold text-blue-900 mb-1">
+                              <div className="p-3 bg-sky-50 rounded-lg border border-sky-200">
+                                <p className="text-sm font-semibold text-sky-800 mb-1">
                                   {t("yourAnswer")}</p>
                                 <p className="text-gray-700">
                                   {sq.answer || t("noAnswer")}
                                 </p>
                               </div>
                               {sq.question.correct_answer && (
-                                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                  <p className="text-sm font-semibold text-green-900 mb-1">
+                                <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                                  <p className="text-sm font-semibold text-emerald-800 mb-1">
                                     {t("sampleAnswer")}</p>
                                   <div className="text-gray-700">
                                     <MathRenderer
@@ -601,22 +608,22 @@ export default function ResultDetailPage({ params }: PageProps) {
                                   let iconElement = null;
 
                                   if (isStudentChoice && isCorrect) {
-                                    bgClass = "bg-green-100 border-green-500";
-                                    textClass = "text-green-900 font-semibold";
+                                    bgClass = "bg-emerald-50 border-emerald-400";
+                                    textClass = "text-emerald-900 font-semibold";
                                     iconElement = (
-                                      <CheckCircle className="w-5 h-5 text-green-600" />
+                                      <CheckCircle className="w-5 h-5 text-emerald-600" />
                                     );
                                   } else if (isStudentChoice && !isCorrect) {
-                                    bgClass = "bg-red-100 border-red-500";
+                                    bgClass = "bg-red-50 border-red-300";
                                     textClass = "text-red-900 font-semibold";
                                     iconElement = (
                                       <XCircle className="w-5 h-5 text-red-600" />
                                     );
                                   } else if (!isStudentChoice && isCorrect) {
-                                    bgClass = "bg-green-50 border-green-300";
-                                    textClass = "text-green-800";
+                                    bgClass = "bg-emerald-50/50 border-emerald-200";
+                                    textClass = "text-emerald-800";
                                     iconElement = (
-                                      <CheckCircle className="w-5 h-5 text-green-500" />
+                                      <CheckCircle className="w-5 h-5 text-emerald-500" />
                                     );
                                   }
 
@@ -636,7 +643,7 @@ export default function ResultDetailPage({ params }: PageProps) {
                                       {isStudentChoice && (
                                         <Badge
                                           variant="outline"
-                                          className="text-xs font-bold border-gray-300 text-gray-900 bg-white px-3 py-1 rounded-full whitespace-nowrap"
+                                          className="whitespace-nowrap rounded-full border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700"
                                         >
                                           {t("youChoose")}</Badge>
                                       )}

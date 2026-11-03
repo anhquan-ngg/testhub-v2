@@ -65,11 +65,11 @@ export function QuestionConfigTable({ rows, disabled, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-base font-semibold">{t("title")}</h3>
-      <div className="rounded-lg border">
+      <h3 className="text-base font-semibold text-neutral-900">{t("title")}</h3>
+      <div className="overflow-hidden rounded-lg border border-gray-300 bg-white">
         <Table className="min-w-[520px] table-fixed">
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-violet-50/60 hover:bg-violet-50/60">
               <TableHead className="w-[38%]">{t("type")}</TableHead>
               <TableHead className="w-[30%]">{t("format")}</TableHead>
               <TableHead className="w-[18%]">{t("count")}</TableHead>
@@ -147,7 +147,7 @@ export function QuestionConfigTable({ rows, disabled, onChange }: Props) {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="text-destructive hover:text-destructive"
+                    className="cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700"
                     aria-label={t("remove", { number: index + 1 })}
                     disabled={disabled || rows.length === 1}
                     onClick={() =>
@@ -167,6 +167,7 @@ export function QuestionConfigTable({ rows, disabled, onChange }: Props) {
           type="button"
           variant="outline"
           size="sm"
+          className="cursor-pointer gap-1.5 border-gray-300 bg-white"
           disabled={disabled || rows.length >= MAX_GENERATION_CONFIGS}
           onClick={() => onChange([...rows, newQuestionConfigRow()])}
         >
@@ -176,16 +177,16 @@ export function QuestionConfigTable({ rows, disabled, onChange }: Props) {
         <p
           aria-live="polite"
           className={cn(
-            "text-sm",
+            "rounded-full border px-3 py-1 text-sm font-medium",
             total > MAX_GENERATION_QUESTIONS
-              ? "text-destructive"
-              : "text-muted-foreground",
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-violet-200 bg-violet-50 text-violet-700",
           )}
         >
           {t("total", { total, max: MAX_GENERATION_QUESTIONS })}
         </p>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-neutral-500">
         {t("hint", {
           rows: MAX_GENERATION_CONFIGS,
           max: MAX_GENERATION_QUESTIONS,

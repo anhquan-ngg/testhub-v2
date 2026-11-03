@@ -18,22 +18,37 @@ export function RegradeQuestion({ item }: { item: Question }) {
       <MathRenderer content={item.question.question_text} className="whitespace-pre-wrap" />
       {displayed.length > 0 && (
         <div className="space-y-2">
-          {displayed.map((option, index) => (
-            <div key={index} className="flex flex-wrap items-center gap-2 rounded-md border p-3">
-              <MathRenderer content={option.text} className="min-w-0 flex-1" />
-              {selected.some((value) => value.text === option.text) && <Badge variant="secondary">{t("selected")}</Badge>}
-              {options.some((value) => value.text === option.text && value.isCorrect) && <Badge variant="outline">{t("correctAnswer")}</Badge>}
-            </div>
-          ))}
+          {displayed.map((option, index) => {
+            const isSelected = selected.some((value) => value.text === option.text);
+            const isKey = options.some((value) => value.text === option.text && value.isCorrect);
+            const rowClass = isSelected && isKey
+              ? "border-emerald-300 bg-emerald-50"
+              : isSelected
+                ? "border-red-300 bg-red-50"
+                : isKey
+                  ? "border-emerald-200 border-dashed bg-emerald-50/40"
+                  : "border-gray-200 bg-white";
+            return (
+              <div key={index} className={`flex flex-wrap items-center gap-2 rounded-md border p-3 ${rowClass}`}>
+                <MathRenderer content={option.text} className="min-w-0 flex-1" />
+                {isSelected && (
+                  <Badge variant="outline" className={isKey ? "border-sky-300 bg-sky-100 text-sky-800" : "border-red-300 bg-red-100 text-red-800"}>
+                    {t("selected")}
+                  </Badge>
+                )}
+                {isKey && <Badge variant="outline" className="border-emerald-300 bg-emerald-100 text-emerald-800">{t("correctAnswer")}</Badge>}
+              </div>
+            );
+          })}
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-md border bg-muted/40 p-3">
-          <p className="mb-2 text-sm font-semibold">{t("candidateAnswer")}</p>
+        <div className="rounded-md border border-sky-200 bg-sky-50 p-3">
+          <p className="mb-2 text-sm font-semibold text-sky-800">{t("candidateAnswer")}</p>
           <MathRenderer content={item.answer || selected.map((option) => option.text).join("; ") || t("noAnswer")} className="whitespace-pre-wrap" />
         </div>
-        <div className="rounded-md border p-3">
-          <p className="mb-2 text-sm font-semibold">{t("correctAnswer")}</p>
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
+          <p className="mb-2 text-sm font-semibold text-emerald-800">{t("correctAnswer")}</p>
           <MathRenderer content={item.question.correct_answer || options.filter((option) => option.isCorrect).map((option) => option.text).join("; ") || t("noAnswerKey")} className="whitespace-pre-wrap" />
         </div>
       </div>

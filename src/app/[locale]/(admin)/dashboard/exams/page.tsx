@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -41,6 +40,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { examStatusClass, examTypeClass } from "@/lib/exam-style";
 
 type PageResult<T> = {
   data: T[];
@@ -122,40 +122,35 @@ export default function ExamsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-900">{t("examManagement")}</h2>
+      <div>
+        <h2 className="text-2xl font-bold text-neutral-900">{t("examManagement")}</h2>
+        <p className="mt-1 text-sm text-neutral-500">{t("seeAListOfAllTests")}</p>
       </div>
 
-      <Card className="bg-white border-gray-300 space-y-4">
+      <Card className="border-gray-300 bg-white shadow-sm">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>{t("listOfAllExams")}</CardTitle>
-              <CardDescription>
-                {t("seeAListOfAllTests")}</CardDescription>
-            </div>
-          </div>
+          <CardTitle className="text-lg font-semibold text-neutral-900">
+            {t("listOfAllExams")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+              <Input
                 placeholder={t("searchForExam")}
-                className="w-full flex h-10 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm pl-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="border-gray-300 bg-white pl-10"
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-
-                }}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
 
           {isLoading && <div className="flex justify-center py-4"><Spinner /></div>}
+          <div className="overflow-x-auto rounded-lg border border-gray-300 bg-white">
           <Table>
             <TableHeader>
-              <TableRow className="border-gray-300">
+              <TableRow className="border-gray-300 bg-gray-50">
                 <TableHead>{t("testName")}</TableHead>
                 <TableHead>{t("creator")}</TableHead>
                 <TableHead>{t("topic")}</TableHead>
@@ -186,17 +181,18 @@ export default function ExamsPage() {
                   </TableCell>
                   <TableCell>{exam.duration} {t("minute")}</TableCell>
                   <TableCell>
-                    {exam.practice ? t("practice") : t("official")}
+                    <Badge variant="outline" className={examTypeClass(exam.practice)}>
+                      {exam.practice ? t("practice") : t("official")}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge
-                      className={`px-2 py-1 text-white rounded-lg ${
-                        exam.status === "INACTIVE"
-                          ? "text-red-500 bg-red-100"
-                          : exam.status === "ACTIVE"
-                            ? "text-green-500 bg-green-100"
-                            : "text-blue-500 bg-blue-100"
-                      }`}
+                      variant="outline"
+                      className={
+                        exam.status === "ACTIVE" || exam.status === "INACTIVE"
+                          ? examStatusClass(exam.status)
+                          : "border-sky-200 bg-sky-50 text-sky-700"
+                      }
                     >
                       {exam.status}
                     </Badge>
@@ -263,7 +259,7 @@ export default function ExamsPage() {
                         onClick={() =>
                           router.push(`/dashboard/exams/${exam.id}/report`)
                         }
-                        className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:cursor-pointer"
+                        className="h-8 w-8 text-[#0066cc] hover:bg-sky-50 hover:text-[#0052a3] hover:cursor-pointer"
                         title={t("viewReport")}
                       >
                         <BarChart3 className="h-4 w-4" />
@@ -274,6 +270,7 @@ export default function ExamsPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
 
           {totalPages > 0 && (
             <div className="flex items-center justify-end space-x-2 py-4">

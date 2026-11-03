@@ -4,6 +4,7 @@ import { intlLocales } from "@/i18n/config";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { examTypeClass, registrationStatusClass } from "@/lib/exam-style";
 import {
   BookOpen,
   Award,
@@ -436,7 +437,7 @@ export default function StudentDashboard() {
       return (
         <Button
           disabled
-          className="w-full cursor-not-allowed border border-green-200 bg-green-100 font-semibold text-green-700"
+          className="w-full cursor-not-allowed border border-emerald-200 bg-emerald-50 font-semibold text-emerald-700 disabled:opacity-100"
         >
           {t("complete")}</Button>
       );
@@ -445,7 +446,7 @@ export default function StudentDashboard() {
     if (!registration) {
       return (
         <Button
-          className="w-full cursor-pointer bg-accent-600 font-semibold text-white shadow-md hover:bg-accent-700"
+          className="w-full cursor-pointer bg-[#0066cc] font-semibold text-white hover:bg-[#0052a3]"
           onClick={() => handleRegister(test.id)}
           disabled={isRegistering}
         >
@@ -462,7 +463,7 @@ export default function StudentDashboard() {
       return (
         <Button
           disabled
-          className="w-full cursor-not-allowed border border-yellow-200 bg-yellow-100 font-semibold text-yellow-700"
+          className={`w-full cursor-not-allowed border font-semibold disabled:opacity-100 ${registrationStatusClass("PENDING")}`}
         >
           {t("waitingForApproval")}</Button>
       );
@@ -472,7 +473,7 @@ export default function StudentDashboard() {
       return (
         <Button
           disabled
-          className="w-full cursor-not-allowed border border-red-200 bg-red-100 font-semibold text-red-700"
+          className={`w-full cursor-not-allowed border font-semibold disabled:opacity-100 ${registrationStatusClass("REJECTED")}`}
         >
           {t("rejected")}</Button>
       );
@@ -488,7 +489,7 @@ export default function StudentDashboard() {
       return (
         <Button
           disabled
-          className="w-full cursor-not-allowed border border-accent-200 bg-accent-100 font-semibold text-accent-700"
+          className="w-full cursor-not-allowed border border-sky-200 bg-sky-50 font-semibold text-sky-700 disabled:opacity-100"
         >
           {t("approvedWaitingForExamTime")}</Button>
       );
@@ -497,7 +498,7 @@ export default function StudentDashboard() {
     if (canStartExam || hasInProgressSubmission) {
       return (
         <Button
-          className="w-full cursor-pointer bg-green-500 font-semibold text-white shadow-md transition-all hover:bg-green-600 hover:shadow-lg"
+          className="w-full cursor-pointer bg-emerald-600 font-semibold text-white hover:bg-emerald-700"
           asChild
         >
           <Link href={`/exam/${test.id}`}>{t("enterTheExam")}</Link>
@@ -508,7 +509,7 @@ export default function StudentDashboard() {
     return (
       <Button
         disabled
-        className="w-full cursor-not-allowed bg-gray-200 font-semibold text-gray-500"
+        className="w-full cursor-not-allowed border border-gray-200 bg-gray-50 font-semibold text-gray-500 disabled:opacity-100"
       >
         {t("examTimeHasPassed")}</Button>
     );
@@ -545,21 +546,25 @@ export default function StudentDashboard() {
       label: t("statUpcoming"),
       value: upcomingExams.length,
       icon: CalendarClock,
+      chip: "bg-sky-50 text-sky-700",
     },
     {
       label: t("statPending"),
       value: pendingCount,
       icon: Hourglass,
+      chip: "bg-amber-50 text-amber-700",
     },
     {
       label: t("statCompleted"),
       value: completedCount,
       icon: CircleCheckBig,
+      chip: "bg-emerald-50 text-emerald-700",
     },
     {
       label: t("statAvailable"),
       value: filteredExams.length,
       icon: ListChecks,
+      chip: "bg-violet-50 text-violet-700",
     },
   ];
 
@@ -575,7 +580,7 @@ export default function StudentDashboard() {
           <div>
             <span className="text-xs font-semibold uppercase tracking-wide text-accent-600">
               {t("overview")}</span>
-            <h2 className="mt-1 text-3xl font-bold text-neutral-900">
+            <h2 className="mt-1 text-2xl font-bold text-neutral-900">
               {t("greeting", { name: user.full_name || t("friend") })}
             </h2>
             <p className="mt-1 text-sm text-neutral-500">
@@ -593,7 +598,7 @@ export default function StudentDashboard() {
           ) : (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
               {stats.map((stat) => (
-                <Card key={stat.label} className="border-neutral-200">
+                <Card key={stat.label} className="border-gray-300 bg-white shadow-sm">
                   <CardContent className="flex items-start justify-between px-5">
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
@@ -603,7 +608,9 @@ export default function StudentDashboard() {
                         {stat.value}
                       </p>
                     </div>
-                    <stat.icon className="h-5 w-5 text-accent-600" />
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${stat.chip}`}>
+                      <stat.icon className="h-5 w-5" />
+                    </span>
                   </CardContent>
                 </Card>
               ))}
@@ -612,16 +619,10 @@ export default function StudentDashboard() {
 
           {/* Upcoming highlight */}
           {!isLoading && nextExam && (
-            <Card className="border-neutral-200 bg-white">
+            <Card className="border-gray-300 bg-white shadow-sm">
               <CardContent className="flex flex-wrap items-center justify-between gap-5 px-6">
                 <div className="min-w-0">
-                  <Badge
-                    className={`${
-                      nextExam.practice
-                        ? "bg-purple-500 hover:bg-purple-600"
-                        : "bg-blue-600 hover:bg-blue-700"
-                    } text-white`}
-                  >
+                  <Badge variant="outline" className={examTypeClass(nextExam.practice)}>
                     {nextExam.practice ? t("practice") : t("officialTest")}
                   </Badge>
                   <h3 className="mt-2 truncate text-lg font-semibold text-neutral-900">
@@ -652,7 +653,7 @@ export default function StudentDashboard() {
 
           {/* Filter row */}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-xl font-bold text-neutral-900">
+            <h2 className="text-lg font-semibold text-neutral-900">
               {t("allExams")}</h2>
             <div className="flex flex-wrap gap-2">
               <div className="relative">
@@ -661,12 +662,12 @@ export default function StudentDashboard() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t("searchForExam")}
-                  className="w-52 pl-8"
+                  className="w-52 border-gray-300 bg-white pl-8"
                 />
               </div>
               <div className="w-[190px]">
                 <Select value={selectedTopic} onValueChange={setSelectedTopic}>
-                  <SelectTrigger className="w-full cursor-pointer">
+                  <SelectTrigger className="w-full cursor-pointer border-gray-300 bg-white">
                     <SelectValue placeholder={t("chooseATopic")} />
                   </SelectTrigger>
                   <SelectContent>
@@ -687,7 +688,7 @@ export default function StudentDashboard() {
               <Loader2 className="h-8 w-8 animate-spin text-accent-600" />
             </div>
           ) : visibleExams.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-neutral-300 bg-white py-16 text-center">
+            <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-gray-300 bg-white py-16 text-center">
               <BookOpen className="h-9 w-9 text-accent-400" />
               <p className="font-heading text-lg font-semibold text-neutral-900">
                 {t("thereAreNoMatchingTestsYet")}</p>
@@ -696,7 +697,7 @@ export default function StudentDashboard() {
               {(searchQuery || selectedTopic !== "all") && (
                 <Button
                   variant="outline"
-                  className="mt-1 cursor-pointer"
+                  className="mt-1 cursor-pointer border-gray-300 bg-white"
                   onClick={() => {
                     setSearchQuery("");
                     setSelectedTopic("all");
@@ -709,33 +710,25 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
               {visibleExams.map((test) => {
                 const isPractice = test.practice;
-                const bgGradient = isPractice
-                  ? "bg-gradient-to-r from-purple-50 to-white"
-                  : "bg-gradient-to-r from-blue-50 to-white";
-                const badgeColor = isPractice
-                  ? "bg-purple-500 hover:bg-purple-600"
-                  : "bg-blue-600 hover:bg-blue-700";
                 const Icon = isPractice ? BookOpen : Award;
 
                 return (
                   <Card
                     key={test.id}
-                    className="overflow-hidden border-neutral-200 py-0 shadow-sm transition-all duration-300 hover:shadow-lg"
+                    className="overflow-hidden border-gray-300 bg-white py-0 shadow-sm transition-shadow hover:shadow-md"
                   >
                     <div
-                      className={`${bgGradient} border-b border-neutral-100 px-6 pb-4 pt-6`}
+                      className="border-b border-gray-200 bg-gray-50 px-6 pb-4 pt-5"
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <h3 className="flex-1 text-xl font-bold text-neutral-900">
+                        <h3 className="flex-1 text-lg font-semibold text-neutral-900">
                           {test.title}
                         </h3>
-                        <Icon
-                          className={`h-6 w-6 flex-shrink-0 ${
-                            isPractice ? "text-purple-600" : "text-blue-600"
-                          }`}
-                        />
+                        <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${isPractice ? "bg-sky-50 text-sky-700" : "bg-violet-50 text-violet-700"}`}>
+                          <Icon className="h-5 w-5" />
+                        </span>
                       </div>
-                      <Badge className={`${badgeColor} mt-3 font-medium text-white`}>
+                      <Badge variant="outline" className={`mt-3 ${examTypeClass(isPractice)}`}>
                         {isPractice ? t("practice") : t("officialTest")}
                       </Badge>
                     </div>

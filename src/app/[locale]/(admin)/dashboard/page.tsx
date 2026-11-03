@@ -3,7 +3,13 @@
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, FileText, HelpCircle, BarChart3 } from "lucide-react";
+import {
+  Users,
+  FileText,
+  HelpCircle,
+  BarChart3,
+  type LucideIcon,
+} from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -27,6 +33,32 @@ type PageResult<T> = {
   page: number;
   limit: number;
 };
+
+type StatCardProps = {
+  title: string;
+  value: number;
+  icon: LucideIcon;
+  iconClass: string;
+};
+
+/** Thẻ thống kê với icon có màu nền riêng theo từng loại số liệu. */
+function StatCard({ title, value, icon: Icon, iconClass }: StatCardProps) {
+  return (
+    <Card className="border-gray-300 bg-white shadow-sm">
+      <CardContent className="flex items-center gap-4 p-5">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${iconClass}`}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm text-neutral-500">{title}</p>
+          <p className="text-2xl font-bold text-neutral-900">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 type DashboardSubmission = {
   total_score?: number | string | null;
@@ -133,9 +165,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!socket) return;
 
-    const handleDashboardUpdate = (metrics?: any) => {
-      console.log("Real-time dashboard update received:", metrics);
-
+    const handleDashboardUpdate = () => {
       void fetchDashboardData();
 
       toast.info(t("dashboardDataHasBeenUpdatedAutomatically"));
@@ -188,88 +218,91 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-[#0066cc]">{t("brandTitle")}</h1>
-          <p className="text-gray-700 mt-1">{t("adminConsole")}</p>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold text-neutral-900">{t("brandTitle")}</h2>
+        <p className="mt-1 text-sm text-neutral-500">{t("adminConsole")}</p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-white border-gray-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("totalUsers")}</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{usersCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white border-gray-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t("test")}</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{examsCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white border-gray-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              {t("questionBank")}</CardTitle>
-            <HelpCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{questionsCount}</div>
-          </CardContent>
-        </Card>
-        <Card className="bg-white border-gray-300">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t("examTurn")}</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{submissionCount}</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          title={t("totalUsers")}
+          value={usersCount}
+          icon={Users}
+          iconClass="bg-sky-100 text-sky-700"
+        />
+        <StatCard
+          title={t("test")}
+          value={examsCount}
+          icon={FileText}
+          iconClass="bg-violet-100 text-violet-700"
+        />
+        <StatCard
+          title={t("questionBank")}
+          value={questionsCount}
+          icon={HelpCircle}
+          iconClass="bg-amber-100 text-amber-700"
+        />
+        <StatCard
+          title={t("examTurn")}
+          value={submissionCount}
+          icon={BarChart3}
+          iconClass="bg-emerald-100 text-emerald-700"
+        />
       </div>
 
-      {/* Main Content - Analytics */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-gray-800">{t("scoreAnalysis")}</h2>
-        <Card className="bg-white border-gray-300">
-          <CardHeader>
-            <CardTitle>{t("averageScoreSpectrum")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[400px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={scoreData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="range" />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Bar
-                    dataKey="count"
-                    fill="#0066cc"
-                    name={t("numberOfOfficialExams")}
-                  />
-                  <Bar
-                    dataKey="countPractice"
-                    fill="#8f00ff"
-                    name={t("numberOfPracticeTests")}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border-gray-300 bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold text-neutral-900">
+            {t("scoreAnalysis")}
+          </CardTitle>
+          <p className="text-sm text-neutral-500">
+            {t("averageScoreSpectrum")}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={scoreData} barGap={4} barCategoryGap="24%">
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <XAxis
+                  dataKey="range"
+                  tick={{ fill: "#6b7280", fontSize: 12 }}
+                  axisLine={{ stroke: "#d1d5db" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fill: "#6b7280", fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  cursor={{ fill: "#f3f4f6" }}
+                  contentStyle={{
+                    borderRadius: 8,
+                    border: "1px solid #d1d5db",
+                    boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                    fontSize: 13,
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: 13, color: "#4b5563", paddingTop: 8 }} />
+                <Bar
+                  dataKey="count"
+                  fill="#8b5cf6"
+                  radius={[4, 4, 0, 0]}
+                  name={t("numberOfOfficialExams")}
+                />
+                <Bar
+                  dataKey="countPractice"
+                  fill="#0ea5e9"
+                  radius={[4, 4, 0, 0]}
+                  name={t("numberOfPracticeTests")}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

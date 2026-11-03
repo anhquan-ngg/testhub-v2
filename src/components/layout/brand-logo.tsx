@@ -4,10 +4,12 @@ import { cn } from "@/lib/utils";
 export function BrandLogo({
   collapsed = false,
   href = "/",
+  subtitle,
   className,
 }: {
   collapsed?: boolean;
   href?: string;
+  subtitle?: string;
   className?: string;
 }) {
   return (
@@ -16,8 +18,15 @@ export function BrandLogo({
         T
       </span>
       {!collapsed && (
-        <span className="truncate font-heading text-lg font-semibold tracking-tight text-neutral-900">
-          TESTHUB
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate font-heading text-lg font-semibold leading-tight tracking-tight text-neutral-900">
+            TESTHUB
+          </span>
+          {subtitle && (
+            <span className="truncate text-xs font-medium leading-tight text-neutral-500">
+              {subtitle}
+            </span>
+          )}
         </span>
       )}
     </Link>

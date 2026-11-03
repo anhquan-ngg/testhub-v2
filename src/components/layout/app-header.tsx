@@ -17,7 +17,14 @@ import { useAppSelector } from "@/store/hook";
 import NotificationBell from "@/components/NotificationBell";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
 import { useSidebarCollapsed, useMobileSidebarOpen } from "./sidebar-store";
-import { lecturerNavItems, studentNavItems } from "./nav-items";
+import { navItemsByRole } from "./nav-items";
+import type { AppRole } from "./nav-items";
+
+const DEFAULT_NAME_KEY = {
+  student: "defaultStudentName",
+  lecturer: "defaultLecturerName",
+  admin: "defaultAdminName",
+} as const;
 
 function useInitials(name?: string | null) {
   return useMemo(() => {
@@ -33,8 +40,8 @@ export function AppHeader({
   role,
   profileHref,
 }: {
-  role: "student" | "lecturer";
-  profileHref: string;
+  role: AppRole;
+  profileHref?: string;
 }) {
   const t = useTranslations("layout");
   const tNav = useTranslations("nav");
@@ -47,7 +54,7 @@ export function AppHeader({
   const { handleLogout } = useAuth();
   const initials = useInitials(fullName);
 
-  const items = role === "student" ? studentNavItems : lecturerNavItems;
+  const items = navItemsByRole[role];
   const activeItem = items.find((item) => item.match(pathname));
 
   return (
@@ -91,23 +98,24 @@ export function AppHeader({
                 {initials}
               </span>
               <span className="hidden max-w-[140px] truncate text-sm font-medium text-neutral-800 sm:inline">
-                {fullName ||
-                  (role === "student"
-                    ? t("defaultStudentName")
-                    : t("defaultLecturerName"))}
+                {fullName || t(DEFAULT_NAME_KEY[role])}
               </span>
               <ChevronDown className="hidden h-4 w-4 text-neutral-400 sm:inline" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onClick={() => router.push(profileHref)}
-            >
-              <UserIcon className="mr-1 h-4 w-4" />
-              {t("profile")}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            {profileHref && (
+              <>
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => router.push(profileHref)}
+                >
+                  <UserIcon className="mr-1 h-4 w-4" />
+                  {t("profile")}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
             <DropdownMenuItem
               variant="destructive"
               className="cursor-pointer"

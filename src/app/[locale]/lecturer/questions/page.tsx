@@ -14,6 +14,7 @@ import {
   Copy,
   Eye,
   ExternalLink,
+  BookOpen,
   FileAudio,
   FileImage,
   FileQuestion,
@@ -23,6 +24,7 @@ import {
   PenTool,
   Plus,
   Search,
+  Sparkles,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -920,13 +922,22 @@ export default function LecturerQuestions() {
     <div className="w-full max-w-full space-y-6 overflow-hidden">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-3">
-          <h2 className="text-3xl font-bold text-gray-900">
-            {t("questionBank")}</h2>
-          <Button asChild variant="outline"><Link href={{ pathname: "/lecturer/questions/generate", query: {
-            ...(selectedTopic ? { topic: selectedTopic.id } : {}),
-            ...(currentChapter ? { chapter: currentChapter.id } : {}),
-          } }}>{generationText("title")}</Link></Button>
-          <Button asChild variant="outline"><Link href="/lecturer/questions/documents">{documentText('title')}</Link></Button>
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-900">
+              {t("questionBank")}</h2>
+            <p className="mt-1 text-sm text-neutral-500">{t("questionBankSubtitle")}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" className="cursor-pointer gap-1.5 border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800">
+              <Link href={{ pathname: "/lecturer/questions/generate", query: {
+                ...(selectedTopic ? { topic: selectedTopic.id } : {}),
+                ...(currentChapter ? { chapter: currentChapter.id } : {}),
+              } }}><Sparkles className="h-4 w-4" />{generationText("title")}</Link>
+            </Button>
+            <Button asChild variant="outline" className="cursor-pointer gap-1.5 border-gray-300 bg-white">
+              <Link href="/lecturer/questions/documents"><BookOpen className="h-4 w-4" />{documentText('title')}</Link>
+            </Button>
+          </div>
           {viewMode !== "topics" && (
             <Button
               variant="ghost"
@@ -960,7 +971,7 @@ export default function LecturerQuestions() {
         )}
       </div>
 
-      <Card className="bg-white border-gray-300 space-y-4">
+      <Card className="bg-white border-gray-300 shadow-sm space-y-4">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>{panelTitle}</CardTitle>
           {viewMode === "topics" && (

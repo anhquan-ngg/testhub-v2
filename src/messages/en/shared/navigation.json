@@ -5,7 +5,9 @@
     "account": "Account",
     "overview": "Overview",
     "examManagement": "Exam management",
-    "questionBank": "Question bank"
+    "questionBank": "Question bank",
+    "scoreAnalytics": "Score analytics",
+    "userManagement": "User management"
   },
   "layout": {
     "openNavigation": "Open navigation menu",
@@ -17,6 +19,9 @@
     "lecturerMenu": "Lecturer navigation menu",
     "defaultStudentName": "Student",
     "defaultLecturerName": "Lecturer",
+    "adminMenu": "Administrator navigation menu",
+    "defaultAdminName": "Administrator",
+    "adminPortal": "Admin Portal",
     "profile": "Profile"
   }
 }
