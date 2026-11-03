@@ -327,7 +327,7 @@ export function RegradeWorkspace({ examId, submissionId }: { examId: string; sub
               ) : <p className="text-muted-foreground">{t("noHistory")}</p>}
             </CardContent>
           </Card>
-      <AlertDialog open={dialog !== null} onOpenChange={(open) => { if (!open && !locked.current) { setDialog(null); pendingHref.current = null; } }}>
+      <AlertDialog open={dialog !== null} onOpenChange={(open) => { if (!open && !(dialog === "publish" && locked.current)) { setDialog(null); pendingHref.current = null; } }}>
         <AlertDialogContent className="bg-white">
           <AlertDialogHeader>
             <AlertDialogTitle>{t(dialog === "publish" ? "confirmPublish" : "confirmDiscard")}</AlertDialogTitle>
@@ -337,7 +337,7 @@ export function RegradeWorkspace({ examId, submissionId }: { examId: string; sub
             <AlertDialogCancel className="cursor-pointer" disabled={dialog === "publish" && !!busy}>{t("cancel")}</AlertDialogCancel>
             <AlertDialogAction
               className={dialog === "publish" ? "cursor-pointer gap-1.5 bg-[#0066cc] text-white hover:bg-[#0052a3]" : "cursor-pointer bg-red-600 text-white hover:bg-red-700"}
-              disabled={(dialog === "publish" && (!!busy || !canPublish)) || (dialog === "reload" && !!busy)}
+              disabled={(dialog === "publish" && (!!busy || !canPublish)) || ((dialog === "reload" || dialog === "leave") && !!busy)}
               onClick={(event) => {
                 event.preventDefault();
                 if (dialog === "publish") void mutate("publish");

@@ -29,5 +29,20 @@
   "noAnswer": "Không có câu trả lời",
   "sampleAnswer": "Câu trả lời mẫu:",
   "youChoose": "Bạn chọn",
-  "thereAreNoQuestionsInThis": "Không có câu hỏi nào trong bài nộp này."
+  "thereAreNoQuestionsInThis": "Không có câu hỏi nào trong bài nộp này.",
+  "studentName": "Thí sinh",
+  "studentEmail": "Email thí sinh",
+  "submissionId": "Mã bài làm",
+  "submittedAt": "Thời điểm nộp bài",
+  "studentAnswer": "Câu trả lời của thí sinh:",
+  "studentChoice": "Thí sinh chọn",
+  "mediaAttachment": "Tệp âm thanh/video (không phát trên bản in): {name}",
+  "returnToReport": "Quay lại báo cáo",
+  "generatingPdf": "Đang tạo PDF...",
+  "printDetailedResult": "Tải PDF chi tiết kết quả",
+  "printPreviewTitle": "Bản xem trước kết quả bài thi",
+  "printPreviewDescription": "Kiểm tra nội dung rồi chọn Tải PDF chi tiết kết quả. File PDF được máy chủ tạo với cùng bố cục, màu sắc như bản xem trước; mỗi câu hỏi được giữ trọn trên một trang, không bị ngắt giữa trang.",
+  "printFailed": "Không thể tạo file PDF. Vui lòng kiểm tra kết nối mạng rồi thử lại.",
+  "resultUnavailable": "Không tìm thấy bài làm thuộc kỳ thi này hoặc bạn không có quyền xem.",
+  "retry": "Thử lại"
 }

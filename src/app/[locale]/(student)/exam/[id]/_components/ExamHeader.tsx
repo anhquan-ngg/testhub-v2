@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { ChevronLeft, Clock, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 /** Formats a number of seconds as mm:ss. */
 export function formatTime(seconds: number): string {
@@ -30,6 +31,7 @@ export function ExamHeader({
   onSubmit,
 }: ExamHeaderProps) {
   const t = useTranslations("student.exam");
+  const iconLabels = useIconLabels();
 
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-gray-300 bg-white px-4 shadow-sm">
@@ -48,9 +50,10 @@ export function ExamHeader({
           variant="ghost"
           size="icon"
           onClick={onToggleSidebar}
-          className="lg:hidden"
+          className={`lg:hidden ${ICON_TONE.neutral}`}
+          {...iconLabelProps(iconLabels.toggleSidebar)}
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-5 w-5" aria-hidden="true" />
         </Button>
         <h1 className="max-w-[200px] truncate text-lg font-bold text-gray-900 md:max-w-md">
           {title}

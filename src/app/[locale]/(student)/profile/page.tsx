@@ -19,6 +19,7 @@ import { setUser } from "@/store/slices/authSlice";
 import { useS3 } from "@/hooks/useS3";
 import { useFiles } from "@/hooks/useFiles";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 type PageResult<T> = {
   data: T[];
@@ -37,6 +38,7 @@ type CompletedSubmission = { exam_id: string };
 
 export default function StudentProfile() {
   const t = useTranslations("student.profile");
+  const iconLabels = useIconLabels();
   const student = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
   const { getViewUrl: getLegacyAvatarViewUrl } = useS3("avatars");
@@ -319,11 +321,12 @@ export default function StudentProfile() {
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
                       className="absolute bottom-0 right-0 bg-[#0066cc] text-white rounded-full p-2 shadow-lg hover:bg-[#0052a3] transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:cursor-pointer"
+                      {...iconLabelProps(iconLabels.uploadPhoto)}
                     >
                       {isUploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                       ) : (
-                        <Camera className="h-4 w-4" />
+                        <Camera className="h-4 w-4" aria-hidden="true" />
                       )}
                     </button>
                   </div>
@@ -472,12 +475,17 @@ export default function StudentProfile() {
                               current: !showPasswords.current,
                             })
                           }
-                          className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                          className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          {...iconLabelProps(
+                            showPasswords.current
+                              ? iconLabels.hidePassword
+                              : iconLabels.showPassword,
+                          )}
                         >
                           {showPasswords.current ? (
-                            <EyeOff className="h-5 w-5" />
+                            <EyeOff className="h-5 w-5" aria-hidden="true" />
                           ) : (
-                            <Eye className="h-5 w-5" />
+                            <Eye className="h-5 w-5" aria-hidden="true" />
                           )}
                         </button>
                       </div>
@@ -503,12 +511,17 @@ export default function StudentProfile() {
                               new: !showPasswords.new,
                             })
                           }
-                          className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                          className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          {...iconLabelProps(
+                            showPasswords.new
+                              ? iconLabels.hidePassword
+                              : iconLabels.showPassword,
+                          )}
                         >
                           {showPasswords.new ? (
-                            <EyeOff className="h-5 w-5" />
+                            <EyeOff className="h-5 w-5" aria-hidden="true" />
                           ) : (
-                            <Eye className="h-5 w-5" />
+                            <Eye className="h-5 w-5" aria-hidden="true" />
                           )}
                         </button>
                       </div>
@@ -535,12 +548,17 @@ export default function StudentProfile() {
                               confirm: !showPasswords.confirm,
                             })
                           }
-                          className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                          className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          {...iconLabelProps(
+                            showPasswords.confirm
+                              ? iconLabels.hidePassword
+                              : iconLabels.showPassword,
+                          )}
                         >
                           {showPasswords.confirm ? (
-                            <EyeOff className="h-5 w-5" />
+                            <EyeOff className="h-5 w-5" aria-hidden="true" />
                           ) : (
-                            <Eye className="h-5 w-5" />
+                            <Eye className="h-5 w-5" aria-hidden="true" />
                           )}
                         </button>
                       </div>

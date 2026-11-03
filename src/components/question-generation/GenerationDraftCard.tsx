@@ -121,7 +121,7 @@ export function GenerationDraftCard({
             <summary className="cursor-pointer font-medium text-sky-800">
               {t("citationsTitle")}
             </summary>
-            <p className="my-2 text-neutral-500">{t("citationsHint")}</p>
+            <p className="my-2 text-neutral-700">{t("citationsHint")}</p>
             {item.warnings.includes("AI_SOURCE_RECHECK_AFTER_EDIT") && (
               <p className="my-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
                 {t("citationsEdited")}

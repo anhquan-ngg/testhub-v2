@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 import { useParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -31,6 +32,7 @@ import {
   User,
   History,
   RotateCcw,
+  ClipboardCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -74,6 +76,7 @@ type ReportSubmission = {
 
 export default function ExamReportPage() {
   const t = useTranslations("lecturer.examReport");
+  const iconLabels = useIconLabels();
   const regrading = useTranslations("shared.regrading");
   const params = useParams();
   const router = useRouter();
@@ -287,8 +290,9 @@ export default function ExamReportPage() {
             size="icon"
             onClick={() => router.back()}
             className="bg-white border-gray-300 hover:cursor-pointer"
+            {...iconLabelProps(iconLabels.back)}
           >
-            <ChevronLeft className="h-4 w-4 text-gray-700" />
+            <ChevronLeft className="h-4 w-4 text-gray-700" aria-hidden="true" />
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-neutral-900">
@@ -395,16 +399,25 @@ export default function ExamReportPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-blue-600 hover:cursor-pointer"
-                            onClick={() => router.push(`/result/${sub.id}`)}
-                            title={t("printExamDetails")}
+                            className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
+                            onClick={() => router.push(`/lecturer/exams/${examId}/report/${sub.id}`)}
+                            {...iconLabelProps(iconLabels.viewDetails)}
                           >
-                            <Printer className="h-4 w-4" />
+                            <Printer className="h-4 w-4" aria-hidden="true" />
                           </Button>
                           {userRole === "LECTURER" && (
-                            <Button asChild variant="outline" size="sm" className="cursor-pointer border-gray-300 bg-white">
-                              <Link href={`/lecturer/exams/${examId}/report/${sub.id}/grade`}>
-                                {regrading("open")}
+                            <Button
+                              asChild
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-emerald-600 hover:cursor-pointer"
+                            >
+                              <Link
+                                href={`/lecturer/exams/${examId}/report/${sub.id}/grade`}
+                                title={regrading("open")}
+                                aria-label={regrading("open")}
+                              >
+                                <ClipboardCheck className="h-4 w-4" />
                               </Link>
                             </Button>
                           )}
@@ -412,17 +425,17 @@ export default function ExamReportPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-accent-700 hover:cursor-pointer"
-                              title={t("allowedToRetakeTheExam")}
+                              className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
+                              {...iconLabelProps(iconLabels.allowRetake)}
                               disabled={grantingRetryId === sub.student.id}
                               onClick={() =>
                                 void handleGrantRetry(sub.student!.id!)
                               }
                             >
                               {grantingRetryId === sub.student.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                               ) : (
-                                <RotateCcw className="h-4 w-4" />
+                                <RotateCcw className="h-4 w-4" aria-hidden="true" />
                               )}
                             </Button>
                           )}
@@ -432,9 +445,10 @@ export default function ExamReportPage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-red-600 hover:cursor-pointer"
+                                  className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.danger}`}
+                                  {...iconLabelProps(iconLabels.delete)}
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-4 w-4" aria-hidden="true" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent className="bg-white">

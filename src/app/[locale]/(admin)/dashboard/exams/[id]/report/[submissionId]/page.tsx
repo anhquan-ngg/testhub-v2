@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useEnumLabels } from "@/i18n/useEnumLabels";
 import apiClient from "@/lib/api-client";
 
 import React, { useState, useEffect } from "react";
@@ -51,6 +52,7 @@ function calculateTimeTaken(
 
 export default function AdminResultDetailPage() {
   const t = useTranslations("admin.submissionReport");
+  const enumLabels = useEnumLabels();
   const params = useParams();
   const id = params.submissionId as string;
   const examId = params.id as string;
@@ -317,7 +319,7 @@ export default function AdminResultDetailPage() {
                       variant="outline"
                       className={questionTypeClass(sq.question.question_type)}
                     >
-                      {sq.question.question_type}
+                      {enumLabels.questionType(sq.question.question_type)}
                     </Badge>
                     {sq.is_correct ? (
                       <Badge

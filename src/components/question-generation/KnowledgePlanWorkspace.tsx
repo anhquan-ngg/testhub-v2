@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Link } from "@/i18n/navigation";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
 import { knowledgePlanService as api } from "@/services/knowledgePlanService";
 import type {
@@ -87,6 +88,7 @@ export function KnowledgePlanWorkspace({
   onGenerated: (id: string) => void;
 }) {
   const t = useTranslations("shared.questionGeneration.plan");
+  const iconLabels = useIconLabels();
   const { questionType, questionFormat } = useEnumLabels();
   const [plan, setPlan] = useState<KnowledgePlan | null>(null);
   const [formVersion, setFormVersion] = useState(0);
@@ -240,7 +242,7 @@ export function KnowledgePlanWorkspace({
         </CardTitle>
       </CardHeader>
       <CardContent className="min-w-0 space-y-5">
-        <p className="text-sm text-neutral-500">{t("explanation")}</p>
+        <p className="text-sm text-neutral-700">{t("explanation")}</p>
         {error && (
           <p
             role="alert"
@@ -326,7 +328,7 @@ export function KnowledgePlanWorkspace({
                   <legend className="font-semibold text-neutral-900">
                     {t("tree")}
                   </legend>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-neutral-700">
                     {t("sourceHint")}
                   </p>
                   <div className="max-h-[480px] space-y-3 overflow-auto rounded-md border border-gray-300 bg-gray-50/60 p-3">
@@ -625,8 +627,8 @@ export function KnowledgePlanWorkspace({
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                aria-label={t("remove")}
-                                title={t("remove")}
+                                className={ICON_TONE.danger}
+                                {...iconLabelProps(iconLabels.removeItem)}
                                 onClick={() =>
                                   setValue(
                                     "rows",

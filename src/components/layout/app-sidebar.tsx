@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import { BrandLogo } from "./brand-logo";
 import { useSidebarCollapsed, useMobileSidebarOpen } from "./sidebar-store";
 import { navItemsByRole } from "./nav-items";
@@ -66,11 +67,17 @@ function NavLinks({
 
 export function AppSidebar({ role }: { role: AppRole }) {
   const t = useTranslations("layout");
+  const iconLabels = useIconLabels();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useSidebarCollapsed();
   const [mobileOpen, setMobileOpen] = useMobileSidebarOpen();
   const items = navItemsByRole[role];
-  const subtitle = role === "admin" ? t("adminPortal") : undefined;
+  const subtitle =
+    role === "admin"
+      ? t("adminPortal")
+      : role === "lecturer"
+        ? t("lecturerPortal")
+        : undefined;
 
   // Close the mobile drawer on route change and on Escape, and stop the
   // background from scrolling while it's open — the minimum a modal
@@ -124,11 +131,12 @@ export function AppSidebar({ role }: { role: AppRole }) {
               collapsed && "justify-center px-0",
             )}
             aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
+            title={collapsed ? iconLabels.expand : undefined}
           >
             {collapsed ? (
-              <PanelLeftOpen className="h-[18px] w-[18px]" />
+              <PanelLeftOpen className="h-[18px] w-[18px]" aria-hidden="true" />
             ) : (
-              <PanelLeftClose className="h-[18px] w-[18px]" />
+              <PanelLeftClose className="h-[18px] w-[18px]" aria-hidden="true" />
             )}
             {!collapsed && <span>{t("collapse")}</span>}
           </button>
@@ -155,10 +163,10 @@ export function AppSidebar({ role }: { role: AppRole }) {
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                aria-label={t("closeMenu")}
+                {...iconLabelProps(iconLabels.close)}
                 className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
               >
-                <X className="h-[18px] w-[18px]" />
+                <X className="h-[18px] w-[18px]" aria-hidden="true" />
               </button>
             </div>
             <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2.5">

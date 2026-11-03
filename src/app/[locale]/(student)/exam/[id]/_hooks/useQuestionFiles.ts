@@ -6,6 +6,8 @@ import type {
   ResolvedQuestionFile,
 } from "../_components/types";
 
+const NO_FILES: ResolvedQuestionFile[] = [];
+
 /**
  * Resolves the attachments (and the legacy single image) of the current
  * question into viewable URLs.
@@ -16,14 +18,17 @@ export function useQuestionFiles(
 ): ResolvedQuestionFile[] {
   const t = useTranslations("student.exam");
   const { getViewUrl } = useS3("questions-images");
-  const [files, setFiles] = useState<ResolvedQuestionFile[]>([]);
+  const [state, setState] = useState<{
+    questionId: string | null;
+    files: ResolvedQuestionFile[];
+  }>({ questionId: null, files: [] });
 
   useEffect(() => {
     let cancelled = false;
 
     const fetchFiles = async () => {
       if (!question) {
-        if (!cancelled) setFiles([]);
+        if (!cancelled) setState({ questionId: null, files: [] });
         return;
       }
 
@@ -73,14 +78,15 @@ export function useQuestionFiles(
         }
       }
 
-      if (!cancelled) setFiles(resolved);
+      if (!cancelled) setState({ questionId: question.id, files: resolved });
     };
 
-    if (enabled && question) fetchFiles();
+    if (enabled) fetchFiles();
     return () => {
       cancelled = true;
     };
   }, [question, enabled, getViewUrl, t]);
 
-  return files;
+  // Never expose files resolved for a previous question.
+  return state.questionId === (question?.id ?? null) ? state.files : NO_FILES;
 }

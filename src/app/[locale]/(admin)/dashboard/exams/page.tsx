@@ -28,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import {
   Search,
   Users,
@@ -51,6 +52,7 @@ type PageResult<T> = {
 
 export default function ExamsPage() {
   const t = useTranslations("admin.exams");
+  const iconLabels = useIconLabels();
   const locale = useLocale();
   const router = useRouter();
   const [exams, setExams] = useState([] as any);
@@ -259,10 +261,10 @@ export default function ExamsPage() {
                         onClick={() =>
                           router.push(`/dashboard/exams/${exam.id}/report`)
                         }
-                        className="h-8 w-8 text-[#0066cc] hover:bg-sky-50 hover:text-[#0052a3] hover:cursor-pointer"
-                        title={t("viewReport")}
+                        className={`h-8 w-8 ${ICON_TONE.primary} hover:cursor-pointer`}
+                        {...iconLabelProps(iconLabels.viewReport)}
                       >
-                        <BarChart3 className="h-4 w-4" />
+                        <BarChart3 className="h-4 w-4" aria-hidden="true" />
                       </Button>
                     </div>
                   </TableCell>

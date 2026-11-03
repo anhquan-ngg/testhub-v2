@@ -77,6 +77,7 @@ export default function ExamPage() {
   const dataFetched = useRef(false);
   const questionsInitialized = useRef(false);
   const startingRef = useRef(false);
+  const answerRevisions = useRef<Record<string, number>>({});
 
   const {
     isFullscreen,
@@ -278,6 +279,8 @@ export default function ExamPage() {
     value: AnswerValue,
     type: QuestionType = "SINGLE_CHOICE",
   ) => {
+    answerRevisions.current[questionId] =
+      (answerRevisions.current[questionId] ?? 0) + 1;
     setAnswers((prev) => {
       if (type === "MULTIPLE_CHOICE") {
         const current = (prev[questionId] as string[]) || [];
@@ -303,6 +306,7 @@ export default function ExamPage() {
     if (!exam?.submissionId || !question) return;
 
     const answer = answers[question.id];
+    const submittedRevision = answerRevisions.current[question.id] ?? 0;
     const payload: SubmitQuestionPayload = {
       submission_id: exam.submissionId,
       question_id: question.id,
@@ -328,7 +332,10 @@ export default function ExamPage() {
     try {
       await apiClient.post(ENDPOINTS.SUBMISSIONS.SUBMIT_QUESTION, payload);
       toast.success(t("questionSubmitted", { number: index + 1 }));
-      setSubmittedQuestionIds((prev) => new Set(prev).add(question.id));
+      // Skip if the answer changed while this request was in flight.
+      if ((answerRevisions.current[question.id] ?? 0) === submittedRevision) {
+        setSubmittedQuestionIds((prev) => new Set(prev).add(question.id));
+      }
     } catch (error) {
       toast.error(t("sendingReplyFailed"));
       console.error(error);
