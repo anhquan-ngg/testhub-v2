@@ -4,18 +4,13 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
-  Building2,
-  Check,
   ChevronRight,
-  ClipboardList,
   FileQuestion,
   GraduationCap,
   LineChart,
   LockKeyhole,
   Menu,
   MonitorCheck,
-  PlayCircle,
-  School,
   ShieldCheck,
   Sparkles,
   Timer,
@@ -24,15 +19,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
-
-const trustLogos = [
-  { name: "Hanoi University of Science and Technology", icon: School },
-  { name: "FPT Education", icon: GraduationCap },
-  { name: "HUST Center", icon: Building2 },
-  { name: "EduLab", icon: BookOpen },
-  { name: "ExamPro", icon: ClipboardList },
-  { name: "Tech Academy", icon: Users },
-];
 
 function BrandLogo() {
   return (
@@ -73,8 +59,8 @@ function Header() {
   const t = useTranslations("landing");
   const navItems = [
     { label: t("nav.features"), href: "#features" },
-    { label: t("nav.pricing"), href: "#pricing" },
-    { label: t("nav.docs"), href: "#docs" },
+    { label: t("nav.workflow"), href: "#workflow" },
+    { label: t("nav.roles"), href: "#roles" },
     { label: t("nav.about"), href: "#about" },
   ];
   return (
@@ -82,7 +68,7 @@ function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <BrandLogo />
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-8 lg:flex">
           {navItems.map((item) => (
             <a
               key={item.href}
@@ -94,7 +80,7 @@ function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 lg:flex">
           <LanguageSwitcher />
           <Button
             asChild
@@ -111,10 +97,10 @@ function Header() {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
           <LanguageSwitcher />
           <details className="group relative">
-            <summary className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm [&::-webkit-details-marker]:hidden">
+            <summary aria-label={t("nav.menu")} className="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm [&::-webkit-details-marker]:hidden">
               <Menu className="h-5 w-5" />
             </summary>
             <div className="absolute right-0 mt-3 w-72 rounded-2xl border border-slate-200 bg-white p-3 shadow-md">
@@ -166,7 +152,7 @@ function DashboardMockup() {
               <span className="h-3 w-3 rounded-full bg-emerald-400" />
             </div>
             <div className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-500">
-              exam.testhub.vn/live
+              {t("mockup.preview")}
             </div>
           </div>
 
@@ -187,7 +173,7 @@ function DashboardMockup() {
                 t("mockup.overview"),
                 t("mockup.students"),
                 t("mockup.alerts"),
-                t("mockup.reports"),
+                t("mockup.connection"),
               ].map((item, index) => (
                 <div
                   key={item}
@@ -220,9 +206,9 @@ function DashboardMockup() {
 
               <div className="grid gap-3 sm:grid-cols-3">
                 {[
-                  [t("mockup.completed"), "76%", "bg-blue-600"],
-                  [t("mockup.alerts"), "03", "bg-amber-500"],
-                  [t("mockup.remaining"), "24:18", "bg-slate-900"],
+                  [t("mockup.online"), "48", "bg-blue-600"],
+                  [t("mockup.submitted"), "12", "bg-emerald-500"],
+                  [t("mockup.offline"), "3", "bg-amber-500"],
                 ].map(([label, value, color]) => (
                   <div
                     key={label}
@@ -245,20 +231,29 @@ function DashboardMockup() {
                 <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
                   <div className="mb-4 flex items-center justify-between">
                     <p className="text-sm font-black text-slate-950">
-                      {t("mockup.scores")}
+                      {t("mockup.status")}
                     </p>
                     <BarChart3 className="h-4 w-4 text-[#0b63ce]" />
                   </div>
-                  <div className="flex h-36 items-end gap-2">
-                    {[38, 54, 82, 64, 94, 72, 48, 78, 58, 88].map(
-                      (height, index) => (
-                        <span
-                          key={index}
-                          className="flex-1 rounded-t-lg bg-gradient-to-t from-[#0b63ce] to-sky-300"
-                          style={{ height: `${height}%` }}
-                        />
-                      ),
-                    )}
+                  <div className="space-y-4">
+                    {[
+                      { label: t("mockup.online"), count: 48, color: "bg-blue-600" },
+                      { label: t("mockup.submitted"), count: 12, color: "bg-emerald-500" },
+                      { label: t("mockup.offline"), count: 3, color: "bg-amber-500" },
+                    ].map((status) => (
+                      <div key={status.label}>
+                        <div className="mb-2 flex justify-between gap-2 text-xs font-semibold text-slate-600">
+                          <span>{status.label}</span>
+                          <span>{status.count}</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className={`h-full rounded-full ${status.color}`}
+                            style={{ width: `${(status.count / 63) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -272,7 +267,7 @@ function DashboardMockup() {
                   <div className="space-y-3">
                     {[
                       t("mockup.tabSwitch"),
-                      t("mockup.newDevice"),
+                      t("mockup.fullscreenExit"),
                       t("mockup.disconnected"),
                     ].map((item) => (
                       <div
@@ -296,7 +291,7 @@ function DashboardMockup() {
   );
 }
 
-function FeatureVisual({ type }: { type: string }) {
+function FeatureVisual({ type }: { type: "library" | "schedule" | "security" | "analytics" | "ai" | "documents" }) {
   const t = useTranslations("landing");
   if (type === "analytics") {
     return (
@@ -312,10 +307,25 @@ function FeatureVisual({ type }: { type: string }) {
     );
   }
 
+  if (type === "ai" || type === "documents") {
+    const labels = type === "ai"
+      ? [t("visual.matrix"), t("visual.evidence"), t("visual.approval")]
+      : [t("visual.pdfPptx"), t("visual.versions"), t("visual.retrieval")];
+    return (
+      <div className="mt-8 flex flex-wrap gap-3">
+        {labels.map((label) => (
+          <span key={label} className="rounded-xl border border-blue-100 bg-white/75 px-4 py-3 text-sm font-bold text-slate-700">
+            {label}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
   if (type === "security") {
     return (
       <div className="mt-8 grid grid-cols-3 gap-3">
-        {[t("visual.lockTab"), t("visual.oneDevice"), t("visual.eventLog")].map(
+        {[t("visual.tabEvents"), t("visual.oneDevice"), t("visual.eventLog")].map(
           (item) => (
             <div
               key={item}
@@ -334,9 +344,9 @@ function FeatureVisual({ type }: { type: string }) {
     return (
       <div className="mt-8 space-y-3">
         {[
-          t("visual.morning"),
-          t("visual.afternoon"),
-          t("visual.autoClose"),
+          t("visual.schedule"),
+          t("visual.duration"),
+          t("visual.practice"),
         ].map((item) => (
           <div
             key={item}
@@ -356,7 +366,7 @@ function FeatureVisual({ type }: { type: string }) {
         t("visual.multipleChoice"),
         t("visual.essay"),
         t("visual.multipleAnswers"),
-        t("visual.importExcel"),
+        t("visual.importFiles"),
       ].map((item) => (
         <div
           key={item}
@@ -371,10 +381,15 @@ function FeatureVisual({ type }: { type: string }) {
 
 export default function Home() {
   const t = useTranslations("landing");
-  const stats = [
-    { value: "98.7%", label: t("stats.completion") },
-    { value: "42k+", label: t("stats.monthlyStudents") },
-    { value: t("stats.setupTime"), label: t("stats.toCreate") },
+  const highlights = [
+    { value: t("highlights.bank.value"), label: t("highlights.bank.label") },
+    { value: t("highlights.ai.value"), label: t("highlights.ai.label") },
+    { value: t("highlights.results.value"), label: t("highlights.results.label") },
+  ];
+  const roles = [
+    { title: t("roles.lecturer.title"), description: t("roles.lecturer.description"), icon: BookOpen },
+    { title: t("roles.student.title"), description: t("roles.student.description"), icon: GraduationCap },
+    { title: t("roles.admin.title"), description: t("roles.admin.description"), icon: Users },
   ];
   const features = [
     {
@@ -409,7 +424,23 @@ export default function Home() {
       accent: "from-blue-600/12 to-emerald-400/8",
       visual: "analytics",
     },
-  ];
+    {
+      title: t("features.ai.title"),
+      description: t("features.ai.description"),
+      icon: Sparkles,
+      className: "lg:col-span-2",
+      accent: "from-blue-600/12 to-cyan-400/8",
+      visual: "ai",
+    },
+    {
+      title: t("features.documents.title"),
+      description: t("features.documents.description"),
+      icon: BookOpen,
+      className: "",
+      accent: "from-cyan-500/12 to-blue-600/8",
+      visual: "documents",
+    },
+  ] as const;
   const steps = [
     {
       title: t("steps.create.title"),
@@ -430,83 +461,6 @@ export default function Home() {
       title: t("steps.report.title"),
       description: t("steps.report.description"),
       icon: BarChart3,
-    },
-  ];
-  const plans = [
-    {
-      name: t("plans.individual.name"),
-      price: t("plans.individual.price"),
-      period: t("plans.month"),
-      description: t("plans.individual.description"),
-      cta: t("plans.individual.cta"),
-      href: "/signup",
-      popular: false,
-      features: [
-        t("plans.individual.feature1"),
-        t("plans.individual.feature2"),
-        t("plans.individual.feature3"),
-        t("plans.individual.feature4"),
-      ],
-    },
-    {
-      name: t("plans.center.name"),
-      price: t("plans.center.price"),
-      period: t("plans.month"),
-      description: t("plans.center.description"),
-      cta: t("plans.center.cta"),
-      href: "/signup",
-      popular: true,
-      features: [
-        t("plans.center.feature1"),
-        t("plans.center.feature2"),
-        t("plans.center.feature3"),
-        t("plans.center.feature4"),
-        t("plans.center.feature5"),
-      ],
-    },
-    {
-      name: t("plans.enterprise.name"),
-      price: t("plans.enterprise.price"),
-      period: "",
-      description: t("plans.enterprise.description"),
-      cta: t("plans.enterprise.cta"),
-      href: "mailto:quanna.works@gmail.com",
-      popular: false,
-      features: [
-        t("plans.enterprise.feature1"),
-        t("plans.enterprise.feature2"),
-        t("plans.enterprise.feature3"),
-        t("plans.enterprise.feature4"),
-      ],
-    },
-  ];
-  const footerLinks = [
-    {
-      title: t("footer.product"),
-      links: [
-        t("nav.features"),
-        t("nav.pricing"),
-        t("footer.security"),
-        t("footer.roadmap"),
-      ],
-    },
-    {
-      title: t("footer.resources"),
-      links: [
-        t("nav.docs"),
-        t("footer.apiGuide"),
-        "Blog",
-        t("footer.examTemplates"),
-      ],
-    },
-    {
-      title: t("footer.company"),
-      links: [
-        t("footer.aboutTesthub"),
-        t("footer.contact"),
-        t("footer.partners"),
-        t("footer.careers"),
-      ],
     },
   ];
   return (
@@ -540,7 +494,7 @@ export default function Home() {
                 className="h-12 rounded-xl bg-[#0b63ce] px-6 font-bold text-white shadow-md shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-[#0858bb]"
               >
                 <Link href="/signup">
-                  {t("hero.startFree")} <ArrowRight className="h-4 w-4" />
+                  {t("hero.start")} <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
               <Button
@@ -549,14 +503,14 @@ export default function Home() {
                 variant="outline"
                 className="h-12 rounded-xl border-slate-200 bg-white/85 px-6 font-bold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50 hover:text-[#0b63ce]"
               >
-                <a href="#demo">
-                  <PlayCircle className="h-4 w-4" /> {t("hero.viewDemo")}
+                <a href="#features">
+                  <BookOpen className="h-4 w-4" /> {t("hero.explore")}
                 </a>
               </Button>
             </div>
 
             <div className="mt-10 grid max-w-2xl gap-4 sm:grid-cols-3">
-              {stats.map((stat) => (
+              {highlights.map((stat) => (
                 <div
                   key={stat.label}
                   className="rounded-2xl border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur"
@@ -572,30 +526,26 @@ export default function Home() {
             </div>
           </div>
 
-          <div id="demo" className="lg:pl-4">
+          <div className="min-w-0 lg:pl-4">
             <DashboardMockup />
+            <p className="relative mt-4 text-center text-xs leading-5 text-slate-600">
+              {t("mockup.disclaimer")}
+            </p>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <p className="text-center text-sm font-bold uppercase tracking-normal text-slate-500">
-          {t("trustedBy")}
-        </p>
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {trustLogos.map((logo) => {
-            const Icon = logo.icon;
-
+      <section id="roles" className="mx-auto max-w-7xl scroll-mt-24 px-4 py-12 sm:px-6 lg:px-8">
+        <SectionHeading eyebrow={t("roles.eyebrow")} title={t("roles.title")} description={t("roles.description")} />
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {roles.map((role) => {
+            const Icon = role.icon;
             return (
-              <div
-                key={logo.name}
-                className="flex h-20 items-center justify-center gap-3 rounded-2xl border border-slate-200 bg-white/65 px-4 text-slate-500 shadow-sm grayscale transition hover:grayscale-0"
-              >
-                <Icon className="h-5 w-5 text-slate-400" />
-                <span className="text-sm font-black leading-5">
-                  {logo.name}
-                </span>
-              </div>
+              <article key={role.title} className="rounded-2xl border border-slate-200 bg-white/75 p-6 shadow-sm">
+                <Icon className="h-7 w-7 text-[#0b63ce]" />
+                <h3 className="mt-5 text-xl font-black text-slate-950">{role.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-600">{role.description}</p>
+              </article>
             );
           })}
         </div>
@@ -603,7 +553,7 @@ export default function Home() {
 
       <section
         id="features"
-        className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"
+        className="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8"
       >
         <SectionHeading
           eyebrow={t("features.eyebrow")}
@@ -638,7 +588,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section id="workflow" className="mx-auto max-w-7xl scroll-mt-24 px-4 py-20 sm:px-6 lg:px-8">
         <SectionHeading
           eyebrow={t("steps.eyebrow")}
           title={t("steps.title")}
@@ -675,71 +625,8 @@ export default function Home() {
       </section>
 
       <section
-        id="pricing"
-        className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"
-      >
-        <SectionHeading
-          eyebrow={t("plans.eyebrow")}
-          title={t("plans.title")}
-          description={t("plans.description")}
-        />
-
-        <div className="mt-14 grid gap-5 lg:grid-cols-3">
-          {plans.map((plan) => (
-            <article
-              key={plan.name}
-              className={`relative rounded-2xl border bg-white/82 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
-                plan.popular
-                  ? "border-[#0b63ce] ring-4 ring-blue-500/10"
-                  : "border-slate-200"
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-6 rounded-full bg-[#0b63ce] px-4 py-1.5 text-xs font-black uppercase text-white shadow-sm shadow-blue-600/25">
-                  {t("plans.mostPopular")}
-                </div>
-              )}
-              <h3 className="text-xl font-black text-slate-950">{plan.name}</h3>
-              <p className="mt-3 min-h-14 text-sm leading-6 text-slate-600">
-                {plan.description}
-              </p>
-              <div className="mt-7 flex items-end gap-1">
-                <span className="text-4xl font-black text-slate-950">
-                  {plan.price}
-                </span>
-                <span className="pb-1 text-sm font-bold text-slate-500">
-                  {plan.period}
-                </span>
-              </div>
-              <Button
-                asChild
-                className={`mt-7 h-12 w-full rounded-xl font-bold ${
-                  plan.popular
-                    ? "bg-[#0b63ce] text-white hover:bg-[#0858bb]"
-                    : "border border-slate-200 bg-white text-slate-800 hover:border-blue-200 hover:bg-blue-50 hover:text-[#0b63ce]"
-                }`}
-              >
-                <Link href={plan.href}>{plan.cta}</Link>
-              </Button>
-              <ul className="mt-7 space-y-4">
-                {plan.features.map((feature) => (
-                  <li
-                    key={feature}
-                    className="flex gap-3 text-sm text-slate-600"
-                  >
-                    <Check className="mt-0.5 h-4 w-4 flex-none text-[#0b63ce]" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section
-        id="docs"
-        className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"
+        id="get-started"
+        className="mx-auto max-w-7xl scroll-mt-24 px-4 py-12 sm:px-6 lg:px-8"
       >
         <div className="rounded-2xl border border-blue-200 bg-[#0b63ce] p-8 text-white shadow-md shadow-blue-900/10 md:p-12">
           <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
@@ -767,72 +654,38 @@ export default function Home() {
         </div>
       </section>
 
-      <footer
-        id="about"
-        className="mt-16 border-t border-slate-200 bg-white/86"
-      >
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.2fr_1fr] lg:grid-cols-[1.25fr_0.8fr_0.8fr_0.8fr_1.2fr] lg:px-8">
+      <footer id="about" className="mt-16 scroll-mt-24 border-t border-slate-200 bg-white/86">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.5fr_1fr_1fr] lg:px-8">
           <div>
             <BrandLogo />
-            <p className="mt-5 max-w-sm text-sm leading-7 text-slate-600">
-              {t("footer.description")}
-            </p>
-            <div className="mt-6 flex gap-3">
-              {["in", "f", "yt"].map((item) => (
-                <a
-                  key={item}
-                  href="#"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-sm font-black text-slate-600 shadow-sm hover:border-blue-200 hover:text-[#0b63ce]"
-                >
-                  {item}
-                </a>
-              ))}
-            </div>
+            <p className="mt-5 max-w-sm text-sm leading-7 text-slate-600">{t("footer.description")}</p>
           </div>
-
-          {footerLinks.map((group) => (
-            <div key={group.title}>
-              <h3 className="font-black text-slate-950">{group.title}</h3>
-              <ul className="mt-5 space-y-3">
-                {group.links.map((link) => (
-                  <li key={link}>
-                    <a
-                      href="#"
-                      className="text-sm font-medium text-slate-600 hover:text-[#0b63ce]"
-                    >
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-
-          <div id="contact">
-            <h3 className="font-black text-slate-950">
-              {t("footer.newsletter")}
-            </h3>
-            <p className="mt-5 text-sm leading-6 text-slate-600">
-              {t("footer.newsletterDescription")}
-            </p>
-
+          <div>
+            <h3 className="font-black text-slate-950">{t("footer.product")}</h3>
+            <ul className="mt-5 space-y-3">
+              {[
+                { label: t("nav.features"), href: "#features" },
+                { label: t("nav.workflow"), href: "#workflow" },
+                { label: t("nav.roles"), href: "#roles" },
+              ].map((link) => (
+                <li key={link.href}>
+                  <a href={link.href} className="text-sm font-medium text-slate-600 hover:text-[#0b63ce]">{link.label}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="font-black text-slate-950">{t("footer.access")}</h3>
+            <ul className="mt-5 space-y-3">
+              <li><Link href="/login" className="text-sm font-medium text-slate-600 hover:text-[#0b63ce]">{t("nav.login")}</Link></li>
+              <li><Link href="/signup" className="text-sm font-medium text-slate-600 hover:text-[#0b63ce]">{t("nav.signup")}</Link></li>
+            </ul>
+            <p className="mt-5 text-sm leading-6 text-slate-600">{t("footer.roleNote")}</p>
           </div>
         </div>
-
         <div className="border-t border-slate-200">
-          <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-            <p>© 2026 Testhub. {t("footer.rights")}</p>
-            <div className="flex gap-5">
-              <a href="#" className="hover:text-[#0b63ce]">
-                {t("footer.terms")}
-              </a>
-              <a href="#" className="hover:text-[#0b63ce]">
-                {t("footer.security")}
-              </a>
-              <a href="#" className="hover:text-[#0b63ce]">
-                {t("footer.support")}
-              </a>
-            </div>
+          <div className="mx-auto max-w-7xl px-4 py-6 text-sm text-slate-500 sm:px-6 lg:px-8">
+            <p>? 2026 Testhub. {t("footer.rights")}</p>
           </div>
         </div>
       </footer>

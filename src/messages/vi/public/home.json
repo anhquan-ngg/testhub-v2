@@ -2,162 +2,152 @@
   "landing": {
     "nav": {
       "features": "Tính năng",
-      "pricing": "Bảng giá",
-      "docs": "Tài liệu",
-      "about": "Về chúng tôi",
+      "workflow": "Quy trình",
+      "roles": "Vai trò",
+      "about": "Về Testhub",
       "login": "Đăng nhập",
-      "signup": "Đăng ký ngay"
+      "signup": "Tạo tài khoản",
+      "menu": "Mở menu điều hướng"
     },
     "hero": {
-      "eyebrow": "Nền tảng thi trực tuyến bảo mật cho giáo dục hiện đại",
-      "title": "Quản lý và tổ chức thi online",
-      "highlight": "thông minh, chống gian lận.",
-      "description": "Testhub giúp nhà trường, trung tâm và doanh nghiệp tạo đề, mời thí sinh, giám sát phòng thi, chấm điểm và phân tích kết quả trong một hệ thống duy nhất.",
-      "startFree": "Bắt đầu miễn phí",
-      "viewDemo": "Xem Demo"
+      "eyebrow": "Nền tảng quản lý thi và ngân hàng câu hỏi",
+      "title": "Từ ngân hàng câu hỏi",
+      "highlight": "đến kỳ thi trực tuyến.",
+      "description": "Testhub hỗ trợ giảng viên quản lý câu hỏi, tạo đề, tổ chức thi và theo dõi kết quả. Sinh viên tham gia thi, luyện tập và xem lại kết quả trên cùng một hệ thống.",
+      "start": "Tạo tài khoản",
+      "explore": "Khám phá tính năng"
     },
-    "stats": {
-      "completion": "tỷ lệ hoàn thành bài thi",
-      "monthlyStudents": "thí sinh mỗi tháng",
-      "setupTime": "12 phút",
-      "toCreate": "để tạo một kỳ thi"
+    "highlights": {
+      "bank": {
+        "value": "Câu hỏi",
+        "label": "Phân loại theo chủ đề, chương và mức độ nhận thức"
+      },
+      "ai": {
+        "value": "AI hỗ trợ",
+        "label": "Sinh câu hỏi từ tài liệu, có bước duyệt trước khi lưu"
+      },
+      "results": {
+        "value": "Kết quả",
+        "label": "Chấm điểm, chấm lại và in báo cáo bài thi"
+      }
     },
-    "trustedBy": "Được tin dùng bởi các đơn vị đào tạo và doanh nghiệp",
+    "roles": {
+      "eyebrow": "Không gian theo vai trò",
+      "title": "Đúng công cụ cho từng người dùng.",
+      "description": "Ba vai trò quản trị viên, giảng viên và sinh viên có không gian làm việc riêng, phù hợp với nhiệm vụ trong hệ thống.",
+      "lecturer": {
+        "title": "Giảng viên",
+        "description": "Quản lý ngân hàng câu hỏi và tài liệu, tạo đề thi, quản lý thí sinh, giám sát lượt thi và xem báo cáo kết quả."
+      },
+      "student": {
+        "title": "Sinh viên",
+        "description": "Tìm kỳ thi, đăng ký tham gia, làm bài thi hoặc luyện tập và xem kết quả được công bố."
+      },
+      "admin": {
+        "title": "Quản trị viên",
+        "description": "Quản lý người dùng, kỳ thi và ngân hàng câu hỏi; theo dõi thống kê tổng quan của hệ thống."
+      }
+    },
     "mockup": {
-      "room": "Phòng thi #A12",
-      "monitored": "Đang giám sát",
+      "preview": "Minh họa giám sát kỳ thi",
+      "room": "Giám sát kỳ thi",
+      "monitored": "Theo dõi trạng thái",
       "overview": "Tổng quan",
       "students": "Thí sinh",
-      "alerts": "Cảnh báo",
-      "reports": "Báo cáo",
+      "alerts": "Sự kiện",
+      "connection": "Kết nối",
       "ongoing": "Kỳ thi đang diễn ra",
-      "exam": "Kiểm tra giữa kỳ - Lớp 12A1",
-      "active": "48 đang làm bài",
-      "completed": "Hoàn thành",
-      "remaining": "Còn lại",
-      "scores": "Phổ điểm tạm tính",
-      "newAlerts": "Cảnh báo mới",
-      "tabSwitch": "Chuyển tab 2 lần",
-      "newDevice": "Đăng nhập thiết bị mới",
-      "disconnected": "Mất kết nối 18 giây"
+      "exam": "Kiểm tra giữa kỳ",
+      "active": "Đang diễn ra",
+      "online": "Đang làm bài",
+      "submitted": "Đã nộp bài",
+      "offline": "Mất kết nối",
+      "status": "Trạng thái thí sinh",
+      "newAlerts": "Sự kiện ghi nhận",
+      "tabSwitch": "Chuyển khỏi tab thi",
+      "fullscreenExit": "Thoát toàn màn hình",
+      "disconnected": "Mất kết nối",
+      "disclaimer": "Giao diện và số liệu minh họa. Sự kiện bất thường là thông tin tham khảo, không tự động kết luận gian lận."
     },
     "visual": {
-      "lockTab": "Khóa tab",
-      "oneDevice": "1 thiết bị",
-      "eventLog": "Log sự kiện",
-      "morning": "Ca sáng 08:00",
-      "afternoon": "Ca chiều 14:00",
-      "autoClose": "Tự động đóng đề",
-      "multipleChoice": "Trắc nghiệm",
+      "tabEvents": "Sự kiện rời tab",
+      "oneDevice": "Quản lý phiên",
+      "eventLog": "Nhật ký sự kiện",
+      "schedule": "Thời gian mở / đóng",
+      "duration": "Thời lượng làm bài",
+      "practice": "Thi / Luyện tập",
+      "multipleChoice": "Một đáp án đúng",
       "essay": "Tự luận",
-      "multipleAnswers": "Đáp án nhiều lựa chọn",
-      "importExcel": "Import Excel"
+      "multipleAnswers": "Nhiều đáp án đúng",
+      "importFiles": "Nhập Word / Excel",
+      "matrix": "Ma trận kiến thức",
+      "evidence": "Trích dẫn nguồn",
+      "approval": "Duyệt trước khi lưu",
+      "pdfPptx": "PDF / PowerPoint",
+      "versions": "Phiên bản tài liệu",
+      "retrieval": "Tra cứu nội dung"
     },
     "features": {
-      "eyebrow": "Tính năng cốt lõi",
-      "title": "Một không gian điều hành kỳ thi được thiết kế cho độ tin cậy.",
-      "description": "Bento grid tập trung vào các quy trình quan trọng nhất: ngân hàng câu hỏi, cấu hình ca thi, giám sát và báo cáo.",
+      "eyebrow": "Tính năng hiện có",
+      "title": "Một quy trình liền mạch cho dạy, học và đánh giá.",
+      "description": "Từ chuẩn bị nội dung đến công bố kết quả, các công cụ được kết nối trong cùng một không gian làm việc.",
       "library": {
-        "title": "Ngân hàng câu hỏi thông minh",
-        "description": "Quản lý câu hỏi trắc nghiệm, tự luận, câu hỏi nhóm và đáp án nhiều định dạng trong một thư viện tập trung."
+        "title": "Ngân hàng câu hỏi có cấu trúc",
+        "description": "Tổ chức câu hỏi theo chủ đề, chương nhiều cấp và mức độ nhận thức. Hỗ trợ trắc nghiệm một đáp án, nhiều đáp án và tự luận; nhập câu hỏi từ Word hoặc Excel."
       },
       "schedule": {
-        "title": "Tổ chức kỳ thi linh hoạt",
-        "description": "Hẹn giờ tự động, chia ca thi, cấu hình thời gian làm bài và luật nộp bài theo từng lớp học."
+        "title": "Thi chính thức và luyện tập",
+        "description": "Thiết lập thời gian mở, đóng và thời lượng làm bài. Chọn câu hỏi thủ công hoặc cấu hình phân bố để tạo đề từ ngân hàng câu hỏi."
       },
       "security": {
-        "title": "Giám sát phòng thi và chống gian lận",
-        "description": "Khóa màn hình, cảnh báo vi phạm, giới hạn thiết bị đăng nhập và ghi nhận hành vi bất thường theo thời gian thực."
+        "title": "Theo dõi trạng thái thi trực tiếp",
+        "description": "Giảng viên theo dõi thí sinh đang làm bài, đã nộp hoặc mất kết nối; xem các sự kiện rời tab và thoát toàn màn hình. Đây là tín hiệu tham khảo, không phải kết luận gian lận."
       },
       "analytics": {
-        "title": "Thống kê và báo cáo trực quan",
-        "description": "Biểu đồ phổ điểm, tỷ lệ hoàn thành, câu hỏi có độ khó cao và báo cáo xuất file cho giảng viên."
+        "title": "Kết quả và báo cáo bài thi",
+        "description": "Chấm tự động câu hỏi trắc nghiệm, xem câu trả lời và kết quả từng lượt thi. Giảng viên có thể chấm lại, công bố kết quả và in báo cáo tổng hợp hoặc chi tiết bài thi."
+      },
+      "ai": {
+        "title": "AI hỗ trợ sinh câu hỏi từ tài liệu",
+        "description": "Tải tài liệu PDF hoặc PowerPoint, lập ma trận chủ đề × mức độ nhận thức và sinh bản nháp có trích dẫn nguồn. Giảng viên chỉnh sửa, duyệt và chọn câu hỏi lưu vào ngân hàng; hệ thống không tự động lưu bản nháp."
+      },
+      "documents": {
+        "title": "Kho tài liệu học tập",
+        "description": "Quản lý tài liệu theo chủ đề và phiên bản, xem nội dung trích xuất và tra cứu trong tài liệu đã lập chỉ mục. Việc xử lý AI yêu cầu đồng ý gửi nội dung tới Google."
       }
     },
     "steps": {
-      "eyebrow": "Cách thức hoạt động",
-      "title": "Từ đề thi đến báo cáo trong 4 bước rõ ràng.",
-      "description": "Quy trình đơn giản để giáo viên vận hành nhanh, trong khi hệ thống vẫn đảm bảo bảo mật và khả năng theo dõi chi tiết.",
+      "eyebrow": "Quy trình sử dụng",
+      "title": "Từ chuẩn bị đề đến xem kết quả trong 4 bước.",
+      "description": "Giảng viên chủ động quản lý nội dung và kỳ thi; sinh viên tham gia bằng tài khoản của mình.",
       "create": {
-        "title": "Tạo đề",
-        "description": "Nhập câu hỏi, trộn đề, gán mức độ và cấu hình thang điểm chỉ trong vài phút."
+        "title": "Chuẩn bị câu hỏi và đề thi",
+        "description": "Tạo hoặc nhập câu hỏi, hay duyệt bản nháp do AI hỗ trợ. Chọn câu hỏi cho đề và thiết lập thời gian thi."
       },
       "invite": {
-        "title": "Mời thí sinh",
-        "description": "Gửi mã phòng thi, import danh sách lớp hoặc chia link truy cập bảo mật."
+        "title": "Quản lý người tham gia",
+        "description": "Thêm sinh viên vào kỳ thi hoặc xét duyệt yêu cầu đăng ký tham gia từ sinh viên."
       },
       "take": {
-        "title": "Thi trực tuyến",
-        "description": "Thí sinh làm bài trên trình duyệt, hệ thống tự động giám sát và ghi nhận sự kiện."
+        "title": "Làm bài và theo dõi",
+        "description": "Sinh viên làm bài trên trình duyệt. Giảng viên theo dõi trạng thái kết nối, tiến độ và các sự kiện trong kỳ thi."
       },
       "report": {
-        "title": "Chấm điểm và báo cáo",
-        "description": "Tự động chấm bài trắc nghiệm, tổng hợp kết quả và phân tích chất lượng đề thi."
-      }
-    },
-    "plans": {
-      "eyebrow": "Bảng giá minh bạch",
-      "title": "Chọn gói phù hợp với quy mô đào tạo của bạn.",
-      "description": "Bắt đầu miễn phí, nâng cấp khi số lượng kỳ thi và nhu cầu giám sát tăng lên.",
-      "month": "/tháng",
-      "mostPopular": "Phổ biến nhất",
-      "individual": {
-        "name": "Cá nhân / Giáo viên",
-        "price": "0đ",
-        "description": "Phù hợp cho giáo viên bắt đầu số hóa bài kiểm tra.",
-        "cta": "Bắt đầu miễn phí",
-        "feature1": "3 kỳ thi mỗi tháng",
-        "feature2": "100 thí sinh / kỳ thi",
-        "feature3": "Ngân hàng câu hỏi cơ bản",
-        "feature4": "Báo cáo điểm tổng quan"
-      },
-      "center": {
-        "name": "Trung tâm",
-        "price": "799k",
-        "description": "Gói phổ biến cho trung tâm đào tạo và khoa bộ môn.",
-        "cta": "Dùng thử 14 ngày",
-        "feature1": "Không giới hạn kỳ thi",
-        "feature2": "2,000 thí sinh / tháng",
-        "feature3": "Chống gian lận nâng cao",
-        "feature4": "Phân quyền giáo viên",
-        "feature5": "Xuất báo cáo Excel/PDF"
-      },
-      "enterprise": {
-        "name": "Doanh nghiệp",
-        "price": "Liên hệ",
-        "description": "Triển khai riêng cho doanh nghiệp, trường đại học và hệ thống lớn.",
-        "cta": "Liên hệ tư vấn",
-        "feature1": "SSO và tên miền riêng",
-        "feature2": "SLA và hỗ trợ ưu tiên",
-        "feature3": "Tích hợp API/LMS",
-        "feature4": "Lưu trữ và bảo mật tùy chỉnh"
+        "title": "Chấm và công bố kết quả",
+        "description": "Xem kết quả, chấm lại khi cần và công bố cho sinh viên. In báo cáo tổng hợp hoặc chi tiết từng bài thi."
       }
     },
     "cta": {
-      "eyebrow": "Sẵn sàng triển khai?",
-      "title": "Tạo phòng thi đầu tiên của bạn trong hôm nay.",
-      "description": "Dùng thử miễn phí để trải nghiệm tạo đề, mời thí sinh và xem báo cáo mẫu trước khi nâng cấp gói."
+      "eyebrow": "Bắt đầu với Testhub",
+      "title": "Một nơi cho câu hỏi, kỳ thi và kết quả.",
+      "description": "Đăng nhập để truy cập không gian làm việc theo vai trò, hoặc tạo tài khoản nếu bạn chưa sử dụng Testhub."
     },
     "footer": {
-      "email": "Email",
-      "description": "Testhub là nền tảng quản lý thi trực tuyến dành cho nhà trường, trung tâm và doanh nghiệp cần một hệ thống bảo mật, dễ dùng và có khả năng mở rộng.",
-      "product": "Sản phẩm",
-      "resources": "Tài nguyên",
-      "company": "Công ty",
-      "security": "Bảo mật",
-      "roadmap": "Lộ trình",
-      "apiGuide": "Hướng dẫn API",
-      "examTemplates": "Mẫu đề thi",
-      "aboutTesthub": "Về Testhub",
-      "contact": "Liên hệ",
-      "partners": "Đối tác",
-      "careers": "Tuyển dụng",
-      "newsletter": "Nhận bản tin",
-      "newsletterDescription": "Đăng ký nhận tin chưa khả dụng.",
-      "subscribe": "Đăng ký nhận bản tin",
-      "rights": "All rights reserved.",
-      "terms": "Điều khoản",
-      "support": "Hỗ trợ"
+      "description": "Testhub kết nối ngân hàng câu hỏi, tài liệu học tập, công cụ AI hỗ trợ soạn câu hỏi và quy trình thi trực tuyến cho giảng viên, sinh viên và quản trị viên.",
+      "product": "Khám phá hệ thống",
+      "access": "Truy cập",
+      "roleNote": "Các chức năng được hiển thị theo vai trò và quyền của tài khoản.",
+      "rights": "Bảo lưu mọi quyền."
     }
   }
 }
