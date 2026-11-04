@@ -1,6 +1,7 @@
 {
   "notifications": {
     "title": "Thông báo",
+    "unreadCountLabel": "Thông báo: {count} thông báo chưa đọc",
     "markAllRead": "Đọc tất cả",
     "empty": "Không có thông báo mới",
     "justNow": "Vừa xong",

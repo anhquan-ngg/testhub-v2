@@ -43,13 +43,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, Upload } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
 import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
-import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
 
 type EditExamPageProps = {
   params: Promise<{ id: string }>;
@@ -323,7 +322,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     is_public: false,
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   const handleToggleQuestion = (questionId: string) => {
     if (isLoadingQuestionBank) return;
@@ -428,41 +426,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     },
     [t],
   );
-  const existingQuestionIdsRef = useRef(existingQuestionIds);
-  useEffect(() => {
-    existingQuestionIdsRef.current = existingQuestionIds;
-  }, [existingQuestionIds]);
-
-  /**
-   * After an import attached questions on the server, picks up only those
-   * new ids. It deliberately bypasses setExam: that would re-run the effect
-   * that re-initialises the whole form and drop unsaved edits. Ids are added
-   * to both lists so they are selected and not re-POSTed on save (409).
-   * Existing local selections and deselections are left untouched.
-   */
-  const mergeImportedQuestions = useCallback(async () => {
-    try {
-      const response = await apiClient.get<ExamDetail>(
-        ENDPOINTS.EXAMS.DETAIL(examId),
-      );
-      const known = new Set(existingQuestionIdsRef.current);
-      const attached = (response.data.questions ?? [])
-        .map((item) => item.question_id)
-        .filter((id) => Boolean(id) && !known.has(id));
-      if (!attached.length) return;
-
-      const addMissing = (prev: string[]) => [
-        ...prev,
-        ...attached.filter((id) => !prev.includes(id)),
-      ];
-      setExistingQuestionIds(addMissing);
-      setSelectedQuestions(addMissing);
-    } catch (error) {
-      toast.error(t("unableToUpdateTheExamQuestion"));
-      console.log(error);
-    }
-  }, [examId, t]);
-
   const syncExamQuestions = async (id: string) => {
     const selectedQuestionSet = new Set(selectedQuestions);
     const existingQuestionSet = new Set(existingQuestionIds);
@@ -801,21 +764,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
             <div className="space-y-2">
               <Label>{t("chooseQuestionsFromTheBank")}</Label>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={exam?.mode !== "MANUAL"}
-                  title={
-                    exam?.mode === "MANUAL"
-                      ? t("importQuestionsIntoTheTopic")
-                      : t("pleaseSaveTheTestInManual")
-                  }
-                  onClick={() => setIsImportDialogOpen(true)}
-                  className="border-gray-300"
-                >
-                  <Upload className="mr-2 h-4 w-4" />
-                  {t("importWordExcel")}
-                </Button>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                   <DialogTrigger asChild>
                     <Button
@@ -1151,21 +1099,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
         </CardContent>
       </Card>
 
-      <QuestionImportDialog
-        open={isImportDialogOpen}
-        onOpenChange={setIsImportDialogOpen}
-        topicId={examForm.topic_id}
-        examId={examId}
-        onCompleted={async () => {
-          // The import may have created chapters from names in the file, and
-          // the backend has already attached the imported questions.
-          await Promise.all([
-            fetchQuestions(),
-            fetchChapters(examForm.topic_id),
-            mergeImportedQuestions(),
-          ]);
-        }}
-      />
     </div>
   );
 }

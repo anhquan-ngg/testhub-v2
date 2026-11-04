@@ -531,11 +531,12 @@ export function SubmissionResultView({
         )}
 
       {/* No questions message */}
-      {(!submission.questions || submission.questions.length === 0) && (
-        <Card className="p-8 text-center">
-          <p className="text-gray-600">{t("thereAreNoQuestionsInThis")}</p>
-        </Card>
-      )}
+      {showQuestions &&
+        (!submission.questions || submission.questions.length === 0) && (
+          <Card className="p-8 text-center">
+            <p className="text-gray-600">{t("thereAreNoQuestionsInThis")}</p>
+          </Card>
+        )}
     </div>
   );
 }

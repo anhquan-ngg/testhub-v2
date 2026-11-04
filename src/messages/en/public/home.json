@@ -2,162 +2,152 @@
   "landing": {
     "nav": {
       "features": "Features",
-      "pricing": "Pricing",
-      "docs": "Resources",
-      "about": "About us",
+      "workflow": "Workflow",
+      "roles": "Roles",
+      "about": "About Testhub",
       "login": "Log in",
-      "signup": "Sign up now"
+      "signup": "Create account",
+      "menu": "Open navigation menu"
     },
     "hero": {
-      "eyebrow": "A secure online exam platform for modern education",
-      "title": "Manage and run online exams",
-      "highlight": "smarter and more securely.",
-      "description": "Testhub helps schools, training centers, and businesses create exams, invite candidates, monitor sessions, grade submissions, and analyze results in one place.",
-      "startFree": "Get started for free",
-      "viewDemo": "View demo"
+      "eyebrow": "Online exams and question bank management",
+      "title": "From your question bank",
+      "highlight": "to online exams.",
+      "description": "Testhub helps lecturers manage questions, build exams, run sessions and track results. Students take exams, practise and review published results in the same system.",
+      "start": "Create account",
+      "explore": "Explore features"
     },
-    "stats": {
-      "completion": "exam completion rate",
-      "monthlyStudents": "candidates each month",
-      "setupTime": "12 min",
-      "toCreate": "to set up an exam"
+    "highlights": {
+      "bank": {
+        "value": "Questions",
+        "label": "Organised by topic, chapter and cognitive level"
+      },
+      "ai": {
+        "value": "AI assistance",
+        "label": "Document-based drafts, reviewed before saving"
+      },
+      "results": {
+        "value": "Results",
+        "label": "Grading, regrading and printable exam reports"
+      }
     },
-    "trustedBy": "Trusted by education providers and businesses",
+    "roles": {
+      "eyebrow": "Role-based workspaces",
+      "title": "The right tools for each user.",
+      "description": "Administrators, lecturers and students each have a workspace tailored to their responsibilities in the system.",
+      "lecturer": {
+        "title": "Lecturers",
+        "description": "Manage questions and documents, build exams, manage participants, monitor sessions and review results."
+      },
+      "student": {
+        "title": "Students",
+        "description": "Find exams, request to join, take exams or practise, and review published results."
+      },
+      "admin": {
+        "title": "Administrators",
+        "description": "Manage users, exams and question banks, and view system-wide summary statistics."
+      }
+    },
     "mockup": {
-      "room": "Exam room #A12",
-      "monitored": "Under monitoring",
+      "preview": "Exam monitoring illustration",
+      "room": "Exam monitoring",
+      "monitored": "Status tracking",
       "overview": "Overview",
       "students": "Candidates",
-      "alerts": "Alerts",
-      "reports": "Reports",
+      "alerts": "Events",
+      "connection": "Connection",
       "ongoing": "EXAM IN PROGRESS",
-      "exam": "Midterm exam - Class 12A1",
-      "active": "48 taking the exam",
-      "completed": "Completed",
-      "remaining": "Time left",
-      "scores": "Preliminary score distribution",
-      "newAlerts": "New alerts",
-      "tabSwitch": "Switched tabs twice",
-      "newDevice": "Signed in on a new device",
-      "disconnected": "Disconnected for 18 seconds"
+      "exam": "Midterm exam",
+      "active": "In progress",
+      "online": "Taking exam",
+      "submitted": "Submitted",
+      "offline": "Disconnected",
+      "status": "Candidate status",
+      "newAlerts": "Recorded events",
+      "tabSwitch": "Left the exam tab",
+      "fullscreenExit": "Exited fullscreen",
+      "disconnected": "Connection lost",
+      "disclaimer": "Illustrative interface and sample data. Unusual events are reference signals, not automatic evidence of cheating."
     },
     "visual": {
-      "lockTab": "Tab lock",
-      "oneDevice": "1 device",
+      "tabEvents": "Tab events",
+      "oneDevice": "Session management",
       "eventLog": "Event log",
-      "morning": "Morning 08:00",
-      "afternoon": "Afternoon 14:00",
-      "autoClose": "Automatic closing",
-      "multipleChoice": "Multiple choice",
+      "schedule": "Opening / closing time",
+      "duration": "Exam duration",
+      "practice": "Exam / Practice",
+      "multipleChoice": "Single correct answer",
       "essay": "Essay",
-      "multipleAnswers": "Multiple answers",
-      "importExcel": "Excel import"
+      "multipleAnswers": "Multiple correct answers",
+      "importFiles": "Word / Excel import",
+      "matrix": "Knowledge matrix",
+      "evidence": "Source citations",
+      "approval": "Review before saving",
+      "pdfPptx": "PDF / PowerPoint",
+      "versions": "Document versions",
+      "retrieval": "Content retrieval"
     },
     "features": {
-      "eyebrow": "Core features",
-      "title": "An exam workspace built for reliability.",
-      "description": "Manage the essentials in one place: question banks, exam schedules, monitoring, and reports.",
+      "eyebrow": "Available features",
+      "title": "A connected workflow for teaching, learning and assessment.",
+      "description": "From preparing content to publishing results, the tools are connected in one workspace.",
       "library": {
-        "title": "Smart question bank",
-        "description": "Keep multiple choice, essay, grouped questions, and different answer formats in one central library."
+        "title": "A structured question bank",
+        "description": "Organise questions by topic, nested chapters and cognitive level. Support single-choice, multiple-answer and essay questions, with Word and Excel imports."
       },
       "schedule": {
-        "title": "Flexible exam scheduling",
-        "description": "Set automatic timers, exam sessions, time limits, and submission rules for each class."
+        "title": "Exams and practice sessions",
+        "description": "Set opening and closing times and exam duration. Select questions manually or configure distributions to build an exam from the question bank."
       },
       "security": {
-        "title": "Monitoring and cheating prevention",
-        "description": "Lock screens, flag violations, limit login devices, and record unusual activity in real time."
+        "title": "Live exam status monitoring",
+        "description": "Track candidates taking an exam, submitting or losing connection, and view tab-switch and fullscreen-exit events. These are reference signals, not conclusions of cheating."
       },
       "analytics": {
-        "title": "Clear analytics and reports",
-        "description": "Review score distributions, completion rates, difficult questions, and downloadable instructor reports."
+        "title": "Exam results and reports",
+        "description": "Automatically grade choice questions and review answers and results for each attempt. Lecturers can regrade, publish results and print summary or individual exam reports."
+      },
+      "ai": {
+        "title": "AI-assisted questions from documents",
+        "description": "Upload a PDF or PowerPoint, build a topic × cognitive-level matrix and generate drafts with source citations. Lecturers edit, approve and select questions to save to the bank; drafts are not saved automatically."
+      },
+      "documents": {
+        "title": "Learning document library",
+        "description": "Manage topic-based documents and versions, preview extracted content and search indexed documents. AI processing requires consent to send content to Google."
       }
     },
     "steps": {
       "eyebrow": "How it works",
-      "title": "From exam creation to reporting in four clear steps.",
-      "description": "A simple workflow helps teachers get started quickly while keeping exams secure and easy to monitor.",
+      "title": "From preparing an exam to reviewing results in four steps.",
+      "description": "Lecturers control content and exams; students participate using their own accounts.",
       "create": {
-        "title": "Create an exam",
-        "description": "Add questions, shuffle versions, set difficulty levels, and configure scoring in minutes."
+        "title": "Prepare questions and exams",
+        "description": "Create or import questions, or review AI-assisted drafts. Select exam questions and configure the exam schedule."
       },
       "invite": {
-        "title": "Invite candidates",
-        "description": "Share an exam code, import a class list, or send a secure access link."
+        "title": "Manage participants",
+        "description": "Add students to an exam or approve their requests to join."
       },
       "take": {
-        "title": "Take the exam online",
-        "description": "Candidates work in their browser while the system monitors and records events."
+        "title": "Take exams and monitor",
+        "description": "Students take exams in the browser. Lecturers track connection status, progress and exam events."
       },
       "report": {
-        "title": "Grade and report",
-        "description": "Grade objective questions automatically, summarize results, and analyze exam quality."
-      }
-    },
-    "plans": {
-      "eyebrow": "Transparent pricing",
-      "title": "Choose a plan that fits your organization.",
-      "description": "Start free and upgrade as your exam volume and monitoring needs grow.",
-      "month": "/month",
-      "mostPopular": "Most popular",
-      "individual": {
-        "name": "Individual / Teacher",
-        "price": "Free",
-        "description": "For teachers starting to move assessments online.",
-        "cta": "Get started for free",
-        "feature1": "3 exams per month",
-        "feature2": "100 candidates per exam",
-        "feature3": "Basic question bank",
-        "feature4": "Score overview reports"
-      },
-      "center": {
-        "name": "Training center",
-        "price": "799k VND",
-        "description": "A popular plan for training centers and academic departments.",
-        "cta": "Try it for 14 days",
-        "feature1": "Unlimited exams",
-        "feature2": "2,000 candidates per month",
-        "feature3": "Advanced cheating prevention",
-        "feature4": "Teacher access controls",
-        "feature5": "Export Excel/PDF reports"
-      },
-      "enterprise": {
-        "name": "Enterprise",
-        "price": "Contact us",
-        "description": "A dedicated deployment for businesses, universities, and large organizations.",
-        "cta": "Contact sales",
-        "feature1": "SSO and custom domain",
-        "feature2": "SLA and priority support",
-        "feature3": "API/LMS integration",
-        "feature4": "Custom storage and security"
+        "title": "Grade and publish results",
+        "description": "Review results, regrade when needed and publish to students. Print a summary or individual exam report."
       }
     },
     "cta": {
-      "eyebrow": "Ready to get started?",
-      "title": "Create your first exam room today.",
-      "description": "Try exam creation, candidate invitations, and sample reports for free before upgrading."
+      "eyebrow": "Get started with Testhub",
+      "title": "One place for questions, exams and results.",
+      "description": "Log in to access your role-based workspace, or create an account if you are new to Testhub."
     },
     "footer": {
-      "email": "Email",
-      "description": "Testhub is an online exam platform for schools, training centers, and businesses that need a secure, easy to use, and scalable system.",
-      "product": "Product",
-      "resources": "Resources",
-      "company": "Company",
-      "security": "Security",
-      "roadmap": "Roadmap",
-      "apiGuide": "API guide",
-      "examTemplates": "Exam templates",
-      "aboutTesthub": "About Testhub",
-      "contact": "Contact",
-      "partners": "Partners",
-      "careers": "Careers",
-      "newsletter": "Newsletter",
-      "newsletterDescription": "Newsletter signup is not available yet.",
-      "subscribe": "Subscribe to newsletter",
-      "rights": "All rights reserved.",
-      "terms": "Terms",
-      "support": "Support"
+      "description": "Testhub brings together question banks, learning documents, AI-assisted question authoring and online exams for lecturers, students and administrators.",
+      "product": "Explore the system",
+      "access": "Access",
+      "roleNote": "Available functions depend on your account role and permissions.",
+      "rights": "All rights reserved."
     }
   }
 }
