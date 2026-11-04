@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ENDPOINTS } from "@/constants/endpoints";
 import apiClient from "@/lib/api-client";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 const VARIANT_COUNTS = [2, 4, 8] as const;
 type VariantCount = (typeof VARIANT_COUNTS)[number];
@@ -85,6 +86,7 @@ async function readErrorMessage(error: unknown, translate: (key: PrintErrorKey) 
  */
 export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
   const t = useTranslations("shared.examPrint");
+  const iconLabels = useIconLabels();
   const [open, setOpen] = useState(false);
   const [variantCount, setVariantCount] = useState<VariantCount>(4);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -130,10 +132,10 @@ export function PrintExamDialog({ exam }: { exam: PrintableExam }) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-gray-700 hover:text-gray-900 hover:cursor-pointer"
-          title={t("printExamQuestions")}
+          className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
+          {...iconLabelProps(iconLabels.printExam)}
         >
-          <Printer className="h-4 w-4" />
+          <Printer className="h-4 w-4" aria-hidden="true" />
         </Button>
       </DialogTrigger>
       <DialogContent className="bg-white border-gray-300 sm:max-w-md">

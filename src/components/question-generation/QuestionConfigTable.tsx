@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Plus, Trash2 } from "lucide-react";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
 import { cn } from "@/lib/utils";
+import { ICON_TONE, useIconLabels } from "@/lib/icon-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -55,6 +56,7 @@ type Props = {
 /** Generation blueprint: question type × cognitive level × count, generated in row order. */
 export function QuestionConfigTable({ rows, disabled, onChange }: Props) {
   const t = useTranslations("shared.questionGeneration.config");
+  const iconLabels = useIconLabels();
   const { questionType, questionFormat } = useEnumLabels();
   const total = rows.reduce(
     (sum, row) => sum + (Number.isNaN(row.count) ? 0 : row.count),
@@ -147,14 +149,15 @@ export function QuestionConfigTable({ rows, disabled, onChange }: Props) {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700"
+                    className={`cursor-pointer ${ICON_TONE.danger}`}
                     aria-label={t("remove", { number: index + 1 })}
+                    title={iconLabels.removeItem}
                     disabled={disabled || rows.length === 1}
                     onClick={() =>
                       onChange(rows.filter((candidate) => candidate.id !== row.id))
                     }
                   >
-                    <Trash2 className="size-4" />
+                    <Trash2 className="size-4" aria-hidden="true" />
                   </Button>
                 </TableCell>
               </TableRow>
@@ -186,7 +189,7 @@ export function QuestionConfigTable({ rows, disabled, onChange }: Props) {
           {t("total", { total, max: MAX_GENERATION_QUESTIONS })}
         </p>
       </div>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-neutral-700">
         {t("hint", {
           rows: MAX_GENERATION_CONFIGS,
           max: MAX_GENERATION_QUESTIONS,

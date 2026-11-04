@@ -52,6 +52,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ENDPOINTS } from "@/constants/endpoints";
 import apiClient from "@/lib/api-client";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import {
   ImportQuestionData,
   ImportQuestionOption,
@@ -113,6 +114,7 @@ export function QuestionImportDialog({
   onCompleted,
 }: Props) {
   const t = useTranslations("shared.questionImport");
+  const iconLabels = useIconLabels();
   const statusLabels: Record<QuestionImportRecord["status"], string> = {
     UPLOADING: t("statusUploading"),
     QUEUED: t("statusQueued"),
@@ -791,10 +793,11 @@ export function QuestionImportDialog({
                         <Button
                           variant="ghost"
                           size="icon"
-                          title={t("editLines")}
+                          className={ICON_TONE.primary}
+                          {...iconLabelProps(iconLabels.edit)}
                           onClick={() => startEditing(item)}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -951,7 +954,8 @@ export function QuestionImportDialog({
                         <Button
                           variant="ghost"
                           size="icon"
-                          title={t("deleteSelection")}
+                          className={ICON_TONE.danger}
+                          {...iconLabelProps(iconLabels.delete)}
                           disabled={editForm.options.length <= 2}
                           onClick={() =>
                             setEditForm({
@@ -967,7 +971,7 @@ export function QuestionImportDialog({
                             })
                           }
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
                     ))}

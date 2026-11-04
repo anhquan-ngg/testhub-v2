@@ -37,6 +37,7 @@ import { calculateTotalQuesions } from "@/lib/exam-utils";
 import { toast } from "sonner";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { ratingClass } from "@/lib/exam-style";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 type PageResult<T> = {
   data: T[];
@@ -47,6 +48,7 @@ type PageResult<T> = {
 
 export default function AdminExamReportPage() {
   const t = useTranslations("admin.examReport");
+  const iconLabels = useIconLabels();
   const params = useParams();
   const router = useRouter();
   const examId = params.id as string;
@@ -191,8 +193,9 @@ export default function AdminExamReportPage() {
             size="icon"
             onClick={() => router.back()}
             className="bg-white border-gray-300 hover:cursor-pointer"
+            {...iconLabelProps(iconLabels.back)}
           >
-            <ChevronLeft className="h-4 w-4 text-gray-700" />
+            <ChevronLeft className="h-4 w-4 text-gray-700" aria-hidden="true" />
           </Button>
           <div>
             <h2 className="text-2xl font-bold text-neutral-900">
@@ -293,15 +296,15 @@ export default function AdminExamReportPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-[#0066cc] hover:bg-sky-50 hover:cursor-pointer"
+                            className={`h-8 w-8 ${ICON_TONE.primary} hover:cursor-pointer`}
                             onClick={() =>
                               router.push(
                                 `/dashboard/exams/${examId}/report/${sub.id}`,
                               )
                             }
-                            title={t("printExamDetails")}
+                            {...iconLabelProps(iconLabels.viewDetails)}
                           >
-                            <Printer className="h-4 w-4" />
+                            <Printer className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         </div>
                       </TableCell>

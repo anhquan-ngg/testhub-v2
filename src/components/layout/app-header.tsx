@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { usePathname, useRouter } from "@/i18n/navigation";
 import { ChevronDown, Menu, PanelLeftClose, PanelLeftOpen, User as UserIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +45,7 @@ export function AppHeader({
   profileHref?: string;
 }) {
   const t = useTranslations("layout");
+  const iconLabels = useIconLabels();
   const tNav = useTranslations("nav");
   const tCommon = useTranslations("common");
   const pathname = usePathname();
@@ -63,20 +65,22 @@ export function AppHeader({
         type="button"
         onClick={() => setMobileSidebarOpen(true)}
         className="flex shrink-0 cursor-pointer items-center justify-center rounded-md p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 md:hidden"
-        aria-label={t("openNavigation")}
+        {...iconLabelProps(iconLabels.openMenu)}
       >
-        <Menu className="h-[18px] w-[18px]" />
+        <Menu className="h-[18px] w-[18px]" aria-hidden="true" />
       </button>
       <button
         type="button"
         onClick={() => setCollapsed(!collapsed)}
         className="hidden shrink-0 cursor-pointer items-center justify-center rounded-md p-2 text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 md:flex"
-        aria-label={collapsed ? t("expandSidebar") : t("collapseSidebar")}
+        {...iconLabelProps(
+          collapsed ? iconLabels.expand : iconLabels.collapse,
+        )}
       >
         {collapsed ? (
-          <PanelLeftOpen className="h-[18px] w-[18px]" />
+          <PanelLeftOpen className="h-[18px] w-[18px]" aria-hidden="true" />
         ) : (
-          <PanelLeftClose className="h-[18px] w-[18px]" />
+          <PanelLeftClose className="h-[18px] w-[18px]" aria-hidden="true" />
         )}
       </button>
 

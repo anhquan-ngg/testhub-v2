@@ -400,7 +400,7 @@ export function QuestionGenerationScreen() {
             <Sparkles className="size-6 text-violet-500" />
             {t("title")}
           </h1>
-          <p className="mt-1 max-w-3xl text-sm text-neutral-500">
+          <p className="mt-1 max-w-3xl text-sm text-neutral-700">
             {t("description")}
           </p>
           <Badge
@@ -758,7 +758,7 @@ export function QuestionGenerationScreen() {
                       )}
                       {!!items.length && (
                         <>
-                          <p className="text-sm text-neutral-500">
+                          <p className="text-sm text-neutral-700">
                             {t("reviewHint")}
                           </p>
                           <p className="text-sm font-medium text-neutral-800">

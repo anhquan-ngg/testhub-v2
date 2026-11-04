@@ -31,6 +31,7 @@ import examPrint from "./shared/examPrint.json";
 import mathInput from "./shared/mathInput.json";
 import fileUpload from "./shared/fileUpload.json";
 import ui from "./shared/ui.json";
+import iconButton from "./shared/iconButton.json";
 
 const messages = {
   ...common,
@@ -42,7 +43,7 @@ const messages = {
   admin: { dashboard: adminDashboard, users: adminUsers, questions: adminQuestions, exams: adminExams, examReport: adminExamReport, submissionReport: adminSubmissionReport },
   student: { home: studentHome, exam: studentExam, results: studentResults, resultDetail: studentResultDetail, profile: studentProfile },
   lecturer: { dashboard: lecturerDashboard, questions: lecturerQuestions, exams: lecturerExams, createExam: lecturerCreateExam, editExam: lecturerEditExam, monitor: lecturerMonitor, examReport: lecturerExamReport, profile: lecturerProfile },
-  shared: { regrading, questionImport, questionGeneration, learningDocuments, examPrint, mathInput, fileUpload, ui },
+  shared: { regrading, questionImport, questionGeneration, learningDocuments, examPrint, mathInput, fileUpload, ui, iconButton },
 };
 
 export default messages;

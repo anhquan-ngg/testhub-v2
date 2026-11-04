@@ -15,9 +15,11 @@ import { toast } from "sonner";
 import { setUser } from "@/store/slices/authSlice";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 export default function LecturerProfile() {
   const t = useTranslations("lecturer.profile");
+  const iconLabels = useIconLabels();
   const user = useAppSelector((state) => state.user);
   const dispatch = useAppDispatch();
   const { getViewUrl: getLegacyAvatarViewUrl } = useS3("avatars");
@@ -213,8 +215,9 @@ export default function LecturerProfile() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute bottom-0 right-0 bg-[#0066cc] text-white rounded-full p-3 shadow-lg hover:bg-[#0052a3] transition-colors"
+                {...iconLabelProps(iconLabels.uploadPhoto)}
               >
-                <Camera className="h-5 w-5" />
+                <Camera className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
             <input
@@ -309,12 +312,17 @@ export default function LecturerProfile() {
                         current: !showPasswords.current,
                       })
                     }
-                    className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    {...iconLabelProps(
+                      showPasswords.current
+                        ? iconLabels.hidePassword
+                        : iconLabels.showPassword,
+                    )}
                   >
                     {showPasswords.current ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-5 w-5" aria-hidden="true" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-5 w-5" aria-hidden="true" />
                     )}
                   </button>
                 </div>
@@ -340,12 +348,17 @@ export default function LecturerProfile() {
                         new: !showPasswords.new,
                       })
                     }
-                    className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    {...iconLabelProps(
+                      showPasswords.new
+                        ? iconLabels.hidePassword
+                        : iconLabels.showPassword,
+                    )}
                   >
                     {showPasswords.new ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-5 w-5" aria-hidden="true" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-5 w-5" aria-hidden="true" />
                     )}
                   </button>
                 </div>
@@ -371,12 +384,17 @@ export default function LecturerProfile() {
                         confirm: !showPasswords.confirm,
                       })
                     }
-                    className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    {...iconLabelProps(
+                      showPasswords.confirm
+                        ? iconLabels.hidePassword
+                        : iconLabels.showPassword,
+                    )}
                   >
                     {showPasswords.confirm ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-5 w-5" aria-hidden="true" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-5 w-5" aria-hidden="true" />
                     )}
                   </button>
                 </div>

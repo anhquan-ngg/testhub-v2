@@ -18,6 +18,7 @@ import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 const GoogleLogo = () => (
   <svg
@@ -46,6 +47,7 @@ const GoogleLogo = () => (
 
 export default function LoginPage() {
   const t = useTranslations("auth");
+  const iconLabels = useIconLabels();
   const { handleLogin, handleGoogleLogin } = useAuth();
   const submitting = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -139,12 +141,17 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    {...iconLabelProps(
+                      showPassword
+                        ? iconLabels.hidePassword
+                        : iconLabels.showPassword,
+                    )}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 hover:cursor-pointer" />
+                      <EyeOff className="h-5 w-5 hover:cursor-pointer" aria-hidden="true" />
                     ) : (
-                      <Eye className="h-5 w-5 hover:cursor-pointer" />
+                      <Eye className="h-5 w-5 hover:cursor-pointer" aria-hidden="true" />
                     )}
                   </button>
                 </div>

@@ -15,11 +15,13 @@ import { Eye, EyeOff } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "@/components/common/LanguageSwitcher";
+import { iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import authServices from "@/services/authServices";
 import { toast } from "sonner";
 
 export default function SignupPage() {
   const t = useTranslations("auth");
+  const iconLabels = useIconLabels();
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -143,12 +145,17 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    {...iconLabelProps(
+                      showPassword
+                        ? iconLabels.hidePassword
+                        : iconLabels.showPassword,
+                    )}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 hover:cursor-pointer" />
+                      <EyeOff className="h-5 w-5 hover:cursor-pointer" aria-hidden="true" />
                     ) : (
-                      <Eye className="h-5 w-5 hover:cursor-pointer" />
+                      <Eye className="h-5 w-5 hover:cursor-pointer" aria-hidden="true" />
                     )}
                   </button>
                 </div>
@@ -176,12 +183,17 @@ export default function SignupPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors border-gray-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded text-muted-foreground hover:text-foreground transition-colors border-gray-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    {...iconLabelProps(
+                      showConfirmPassword
+                        ? iconLabels.hidePassword
+                        : iconLabels.showPassword,
+                    )}
                   >
                     {showConfirmPassword ? (
-                      <EyeOff className="h-5 w-5 hover:cursor-pointer" />
+                      <EyeOff className="h-5 w-5 hover:cursor-pointer" aria-hidden="true" />
                     ) : (
-                      <Eye className="h-5 w-5 hover:cursor-pointer" />
+                      <Eye className="h-5 w-5 hover:cursor-pointer" aria-hidden="true" />
                     )}
                   </button>
                 </div>

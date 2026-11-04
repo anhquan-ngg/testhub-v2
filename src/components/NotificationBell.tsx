@@ -6,6 +6,7 @@ import { useSocket } from "@/components/providers/SocketProvider";
 import { useRouter } from "@/i18n/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { intlLocales, isLocale, defaultLocale } from "@/i18n/config";
+import { iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 export default function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useSocket();
@@ -13,6 +14,7 @@ export default function NotificationBell() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const t = useTranslations("notifications");
+  const iconLabels = useIconLabels();
   const locale = useLocale();
 
   // Close dropdown on outside click
@@ -76,9 +78,9 @@ export default function NotificationBell() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-full hover:bg-white/30 transition-colors cursor-pointer"
-        title={t("title")}
+        {...iconLabelProps(iconLabels.notifications)}
       >
-        <Bell className="h-5 w-5 text-gray-700" />
+        <Bell className="h-5 w-5 text-gray-700" aria-hidden="true" />
         {unreadCount > 0 && (
           <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full animate-pulse">
             {unreadCount > 99 ? "99+" : unreadCount}

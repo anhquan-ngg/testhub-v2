@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import { toast } from "sonner";
 import { UserRole } from "@/types/backend-enums";
 import {
@@ -74,6 +75,7 @@ type PageResult<T> = {
 
 export default function UsersPage() {
   const t = useTranslations("admin.users");
+  const iconLabels = useIconLabels();
   const enumLabel = useEnumLabels();
   const [users, setUsers] = useState([] as any);
   const [isLoading, setIsLoading] = useState(true);
@@ -274,12 +276,17 @@ export default function UsersPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700"
+                    className="absolute right-3 top-2.5 text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                    {...iconLabelProps(
+                      showPassword
+                        ? iconLabels.hidePassword
+                        : iconLabels.showPassword,
+                    )}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5" />
+                      <EyeOff className="h-5 w-5" aria-hidden="true" />
                     ) : (
-                      <Eye className="h-5 w-5" />
+                      <Eye className="h-5 w-5" aria-hidden="true" />
                     )}
                   </button>
                 </div>
@@ -420,9 +427,10 @@ export default function UsersPage() {
                             onClick={() =>
                               setSelectedRole(user.role as UserRole)
                             }
-                            className="text-[#0066cc] hover:bg-sky-50 hover:text-[#0052a3] hover:cursor-pointer"
+                            className={`${ICON_TONE.primary} hover:cursor-pointer`}
+                            {...iconLabelProps(iconLabels.editRole)}
                           >
-                            <UserCog className="h-4 w-4" />
+                            <UserCog className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="bg-white border-gray-300">
@@ -472,9 +480,10 @@ export default function UsersPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="text-red-600 hover:text-red-700 hover:cursor-pointer"
+                            className={`${ICON_TONE.danger} hover:cursor-pointer`}
+                            {...iconLabelProps(iconLabels.delete)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="bg-white">

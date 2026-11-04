@@ -69,6 +69,7 @@ import { useSocket } from "@/components/providers/SocketProvider";
 import apiClient from "@/lib/api-client";
 import { examStatusClass, examTypeClass, registrationStatusClass } from "@/lib/exam-style";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import { PrintExamDialog } from "@/components/exam-print/PrintExamDialog";
 
 type ExamRegistrationWithStudent = {
@@ -309,6 +310,7 @@ function StudentManagementDialog({
 
 export default function LecturerExams() {
   const t = useTranslations("lecturer.exams");
+  const iconLabels = useIconLabels();
   const locale = useLocale();
   const router = useRouter();
   const [exams, setExams] = useState<LecturerExamItem[]>([]);
@@ -517,8 +519,9 @@ export default function LecturerExams() {
                             variant="ghost"
                             size="sm"
                             className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
+                            {...iconLabelProps(iconLabels.manageParticipants)}
                           >
-                            <Users className="h-4 w-4 mr-1" />
+                            <Users className="h-4 w-4 mr-1" aria-hidden="true" />
                             {exam._count?.registrations ??
                               exam.registrations?.length ??
                               0}
@@ -540,9 +543,10 @@ export default function LecturerExams() {
                           onClick={() =>
                             router.push(`/lecturer/exams/edit/${exam.id}`)
                           }
-                          className="h-8 w-8 hover:cursor-pointer"
+                          className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
+                          {...iconLabelProps(iconLabels.edit)}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -550,10 +554,10 @@ export default function LecturerExams() {
                           onClick={() =>
                             router.push(`/lecturer/exams/${exam.id}/monitor`)
                           }
-                          className="h-8 w-8 text-accent-700 hover:text-accent-800 hover:cursor-pointer"
-                          title={t("superviseTheExam")}
+                          className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
+                          {...iconLabelProps(iconLabels.monitor)}
                         >
-                          <Eye className="h-4 w-4" />
+                          <Eye className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -561,10 +565,10 @@ export default function LecturerExams() {
                           onClick={() =>
                             router.push(`/lecturer/exams/${exam.id}/report`)
                           }
-                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:cursor-pointer"
-                          title={t("viewReport")}
+                          className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
+                          {...iconLabelProps(iconLabels.viewReport)}
                         >
-                          <BarChart3 className="h-4 w-4" />
+                          <BarChart3 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                         <PrintExamDialog exam={exam} />
 
@@ -573,9 +577,10 @@ export default function LecturerExams() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-red-600 hover:text-red-700 hover:cursor-pointer"
+                              className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.danger}`}
+                              {...iconLabelProps(iconLabels.delete)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent className="bg-white border-gray-300">

@@ -22,6 +22,7 @@
     "adminMenu": "Administrator navigation menu",
     "defaultAdminName": "Administrator",
     "adminPortal": "Admin Portal",
+    "lecturerPortal": "Lecturer Portal",
     "profile": "Profile"
   }
 }

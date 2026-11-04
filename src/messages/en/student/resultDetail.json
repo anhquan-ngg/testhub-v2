@@ -29,5 +29,20 @@
   "noAnswer": "No answer",
   "sampleAnswer": "Sample answer:",
   "youChoose": "You choose",
-  "thereAreNoQuestionsInThis": "There are no questions in this submission."
+  "thereAreNoQuestionsInThis": "There are no questions in this submission.",
+  "studentName": "Candidate",
+  "studentEmail": "Candidate email",
+  "submissionId": "Submission ID",
+  "submittedAt": "Submitted at",
+  "studentAnswer": "Candidate answer:",
+  "studentChoice": "Candidate selected",
+  "mediaAttachment": "Audio/video attachment (not playable in print): {name}",
+  "returnToReport": "Back to report",
+  "generatingPdf": "Generating PDF...",
+  "printDetailedResult": "Download detailed PDF",
+  "printPreviewTitle": "Exam result preview",
+  "printPreviewDescription": "Check the content, then choose Download detailed PDF. The server generates the PDF with the same layout and colors as this preview; each question is kept whole on a single page instead of being split across pages.",
+  "printFailed": "Could not generate the PDF. Check your connection and try again.",
+  "resultUnavailable": "This submission does not belong to this exam, cannot be found, or you do not have permission to view it.",
+  "retry": "Try again"
 }

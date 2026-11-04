@@ -77,6 +77,7 @@ import { Link } from "@/i18n/navigation";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
 type ViewMode = "topics" | "chapters" | "questions";
 type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "ESSAY";
@@ -305,6 +306,7 @@ const getQuestionPreviewText = (questionText: string) => {
 
 export default function LecturerQuestions() {
   const t = useTranslations("lecturer.questions");
+  const iconLabels = useIconLabels();
   const generationText = useTranslations("shared.questionGeneration");
   const documentText = useTranslations("shared.learningDocuments");
   const locale = useLocale();
@@ -1142,10 +1144,11 @@ export default function LecturerQuestions() {
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 hover:cursor-pointer"
+                                className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
                                 onClick={() => openEditChapterDialog(chapter)}
+                                {...iconLabelProps(iconLabels.edit)}
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Pencil className="h-4 w-4" aria-hidden="true" />
                               </Button>
                               <DeleteButton
                                 title={t("deleteChapters")}
@@ -1231,27 +1234,28 @@ export default function LecturerQuestions() {
                               className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
                               disabled={loadingDetailId === question.id}
                               onClick={() => openQuestionDetail(question.id)}
+                              {...iconLabelProps(iconLabels.viewDetails)}
                             >
                               {loadingDetailId === question.id ? (
-                                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
                               ) : (
-                                <Eye className="mr-1 h-4 w-4" />
+                                <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
                               )}
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 hover:cursor-pointer"
+                              className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
                               disabled={loadingEditId === question.id}
-                              title={t("updatedQuestion2")}
+                              {...iconLabelProps(iconLabels.edit)}
                               onClick={() =>
                                 openEditQuestionDialog(question.id)
                               }
                             >
                               {loadingEditId === question.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                               ) : (
-                                <Pencil className="h-4 w-4" />
+                                <Pencil className="h-4 w-4" aria-hidden="true" />
                               )}
                             </Button>
                             <DeleteButton
@@ -1557,15 +1561,17 @@ function DeleteButton({
   onConfirm: () => Promise<void>;
 }) {
   const t = useTranslations("lecturer.questions");
+  const iconLabels = useIconLabels();
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8 text-red-600 hover:text-red-700 hover:cursor-pointer"
+          className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.danger}`}
+          {...iconLabelProps(iconLabels.delete)}
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent className="bg-white border-gray-300">

@@ -48,6 +48,7 @@ import { useEnumLabels } from "@/i18n/useEnumLabels";
 import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
+import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
 
 type EditExamPageProps = {
@@ -240,6 +241,7 @@ const buildDistribution = (
 
 export default function EditExamPage({ params }: EditExamPageProps) {
   const t = useTranslations("lecturer.editExam");
+  const iconLabels = useIconLabels();
   const enumLabel = useEnumLabels();
   const examId = use(params).id;
   const router = useRouter();
@@ -1088,12 +1090,13 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-9 w-9 p-0"
+                                      className={`h-9 w-9 p-0 ${ICON_TONE.danger}`}
                                       onClick={() =>
                                         handleRemoveConfigRow(row.id)
                                       }
+                                      {...iconLabelProps(iconLabels.delete)}
                                     >
-                                      <Trash2 className="h-4 w-4 text-red-500" />
+                                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                                     </Button>
                                   </TableCell>
                                 </TableRow>
