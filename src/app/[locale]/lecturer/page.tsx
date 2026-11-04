@@ -279,9 +279,9 @@ export default function LecturerHome() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.4fr_1fr]">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         {/* Upcoming / live exams */}
-        <div>
+        <div className="min-w-0">
           <h3 className="mb-3 text-lg font-semibold text-neutral-900">
             {t("theExamIsAboutToTake")}</h3>
           <Card className="border-gray-300 bg-white py-0 shadow-sm">
@@ -299,7 +299,7 @@ export default function LecturerHome() {
                   return (
                     <div
                       key={exam.id}
-                      className="flex flex-wrap items-center gap-4 px-6 py-4"
+                      className="flex flex-wrap items-center gap-3 px-6 py-4"
                     >
                       {isLive ? (
                         <Badge variant="outline" className="shrink-0 border-emerald-200 bg-emerald-50 text-emerald-700">
@@ -314,11 +314,11 @@ export default function LecturerHome() {
                         <Badge variant="secondary" className="shrink-0">
                           {t("aboutToOpen")}</Badge>
                       )}
-                      <div className="min-w-0 flex-1">
+                      <div className="order-first w-full min-w-0">
                         <p className="truncate font-heading text-base font-semibold text-neutral-900">
                           {exam.title}
                         </p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="break-words text-xs text-neutral-500">
                           {getTopicName(exam.topic, t("uncategorized"))} ·{" "}
                           {new Date(exam.exam_start_time).toLocaleString(
                             intlLocales[locale],
@@ -328,7 +328,7 @@ export default function LecturerHome() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="shrink-0 cursor-pointer gap-1.5 text-accent-700 hover:text-accent-800"
+                        className="ml-auto shrink-0 cursor-pointer gap-1.5 text-accent-700 hover:text-accent-800"
                         asChild
                       >
                         <Link href={`/lecturer/exams/${exam.id}/report`}>
@@ -344,25 +344,33 @@ export default function LecturerHome() {
         </div>
 
         {/* Score distribution */}
-        <div>
+        <div className="min-w-0">
           <h3 className="mb-3 text-lg font-semibold text-neutral-900">
             {t("scoreSpectrumTestBeingAdministered")}</h3>
           <Card className="border-gray-300 bg-white shadow-sm">
-            <CardContent className="px-5">
-              <div className="h-[260px]">
+            <CardContent className="px-3 sm:px-5">
+              <div className="h-[300px] w-full min-w-0 sm:h-[340px] xl:h-[360px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={scoreData}>
+                  <BarChart
+                    data={scoreData}
+                    margin={{ top: 12, right: 8, left: 0, bottom: 0 }}
+                    barGap={6}
+                    barCategoryGap="24%"
+                    maxBarSize={48}
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--color-neutral-200)" />
                     <XAxis
                       dataKey="range"
-                      tick={{ fontSize: 11, fill: "var(--color-neutral-500)" }}
+                      tickMargin={10}
+                      tick={{ fontSize: 12, fill: "var(--color-neutral-500)" }}
                     />
                     <YAxis
+                      width={32}
                       allowDecimals={false}
-                      tick={{ fontSize: 11, fill: "var(--color-neutral-500)" }}
+                      tick={{ fontSize: 12, fill: "var(--color-neutral-500)" }}
                     />
                     <Tooltip />
-                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Legend wrapperStyle={{ fontSize: 13, paddingTop: 16 }} />
                     <Bar
                       dataKey="count"
                       fill="var(--color-accent-600)"

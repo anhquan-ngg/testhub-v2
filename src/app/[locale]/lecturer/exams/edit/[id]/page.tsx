@@ -35,15 +35,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Plus, Trash2 } from "lucide-react";
+import { ListChecks, Plus, Trash2 } from "lucide-react";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
 import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
@@ -773,192 +765,167 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                       {t("selectQuestion")}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[calc(100vh-4rem)] overflow-y-auto bg-white border-gray-300">
-                    <DialogHeader>
-                      <DialogTitle>{t("selectQuestion")}</DialogTitle>
-                      <DialogDescription>
-                        {t("chooseQuestionsForExam", { title: examForm.title })}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <Select
-                      value={questionSelectionMode}
-                      onValueChange={(value) =>
-                        setQuestionSelectionMode(value as ExamMode)
-                      }
-                    >
-                      <SelectTrigger className="w-full max-w-full sm:w-[370px] bg-white border-gray-300">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border-gray-300">
-                        <SelectItem value="MANUAL">
-                          {t("manualSelection")}
-                        </SelectItem>
-                        <SelectItem value="RANDOM_N">
-                          {t("randomlySelectNSentences")}
-                        </SelectItem>
-                        <SelectItem value="BY_TYPE">
-                          {t("configurableByTypeAndFormat")}
-                        </SelectItem>
-                        <SelectItem value="BY_CHAPTER">
-                          {t("configureByChapter")}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    {questionSelectionMode === "MANUAL" && (
-                      <div className="space-y-2">
-                        <div className="border border-gray-300 rounded-lg p-4 space-y-3 max-h-64 overflow-y-auto">
-                          {!isLoadingQuestionBank &&
-                          questionBank?.length > 0 ? (
-                            questionBank.map((question) => (
-                              <div
-                                key={question.id}
-                                className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded"
-                              >
-                                <Checkbox
-                                  id={`question-${question.id}`}
-                                  checked={selectedQuestions.includes(
-                                    question.id,
-                                  )}
-                                  onCheckedChange={() =>
-                                    handleToggleQuestion(question.id)
-                                  }
-                                  className="mt-1 bg-white border-gray-300"
-                                />
-                                <label
-                                  htmlFor={`question-${question.id}`}
-                                  className="flex-1 cursor-pointer"
-                                >
-                                  <div className="font-medium text-sm">
-                                    {question.question_text}
-                                  </div>
-                                  <div className="text-xs text-gray-500 mt-1">
-                                    {t("questionMetadata", {
-                                      topic: getQuestionTopicName(question),
-                                      type: enumLabel.questionType(
-                                        question.question_type,
-                                      ),
-                                      format: enumLabel.questionFormat(
-                                        question.question_format,
-                                      ),
-                                    })}
-                                  </div>
-                                </label>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="text-center text-gray-500 py-4">
-                              {t("noQuestionsAsked")}
-                            </div>
-                          )}
+                  <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden border-gray-300 bg-white p-0 sm:max-w-3xl">
+                    <DialogHeader className="shrink-0 border-b border-gray-200 p-5 pr-12 text-left sm:p-6 sm:pr-12">
+                      <div className="flex items-start gap-3">
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-[#0066cc]">
+                          <ListChecks className="size-5" aria-hidden="true" />
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {t("selectedQuestionCount", {
-                            count: selectedQuestions.length,
-                          })}
+                        <div className="min-w-0 space-y-1">
+                          <DialogTitle className="text-lg font-semibold text-neutral-900">{t("selectQuestion")}</DialogTitle>
+                          <DialogDescription className="break-words text-sm text-neutral-500">
+                            {t("chooseQuestionsForExam", { title: examForm.title })}
+                          </DialogDescription>
                         </div>
                       </div>
-                    )}
+                    </DialogHeader>
+                    <div className="min-h-0 space-y-5 overflow-y-auto p-5 sm:p-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="question-selection-mode">{t("selectionMethod")}</Label>
+                        <Select
+                          value={questionSelectionMode}
+                          onValueChange={(value) =>
+                            setQuestionSelectionMode(value as ExamMode)
+                          }
+                        >
+                          <SelectTrigger id="question-selection-mode" className="w-full min-w-0 border-gray-300 bg-white">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white border-gray-300">
+                            <SelectItem value="MANUAL">
+                              {t("manualSelection")}
+                            </SelectItem>
+                            <SelectItem value="RANDOM_N">
+                              {t("randomlySelectNSentences")}
+                            </SelectItem>
+                            <SelectItem value="BY_TYPE">
+                              {t("configurableByTypeAndFormat")}
+                            </SelectItem>
+                            <SelectItem value="BY_CHAPTER">
+                              {t("configureByChapter")}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
 
-                    {questionSelectionMode === "RANDOM_N" && (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-3 gap-4 items-end">
-                          <div className="space-y-2">
-                            <Label htmlFor="random-count">
-                              {t("numberOfQuestions")}
-                            </Label>
-                            <Input
-                              id="random-count"
-                              type="number"
-                              min="1"
-                              value={randomCount}
-                              onChange={(e) => setRandomCount(e.target.value)}
-                              placeholder="10"
-                              className="bg-white border-gray-300"
-                            />
+                      {questionSelectionMode === "MANUAL" && (
+                        <div className="space-y-2">
+                          <div className="border border-gray-300 rounded-lg p-4 space-y-3 max-h-64 overflow-y-auto">
+                            {!isLoadingQuestionBank &&
+                              questionBank?.length > 0 ? (
+                              questionBank.map((question) => (
+                                <div
+                                  key={question.id}
+                                  className="flex items-start space-x-3 p-2 hover:bg-gray-50 rounded"
+                                >
+                                  <Checkbox
+                                    id={`question-${question.id}`}
+                                    checked={selectedQuestions.includes(
+                                      question.id,
+                                    )}
+                                    onCheckedChange={() =>
+                                      handleToggleQuestion(question.id)
+                                    }
+                                    className="mt-1 bg-white border-gray-300"
+                                  />
+                                  <label
+                                    htmlFor={`question-${question.id}`}
+                                    className="flex-1 cursor-pointer"
+                                  >
+                                    <div className="font-medium text-sm">
+                                      {question.question_text}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {t("questionMetadata", {
+                                        topic: getQuestionTopicName(question),
+                                        type: enumLabel.questionType(
+                                          question.question_type,
+                                        ),
+                                        format: enumLabel.questionFormat(
+                                          question.question_format,
+                                        ),
+                                      })}
+                                    </div>
+                                  </label>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-center text-gray-500 py-4">
+                                {t("noQuestionsAsked")}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {t("selectedQuestionCount", {
-                            count: selectedQuestions.length,
-                          })}
-                        </div>
-                      </div>
-                    )}
+                      )}
 
-                    {(questionSelectionMode === "BY_TYPE" ||
-                      questionSelectionMode === "BY_CHAPTER") && (
-                      <div className="min-w-0 space-y-4">
-                        <Label className="text-base font-semibold block">
-                          {t("questionConfiguration")}
-                        </Label>
-                        <div className="max-w-full overflow-x-auto rounded-lg border border-gray-300">
-                          <Table
-                            className={
-                              questionSelectionMode === "BY_CHAPTER"
-                                ? "min-w-[650px] table-fixed"
-                                : "min-w-[650px] table-fixed"
-                            }
-                          >
-                            <TableHeader>
-                              <TableRow className="border-gray-300">
-                                {questionSelectionMode === "BY_CHAPTER" && (
-                                  <>
-                                    <TableHead className="w-[210px]">
-                                      {t("chapter")}
-                                    </TableHead>
-                                  </>
-                                )}
-                                {questionSelectionMode === "BY_TYPE" && (
-                                  <>
-                                    <TableHead className="w-[260px]">
-                                      {t("questionType")}
-                                    </TableHead>
-                                    <TableHead className="w-[190px]">
-                                      {t("format2")}
-                                    </TableHead>
-                                  </>
-                                )}
-                                <TableHead className="w-[120px]">
-                                  {t("quantity")}
-                                </TableHead>
-                                <TableHead className="w-[80px]">
-                                  {t("operation")}
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody className="bg-white border-gray-300">
+                      {questionSelectionMode === "RANDOM_N" && (
+                        <div className="space-y-3">
+                          <div className="grid gap-4 sm:grid-cols-2">
+                            <div className="space-y-2">
+                              <Label htmlFor="random-count">
+                                {t("numberOfQuestions")}
+                              </Label>
+                              <Input
+                                id="random-count"
+                                type="number"
+                                min="1"
+                                value={randomCount}
+                                onChange={(e) => setRandomCount(e.target.value)}
+                                placeholder="10"
+                                className="bg-white border-gray-300"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(questionSelectionMode === "BY_TYPE" ||
+                        questionSelectionMode === "BY_CHAPTER") && (
+                          <div className="min-w-0 space-y-4">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                              <h3 className="text-sm font-semibold text-neutral-900">
+                                {t("questionConfiguration")}
+                              </h3>
+                              <Button
+                                onClick={handleAddConfigRow}
+                                variant="outline"
+                                className="border-gray-300 bg-white hover:bg-gray-50"
+                              >
+                                <Plus className="size-4" aria-hidden="true" />
+                                {t("addGoodsConfiguration")}
+                              </Button>
+                            </div>
+                            {questionSelectionMode === "BY_CHAPTER" && (
+                              <p className="text-sm leading-relaxed text-neutral-500">
+                                {t("includesAllDescendants")}
+                              </p>
+                            )}
+                            <div className="space-y-3">
                               {configRows.map((row) => (
-                                <TableRow
+                                <div
                                   key={row.id}
-                                  className="border-gray-300"
+                                  className={`grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem] items-start gap-4 rounded-lg border border-gray-200 bg-gray-50/60 p-4 ${questionSelectionMode === "BY_CHAPTER" ? "sm:grid-cols-[minmax(0,1fr)_6rem_2.25rem]" : "sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_6rem_2.25rem]"}`}
                                 >
                                   {questionSelectionMode === "BY_CHAPTER" && (
-                                    <>
-                                      <TableCell
-                                        className="align-middle"
-                                        colSpan={1}
-                                      >
-                                        <ChapterPicker
-                                          chapters={chapterOptions}
-                                          value={row.chapter_id}
-                                          onChange={(value) =>
-                                            handleUpdateConfigRow(
-                                              row.id,
-                                              "chapter_id",
-                                              value,
-                                            )
-                                          }
-                                        />
-                                        <p className="mt-2 text-xs text-muted-foreground">
-                                          {t("includesAllDescendants")}
-                                        </p>
-                                      </TableCell>
-                                    </>
+                                    <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1 [&_select]:h-9 [&_select]:rounded-md [&_select]:border-gray-300 [&_select]:shadow-xs">
+                                      <p className="text-sm font-medium">{t("chapter")}</p>
+                                      <ChapterPicker
+                                        chapters={chapterOptions}
+                                        value={row.chapter_id}
+                                        onChange={(value) =>
+                                          handleUpdateConfigRow(
+                                            row.id,
+                                            "chapter_id",
+                                            value,
+                                          )
+                                        }
+                                      />
+                                    </div>
                                   )}
                                   {questionSelectionMode === "BY_TYPE" && (
                                     <>
-                                      <TableCell className="align-middle">
+                                      <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1">
+                                        <Label htmlFor={`question-type-${row.id}`}>{t("questionType")}</Label>
                                         <Select
                                           value={row.question_type}
                                           onValueChange={(value) =>
@@ -969,7 +936,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                             )
                                           }
                                         >
-                                          <SelectTrigger className="w-full min-w-0 bg-white border-gray-300">
+                                          <SelectTrigger id={`question-type-${row.id}`} className="w-full min-w-0 bg-white border-gray-300">
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent className="bg-white border-gray-300">
@@ -986,8 +953,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                             </SelectItem>
                                           </SelectContent>
                                         </Select>
-                                      </TableCell>
-                                      <TableCell className="align-middle">
+                                      </div>
+                                      <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1">
+                                        <Label htmlFor={`question-format-${row.id}`}>{t("format2")}</Label>
                                         <Select
                                           value={row.question_format}
                                           onValueChange={(value) =>
@@ -998,7 +966,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                             )
                                           }
                                         >
-                                          <SelectTrigger className="w-full min-w-0 bg-white border-gray-300">
+                                          <SelectTrigger id={`question-format-${row.id}`} className="w-full min-w-0 bg-white border-gray-300">
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent className="bg-white border-gray-300">
@@ -1016,11 +984,13 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                             </SelectItem>
                                           </SelectContent>
                                         </Select>
-                                      </TableCell>
+                                      </div>
                                     </>
                                   )}
-                                  <TableCell className="align-middle">
+                                  <div className="min-w-0 space-y-2">
+                                    <Label htmlFor={`question-quantity-${row.id}`}>{t("quantity")}</Label>
                                     <Input
+                                      id={`question-quantity-${row.id}`}
                                       type="number"
                                       min="0"
                                       value={row.quantity}
@@ -1033,8 +1003,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                       }
                                       className="w-full bg-white border-gray-300"
                                     />
-                                  </TableCell>
-                                  <TableCell className="align-middle">
+                                  </div>
+                                  <div className="pt-[22px]">
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -1046,35 +1016,32 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                     >
                                       <Trash2 className="h-4 w-4" aria-hidden="true" />
                                     </Button>
-                                  </TableCell>
-                                </TableRow>
+                                  </div>
+                                </div>
                               ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-
-                        <Button
-                          onClick={handleAddConfigRow}
-                          variant="outline"
-                          className="w-full border-gray-300 bg-white hover:cursor-pointer"
-                        >
-                          <Plus className="h-3 w-3" strokeWidth={3} />{" "}
-                          {t("addGoodsConfiguration")}
-                        </Button>
-
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                    <div className="flex shrink-0 flex-col gap-3 border-t border-gray-200 bg-gray-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                      <p
+                        className="text-sm font-medium text-neutral-600"
+                        aria-live="polite"
+                      >
+                        {t("selectedQuestionCount", {
+                          count: selectedQuestions.length,
+                        })}
+                      </p>
+                      {(questionSelectionMode === "BY_TYPE" ||
+                        questionSelectionMode === "BY_CHAPTER") && (
                         <Button
                           onClick={handleSelectByConfig}
-                          className="w-full bg-[#0066cc] hover:bg-[#0052a3] text-white"
+                          className="h-auto min-h-9 whitespace-normal bg-[#0066cc] py-2 leading-snug text-white hover:bg-[#0052a3]"
                         >
                           {t("takeRandomAccordingToConfiguration")}
                         </Button>
-                        <div className="text-sm text-gray-600">
-                          {t("selectedQuestionCount", {
-                            count: selectedQuestions.length,
-                          })}
-                        </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </DialogContent>
                 </Dialog>
               </div>

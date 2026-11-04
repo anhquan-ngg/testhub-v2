@@ -36,6 +36,7 @@
   "importQuestionsIntoTheTopic": "Import questions into the topic",
   "pleaseSaveTheTestInManual": "Please save the test in manual selection mode before importing",
   "selectQuestion": "Select question",
+  "selectionMethod": "Selection method",
   "manualSelection": "Manual selection",
   "randomlySelectNSentences": "Select N random questions",
   "configurableByTypeAndFormat": "Configurable by type and format",

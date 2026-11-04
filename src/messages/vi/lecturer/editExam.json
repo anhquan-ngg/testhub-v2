@@ -36,6 +36,7 @@
   "importQuestionsIntoTheTopic": "Nhập câu hỏi vào môn học",
   "pleaseSaveTheTestInManual": "Hãy lưu bài thi ở chế độ chọn thủ công trước khi import",
   "selectQuestion": "Chọn câu hỏi",
+  "selectionMethod": "Phương thức chọn câu hỏi",
   "manualSelection": "Chọn thủ công",
   "randomlySelectNSentences": "Lấy ngẫu nhiên N câu",
   "configurableByTypeAndFormat": "Cấu hình theo loại và định dạng",
