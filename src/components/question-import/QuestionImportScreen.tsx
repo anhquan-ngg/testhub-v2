@@ -10,26 +10,45 @@ import { fetchAllPages } from "@/lib/pagination";
 import { QuestionImportWorkspace } from "./QuestionImportWorkspace";
 
 type Topic = { id: string; name: string };
+type Chapter = { id: string; topic_id: string };
 type Props = { defaultTopicId?: string; defaultChapterId?: string };
 
-/** Loads lecturer topics before mounting the page-based import workflow. */
+/** Loads topics and validates chapter context before mounting the import workflow. */
 export function QuestionImportScreen({ defaultTopicId, defaultChapterId }: Props) {
   const t = useTranslations("shared.questionImport");
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<"topics" | "chapters" | null>(null);
+  const [initialChapter, setInitialChapter] = useState<Chapter | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    let resource: "topics" | "chapters" = "topics";
     setLoading(true);
-    setFailed(false);
+    setFailed(null);
     void fetchAllPages<Topic>(ENDPOINTS.TOPICS.BASE, {})
-      .then((data) => { if (!cancelled) setTopics(data); })
-      .catch(() => { if (!cancelled) setFailed(true); })
+      .then(async (data) => {
+        if (cancelled) return;
+        let chapter: Chapter | null = null;
+        if (defaultChapterId && data.some((topic) => topic.id === defaultTopicId)) {
+          resource = "chapters";
+          const chapters = await fetchAllPages<Chapter>(ENDPOINTS.CHAPTERS.BASE, {
+            topic_id: defaultTopicId,
+          });
+          chapter = chapters.find(
+            (item) => item.id === defaultChapterId && item.topic_id === defaultTopicId,
+          ) ?? null;
+        }
+        if (!cancelled) {
+          setTopics(data);
+          setInitialChapter(chapter);
+        }
+      })
+      .catch(() => { if (!cancelled) setFailed(resource); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [attempt]);
+  }, [attempt, defaultTopicId, defaultChapterId]);
 
   const initialTopic = topics.some((topic) => topic.id === defaultTopicId)
     ? defaultTopicId : undefined;
@@ -48,7 +67,7 @@ export function QuestionImportScreen({ defaultTopicId, defaultChapterId }: Props
         <div className="space-y-4 rounded-xl border border-neutral-200 bg-white p-6">
           <p role={failed ? "alert" : "status"} className="flex items-center gap-2 text-sm text-neutral-600">
             <AlertCircle className="h-5 w-5 shrink-0 text-amber-600" />
-            {failed ? t("unableToLoadTopics") : t("createTopicFirst")}
+            {failed ? t(failed === "chapters" ? "unableToLoadChapterList" : "unableToLoadTopics") : t("createTopicFirst")}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" asChild><Link href="/lecturer/questions"><ArrowLeft />{t("backToBank")}</Link></Button>
@@ -59,7 +78,10 @@ export function QuestionImportScreen({ defaultTopicId, defaultChapterId }: Props
         <QuestionImportWorkspace
           topics={topics}
           defaultTopicId={initialTopic}
-          defaultChapterId={initialTopic ? defaultChapterId : undefined}
+          defaultChapterId={
+            initialChapter && initialChapter.id === defaultChapterId && initialChapter.topic_id === initialTopic
+              ? initialChapter.id : undefined
+          }
         />
       )}
     </div>

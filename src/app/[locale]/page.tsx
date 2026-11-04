@@ -685,7 +685,7 @@ export default function Home() {
         </div>
         <div className="border-t border-slate-200">
           <div className="mx-auto max-w-7xl px-4 py-6 text-sm text-slate-500 sm:px-6 lg:px-8">
-            <p>? 2026 Testhub. {t("footer.rights")}</p>
+            <p>© 2026 Testhub. {t("footer.rights")}</p>
           </div>
         </div>
       </footer>
