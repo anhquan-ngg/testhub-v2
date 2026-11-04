@@ -72,7 +72,6 @@ import {
 } from "@/components/ui/table";
 import { MathInput } from "@/components/MathInput";
 import { MathRenderer } from "@/components/MathRenderer";
-import { QuestionImportDialog } from "@/components/question-import/QuestionImportDialog";
 import { Link } from "@/i18n/navigation";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetchAllPages } from "@/lib/pagination";
@@ -325,7 +324,6 @@ export default function LecturerQuestions() {
   const [isTopicDialogOpen, setIsTopicDialogOpen] = useState(false);
   const [isChapterDialogOpen, setIsChapterDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [detailQuestion, setDetailQuestion] = useState<Question | null>(null);
   const [loadingDetailId, setLoadingDetailId] = useState<string | null>(null);
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null);
@@ -936,6 +934,12 @@ export default function LecturerQuestions() {
                 ...(currentChapter ? { chapter: currentChapter.id } : {}),
               } }}><Sparkles className="h-4 w-4" />{generationText("title")}</Link>
             </Button>
+            <Button asChild variant="outline" className="cursor-pointer gap-1.5 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800">
+              <Link href={{ pathname: "/lecturer/questions/import", query: {
+                ...(selectedTopic ? { topic: selectedTopic.id } : {}),
+                ...(currentChapter ? { chapter: currentChapter.id } : {}),
+              } }}><Upload className="h-4 w-4" />{t("importWordExcel")}</Link>
+            </Button>
             <Button asChild variant="outline" className="cursor-pointer gap-1.5 border-gray-300 bg-white">
               <Link href="/lecturer/questions/documents"><BookOpen className="h-4 w-4" />{documentText('title')}</Link>
             </Button>
@@ -990,14 +994,6 @@ export default function LecturerQuestions() {
                   className="pl-10 bg-white border-gray-300"
                 />
               </div>
-              <Button
-                variant="outline"
-                onClick={() => setIsImportDialogOpen(true)}
-                className="shrink-0 border-gray-300 hover:cursor-pointer"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {t("importWordExcel")}
-              </Button>
               <Button
                 onClick={() => setIsTopicDialogOpen(true)}
                 className="shrink-0 bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
@@ -1442,12 +1438,6 @@ export default function LecturerQuestions() {
         getQuestionAnswerText={getQuestionAnswerText}
       />
 
-      <QuestionImportDialog
-        open={isImportDialogOpen}
-        onOpenChange={setIsImportDialogOpen}
-        topics={topics}
-        onCompleted={refreshAll}
-      />
     </div>
   );
 }

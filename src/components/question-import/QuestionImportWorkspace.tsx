@@ -7,8 +7,9 @@ import axios from "axios";
 import Image from "next/image";
 import {
   AlertCircle,
+  ArrowLeft,
   CheckCircle2,
-  Download,
+  ExternalLink,
   FileSpreadsheet,
   FileText,
   ImageIcon,
@@ -24,14 +25,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -74,15 +68,9 @@ type TopicOption = {
 };
 
 type Props = {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** Fixed topic (e.g. the exam's). When absent, the lecturer picks one. */
-  topicId?: string | null;
-  /** Topics offered in the picker when `topicId` is not fixed. */
-  topics?: TopicOption[];
-  defaultChapterId?: string | null;
-  examId?: string;
-  onCompleted: () => void | Promise<void>;
+  topics: TopicOption[];
+  defaultTopicId?: string;
+  defaultChapterId?: string;
 };
 
 /** `chapterId` is an existing chapter, or NEW_CHAPTER to use `chapterName`. */
@@ -104,15 +92,13 @@ const getErrorMessage = (error: unknown, fallback: string) => {
   return error instanceof Error ? error.message : fallback;
 };
 
-export function QuestionImportDialog({
-  open,
-  onOpenChange,
-  topicId,
+/** Uploads, reviews and commits an Office file into the question bank. */
+export function QuestionImportWorkspace({
   topics,
+  defaultTopicId,
   defaultChapterId,
-  examId,
-  onCompleted,
 }: Props) {
+  const router = useRouter();
   const t = useTranslations("shared.questionImport");
   const iconLabels = useIconLabels();
   const statusLabels: Record<QuestionImportRecord["status"], string> = {
@@ -126,7 +112,7 @@ export function QuestionImportDialog({
     CANCELLED: t("statusCancelled"),
   };
   const [file, setFile] = useState<File | null>(null);
-  const [selectedTopicId, setSelectedTopicId] = useState(topicId ?? "");
+  const [selectedTopicId, setSelectedTopicId] = useState(defaultTopicId ?? "");
   const [chapters, setChapters] = useState<ChapterOption[]>([]);
   const [isLoadingChapters, setIsLoadingChapters] = useState(false);
   const [chapterId, setChapterId] = useState(defaultChapterId ?? FROM_FILE);
@@ -140,7 +126,7 @@ export function QuestionImportDialog({
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm | null>(null);
 
-  const activeTopicId = topicId ?? selectedTopicId;
+  const activeTopicId = selectedTopicId;
   const chapterPaths = useMemo(() => buildChapterPaths(chapters), [chapters]);
   const sortedChapters = useMemo(
     () =>
@@ -159,17 +145,8 @@ export function QuestionImportDialog({
   );
 
   useEffect(() => {
-    if (!open || questionImport) return;
-    setChapterId(defaultChapterId ?? FROM_FILE);
-  }, [defaultChapterId, open, questionImport]);
-
-  useEffect(() => {
-    if (topicId) setSelectedTopicId(topicId);
-  }, [topicId]);
-
-  useEffect(() => {
     setChapters([]);
-    if (!open || !activeTopicId) {
+    if (!activeTopicId) {
       setIsLoadingChapters(false);
       return;
     }
@@ -213,10 +190,10 @@ export function QuestionImportDialog({
     return () => {
       cancelled = true;
     };
-  }, [activeTopicId, open, t]);
+  }, [activeTopicId, t]);
 
   useEffect(() => {
-    if (!open || !questionImport) return;
+    if (!questionImport) return;
     if (!["QUEUED", "PARSING", "COMMITTING"].includes(questionImport.status)) {
       return;
     }
@@ -242,7 +219,7 @@ export function QuestionImportDialog({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [open, questionImport, pollTick, t]);
+  }, [questionImport, pollTick, t]);
 
   useEffect(() => {
     if (questionImport?.status !== "REVIEW_REQUIRED" || items.length) return;
@@ -317,7 +294,6 @@ export function QuestionImportDialog({
       }>(ENDPOINTS.QUESTION_IMPORTS.BASE, {
         topic_id: activeTopicId,
         ...(chapterId !== FROM_FILE && { default_chapter_id: chapterId }),
-        ...(examId && { exam_id: examId }),
         source_type: sourceType,
         file_name: file.name,
         mime_type: mimeType,
@@ -494,12 +470,7 @@ export function QuestionImportDialog({
         { item_ids: [...selectedIds], duplicate_policy: "SKIP" },
       );
       setQuestionImport(response.data);
-      await onCompleted();
-      toast.success(
-        examId
-          ? t("importedAndAttachedQuestionsToThe")
-          : t("importedQuestionsIntoTheBank"),
-      );
+      toast.success(t("importedQuestionsIntoTheBank"));
     } catch (error) {
       toast.error(getErrorMessage(error, t("unableToCompleteImport")));
     } finally {
@@ -517,16 +488,16 @@ export function QuestionImportDialog({
           ENDPOINTS.QUESTION_IMPORTS.DETAIL(questionImport.id),
         );
       } catch {
-        // Closing the dialog must remain possible if cleanup cannot finish.
+        // Leaving must remain possible if cleanup cannot finish.
       }
     }
     reset();
-    onOpenChange(false);
+    router.push("/lecturer/questions");
   };
 
   const reset = () => {
     setFile(null);
-    setSelectedTopicId(topicId ?? "");
+    setSelectedTopicId(defaultTopicId ?? "");
     setChapterId(defaultChapterId ?? FROM_FILE);
     setQuestionImport(null);
     setItems([]);
@@ -537,44 +508,33 @@ export function QuestionImportDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen && !isBusy) void handleCancel();
-        else if (nextOpen) onOpenChange(true);
-      }}
-    >
-      <DialogContent className="max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] sm:max-w-6xl overflow-y-auto border-gray-300 bg-white">
-        <DialogHeader>
-          <DialogTitle>
-            {examId ? t("importQuestionsIntoTheTest") : t("importQuestionBank")}
-          </DialogTitle>
-          <DialogDescription>
-            {t("useAFixedTemplateCheckFor")}</DialogDescription>
-        </DialogHeader>
-
+    <div className="min-w-0 space-y-4">
+      <Button variant="ghost" onClick={() => void handleCancel()} disabled={isBusy} className="gap-2 px-0 text-neutral-600 hover:bg-transparent hover:text-[#0066cc]">
+        <ArrowLeft className="h-4 w-4" />{t("backToBank")}
+      </Button>
+      <section className="min-w-0 rounded-xl border border-neutral-200 bg-white shadow-sm" aria-label={t("importQuestionBank")}>
+      <div className="space-y-6 p-4 sm:p-6">
         {!questionImport && (
           <div className="space-y-5">
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" asChild>
-                <a href="/templates/question-import-template.docx" download>
+              <Button variant="outline" asChild className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800">
+                <Link href="/lecturer/questions/import/templates/word" target="_blank" rel="noopener noreferrer" aria-label={t("wordTemplateNewTab")}>
                   <FileText className="mr-2 h-4 w-4" />
                   {t("wordTemplate")}
-                  <Download className="ml-2 h-4 w-4" />
-                </a>
+                  <ExternalLink className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
-              <Button variant="outline" asChild>
-                <a href="/templates/question-import-template.xlsx" download>
+              <Button variant="outline" asChild className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800">
+                <Link href="/lecturer/questions/import/templates/excel" target="_blank" rel="noopener noreferrer" aria-label={t("excelTemplateNewTab")}>
                   <FileSpreadsheet className="mr-2 h-4 w-4" />
                   {t("excelTemplate")}
-                  <Download className="ml-2 h-4 w-4" />
-                </a>
+                  <ExternalLink className="ml-2 h-4 w-4" />
+                </Link>
               </Button>
             </div>
 
-            {!topicId && (
               <div className="space-y-2">
-                <Label>{t("topic")}</Label>
+                <Label htmlFor="question-import-topic">{t("topic")}</Label>
                 <Select
                   value={selectedTopicId}
                   disabled={isBusy}
@@ -584,7 +544,7 @@ export function QuestionImportDialog({
                     setChapterId(FROM_FILE);
                   }}
                 >
-                  <SelectTrigger className="border-gray-300 bg-white">
+                  <SelectTrigger id="question-import-topic" className="w-full border-gray-300 bg-white">
                     <SelectValue placeholder={t("selectTopicToReceiveQuestions")} />
                   </SelectTrigger>
                   <SelectContent className="border-gray-300 bg-white">
@@ -596,7 +556,6 @@ export function QuestionImportDialog({
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
@@ -613,13 +572,13 @@ export function QuestionImportDialog({
                   {t("maximum20MbSupportsEmbeddedImages")}</p>
               </div>
               <div className="space-y-2">
-                <Label>{t("defaultChapter")}</Label>
+                <Label htmlFor="question-import-chapter">{t("defaultChapter")}</Label>
                 <Select
                   value={chapterId}
                   onValueChange={setChapterId}
                   disabled={!activeTopicId || isLoadingChapters || isBusy}
                 >
-                  <SelectTrigger className="border-gray-300 bg-white">
+                  <SelectTrigger id="question-import-chapter" className="w-full border-gray-300 bg-white">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="border-gray-300 bg-white">
@@ -693,7 +652,7 @@ export function QuestionImportDialog({
               </span>
             </div>
 
-            <div className="max-h-80 overflow-auto rounded-md border border-gray-300">
+            <div className="max-h-[60vh] overflow-auto rounded-md border border-gray-300">
               <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
@@ -1007,7 +966,8 @@ export function QuestionImportDialog({
           </div>
         )}
 
-        <DialogFooter>
+        </div>
+      <div className="flex flex-col-reverse gap-2 border-t border-neutral-200 bg-neutral-50/70 p-4 sm:flex-row sm:justify-end sm:px-6">
           <Button
             variant="outline"
             onClick={() => void handleCancel()}
@@ -1040,8 +1000,8 @@ export function QuestionImportDialog({
           {questionImport?.status === "FAILED" && (
             <Button onClick={reset}>{t("selectAnotherFile")}</Button>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </section>
+    </div>
   );
 }

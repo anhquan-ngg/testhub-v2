@@ -519,7 +519,9 @@ export default function LecturerExams() {
                             variant="ghost"
                             size="sm"
                             className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
-                            {...iconLabelProps(iconLabels.manageParticipants)}
+                            {...iconLabelProps(
+                              `${iconLabels.manageParticipants} (${exam._count?.registrations ?? exam.registrations?.length ?? 0})`,
+                            )}
                           >
                             <Users className="h-4 w-4 mr-1" aria-hidden="true" />
                             {exam._count?.registrations ??

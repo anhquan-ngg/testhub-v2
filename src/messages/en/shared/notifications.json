@@ -1,6 +1,7 @@
 {
   "notifications": {
     "title": "Notifications",
+    "unreadCountLabel": "Notifications: {count, plural, one {# unread notification} other {# unread notifications}}",
     "markAllRead": "Mark all as read",
     "empty": "No new notifications",
     "justNow": "Just now",

@@ -279,6 +279,8 @@ export default function ExamPage() {
     value: AnswerValue,
     type: QuestionType = "SINGLE_CHOICE",
   ) => {
+    if (type !== "MULTIPLE_CHOICE" && answers[questionId] === value) return;
+
     answerRevisions.current[questionId] =
       (answerRevisions.current[questionId] ?? 0) + 1;
     setAnswers((prev) => {
