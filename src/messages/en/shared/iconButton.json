@@ -30,5 +30,6 @@
   "editRole": "Change role",
   "manageChapters": "Manage chapters",
   "manageSubChapters": "Manage sub-chapters",
-  "manageQuestions": "Manage questions"
+  "manageQuestions": "Manage questions",
+  "reorder": "Drag to reorder"
 }

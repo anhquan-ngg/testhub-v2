@@ -21,6 +21,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import {
+  ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronLeft, ChevronRight,
+  CloudUpload, FileStack, FileText, FolderOpen, Info, Library, Loader2,
+  RefreshCw, ScanText, ShieldCheck, Sparkles, Trash2,
+} from "lucide-react";
+
+const selectClassName = "h-10 w-full min-w-0 rounded-md border border-gray-200 bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-[#0066cc] focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
+const statusClassName = {
+  UPLOADING: "border-slate-200 bg-slate-50 text-slate-600",
+  QUEUED: "border-blue-100 bg-blue-50 text-blue-700",
+  PROCESSING: "border-blue-100 bg-blue-50 text-blue-700",
+  EXTRACTED: "border-emerald-100 bg-emerald-50 text-emerald-700",
+  OCR_REQUIRED: "border-amber-100 bg-amber-50 text-amber-800",
+  FAILED: "border-red-100 bg-red-50 text-red-700",
+};
 
 type Target = { id: string; name: string; parent_id?: string | null };
 const metadata = z.object({
@@ -59,6 +76,8 @@ export function LearningDocumentsScreen() {
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
   const [page, setPage] = useState(1);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState(false);
   const [history, setHistory] = useState<DocumentPage<LearningDocument> | null>(
     null,
   );
@@ -104,9 +123,13 @@ export function LearningDocumentsScreen() {
     const load = async (notify: boolean) => {
       if (running) return;
       running = true;
+      if (notify) setHistoryLoading(true);
       try {
         const list = await api.list(page, controller.signal);
-        if (!controller.signal.aborted) setHistory(list);
+        if (!controller.signal.aborted) {
+          setHistory(list);
+          setHistoryError(false);
+        }
         if (selectedId) {
           const current = await api.detail(selectedId, controller.signal);
           if (!controller.signal.aborted) setDocument(current);
@@ -121,9 +144,13 @@ export function LearningDocumentsScreen() {
           setVersionId("");
           setContent(null);
         }
-        if (notify && !controller.signal.aborted) toast.error(t("failed"));
+        if (notify && !controller.signal.aborted) {
+          setHistoryError(true);
+          toast.error(t("failed"));
+        }
       } finally {
         running = false;
+        if (!controller.signal.aborted) setHistoryLoading(false);
       }
     };
     void load(true);
@@ -256,40 +283,69 @@ export function LearningDocumentsScreen() {
   };
 
   return (
-    <div className="space-y-6 p-6">
-      <Button asChild variant="outline">
-        <Link href="/lecturer/questions">{t("back")}</Link>
-      </Button>
-      <h1 className="text-2xl font-semibold">{t("title")}</h1>
-      <p className="text-muted-foreground">{t("intro")}</p>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("upload")}</CardTitle>
+    <div className="w-full min-w-0 space-y-6">
+      <div className="space-y-4">
+        <Button asChild variant="ghost" size="sm" className="-ml-3 text-gray-500 hover:text-[#0066cc]">
+          <Link href="/lecturer/questions"><ArrowLeft className="size-4" />{t("back")}</Link>
+        </Button>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 space-y-2">
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">{t("title")}</h1>
+            <p className="max-w-2xl text-sm leading-6 text-gray-500">{t("intro")}</p>
+          </div>
+          <Button asChild variant="outline" className="h-auto min-h-9 max-w-full whitespace-normal border-blue-200 bg-white text-[#0066cc] hover:bg-blue-50">
+            <Link href="/lecturer/questions/generate"><Sparkles className="size-4" />{t("workspace.generate")}<ArrowRight className="size-4" /></Link>
+          </Button>
+        </div>
+      </div>
+      <section aria-label={t("workspace.workflow")} className="relative isolate overflow-hidden rounded-xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-sky-50 p-5 sm:p-6">
+        <div aria-hidden="true" className="pointer-events-none absolute -right-12 -top-24 -z-10 size-64 rounded-full border-[32px] border-blue-100/40" />
+        <div className="grid gap-5 md:grid-cols-3">
+          {([
+            { icon: CloudUpload, title: "workspace.stepUpload", description: "workspace.stepUploadHint" },
+            { icon: ScanText, title: "workspace.stepReview", description: "workspace.stepReviewHint" },
+            { icon: Sparkles, title: "workspace.stepUse", description: "workspace.stepUseHint" },
+          ] as const).map((step, index) => (
+            <div key={step.title} className="flex min-w-0 items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-white text-[#0066cc] shadow-xs"><step.icon className="size-5" aria-hidden="true" /></div>
+              <div className="min-w-0 space-y-1"><h2 className="text-sm font-semibold text-gray-900"><span className="mr-2 text-[#0066cc]">0{index + 1}</span>{t(step.title)}</h2><p className="text-xs leading-5 text-gray-500">{t(step.description)}</p></div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <div className="grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
+      <Card className="min-w-0 gap-0 border-gray-200 py-0 shadow-sm">
+        <CardHeader className="gap-1 border-b border-gray-100 p-5 sm:p-6">
+          <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-blue-50 text-[#0066cc]"><CloudUpload className="size-5" aria-hidden="true" /></div>
+          <CardTitle className="text-base text-gray-900">{t("upload")}</CardTitle>
+          <p className="text-sm leading-6 text-gray-500">{t("workspace.uploadHint")}</p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5 sm:p-6">
           <form
-            className="space-y-4"
+            className="space-y-5"
             onSubmit={(event) => {
               event.preventDefault();
               void upload(false);
             }}
           >
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="document-title">{t("documentTitle")}</Label>
               <Input
                 id="document-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={200}
+                placeholder={t("workspace.titlePlaceholder")}
+                className="border-gray-200 bg-white"
                 disabled={busy}
               />
             </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+              <div className="space-y-2">
                 <Label htmlFor="document-topic">{t("topic")}</Label>
                 <select
                   id="document-topic"
-                  className="w-full rounded border p-2"
+                  className={selectClassName}
                   value={topic}
                   disabled={busy}
                   onChange={(e) => {
@@ -306,11 +362,11 @@ export function LearningDocumentsScreen() {
                   ))}
                 </select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label htmlFor="document-chapter">{t("chapter")}</Label>
                 <select
                   id="document-chapter"
-                  className="w-full rounded border p-2"
+                  className={selectClassName}
                   value={chapter}
                   disabled={busy || !topic}
                   onChange={(e) => setChapter(e.target.value)}
@@ -324,18 +380,26 @@ export function LearningDocumentsScreen() {
                 </select>
               </div>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="document-file">{t("file")}</Label>
-              <Input
-                id="document-file"
-                type="file"
-                accept=".pdf,.pptx"
-                disabled={busy}
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              />
+              <div className={cn("relative flex flex-col items-center gap-2 rounded-xl border border-dashed border-blue-200 bg-blue-50/40 px-4 py-6 text-center transition-colors focus-within:ring-2 focus-within:ring-[#0066cc] hover:bg-blue-50", busy && "opacity-60")}>
+                <CloudUpload className="size-7 text-[#0066cc]" aria-hidden="true" />
+                <span className="max-w-full break-all text-sm font-medium text-gray-800">{file ? file.name : t("workspace.chooseFile")}</span>
+                <span id="document-file-hint" className="text-xs text-gray-500">{t("workspace.fileHint")}</span>
+                <input
+                  id="document-file"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                  type="file"
+                  accept=".pdf,.pptx"
+                  aria-describedby="document-file-hint"
+                  disabled={busy}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                />
+              </div>
             </div>
-            <label className="flex items-start gap-2">
+            <label className="flex items-start gap-3 text-sm leading-6 text-gray-600 has-disabled:opacity-50">
               <input
+                className="mt-1 size-4 shrink-0 accent-[#0066cc]"
                 type="checkbox"
                 checked={notes}
                 disabled={busy || !file?.name.toLowerCase().endsWith(".pptx")}
@@ -343,86 +407,114 @@ export function LearningDocumentsScreen() {
               />
               {t("notes")}
             </label>
-            <label className="flex items-start gap-2">
-              <input
-                type="checkbox"
-                checked={consent}
-                disabled={busy}
-                onChange={(e) => setConsent(e.target.checked)}
-              />
-              {t("consent")}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Button disabled={busy} type="submit">
+            <div className="space-y-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+              <p className="flex items-center gap-2 text-sm font-medium text-gray-800"><ShieldCheck className="size-4 shrink-0 text-[#0066cc]" aria-hidden="true" />{t("workspace.consentTitle")}</p>
+              <label className="flex items-start gap-3 text-xs leading-5 text-gray-600">
+                <input
+                  className="mt-1 size-4 shrink-0 accent-[#0066cc]"
+                  type="checkbox"
+                  checked={consent}
+                  disabled={busy}
+                  onChange={(e) => setConsent(e.target.checked)}
+                />
+                {t("consent")}
+              </label>
+            </div>
+            <div className="space-y-2 border-t border-gray-100 pt-5">
+              <Button className="h-auto min-h-10 w-full whitespace-normal bg-[#0066cc] hover:bg-[#0052a3]" disabled={busy} type="submit">
+                {busy ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <CloudUpload className="size-4 shrink-0" />}
                 {busy ? t("uploading") : t("upload")}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy || !document}
-                onClick={() => {
-                  void upload(true);
-                }}
-              >
-                {t("newVersion")}
-              </Button>
+              {document && <>
+                <Button
+                  className="h-auto min-h-10 w-full whitespace-normal border-gray-200 text-gray-700"
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  title={t("newVersion")}
+                  onClick={() => { void upload(true); }}
+                ><FileStack className="size-4 shrink-0" />{t("workspace.newVersion")}</Button>
+                <p className="break-words text-xs leading-5 text-gray-500">{t("workspace.versionTarget", { title: document.title })}</p>
+              </>}
             </div>
           </form>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("history")}</CardTitle>
-          <Button variant="outline" onClick={refresh}>
-            {t("reload")}
-          </Button>
+      <Card className="min-w-0 gap-0 border-gray-200 py-0 shadow-sm">
+        <CardHeader className="gap-4 border-b border-gray-100 p-5 sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0066cc]"><Library className="size-5" aria-hidden="true" /></div>
+              <div className="min-w-0"><CardTitle className="text-base text-gray-900">{t("history")}</CardTitle>{history && <p className="mt-1 text-xs text-gray-500">{t("workspace.documentCount", { count: history.total })}</p>}</div>
+            </div>
+            <Button size="sm" variant="outline" className="border-gray-200 text-gray-600" disabled={historyLoading} onClick={refresh}>
+              <RefreshCw className={cn("size-3.5", historyLoading && "animate-spin")} />{t("reload")}
+            </Button>
+          </div>
+          <p className="text-sm leading-6 text-gray-500">{t("workspace.historyHint")}</p>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {history?.data.map((v) => (
+        <CardContent className="space-y-4 p-5 sm:p-6" aria-busy={historyLoading}>
+          {historyError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">{t("failed")}</div>}
+          {!history && historyLoading && <div role="status" className="flex items-center justify-center gap-2 py-14 text-sm text-gray-500"><Loader2 className="size-5 animate-spin text-[#0066cc]" />{t("workspace.loading")}</div>}
+          <div className="grid min-w-0 gap-3 md:grid-cols-2">
+          {history?.data.map((v) => {
+            const latest = v.versions[0];
+            const selected = v.id === selectedId;
+            return (
             <button
               type="button"
               key={v.id}
               disabled={busy}
+              aria-pressed={selected}
               onClick={() => open(v)}
-              className={`block w-full rounded border p-3 text-left ${v.id === selectedId ? "border-blue-500" : ""}`}
+              className={cn("group flex min-w-0 items-start gap-3 rounded-xl border p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066cc] disabled:opacity-50", selected ? "border-blue-300 bg-blue-50/70 shadow-xs" : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/30")}
             >
-              <strong>{v.title}</strong> —{" "}
-              {v.versions[0] ? t(`status.${v.versions[0].status}`) : ""}
+              <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-lg", latest?.source_type === "PPTX" ? "bg-orange-50 text-orange-600" : "bg-blue-50 text-[#0066cc]")}><FileText className="size-5" aria-hidden="true" /></div>
+              <div className="min-w-0 flex-1 space-y-2">
+                <p className="break-words text-sm font-semibold leading-5 text-gray-800 [overflow-wrap:anywhere]">{v.title}</p>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                  {latest && <><span>{latest.source_type}</span><span aria-hidden="true">·</span><span>{t("workspace.versionNumber", { version: latest.version })}</span></>}
+                  {topics.find((item) => item.id === v.topic_id)?.name && <span className="truncate">{topics.find((item) => item.id === v.topic_id)?.name}</span>}
+                </div>
+                {latest && <Badge variant="outline" className={cn("max-w-full whitespace-normal text-left", statusClassName[latest.status])}><span className="size-1.5 shrink-0 rounded-full bg-current" />{t(`status.${latest.status}`)}</Badge>}
+              </div>
+              {selected ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#0066cc]" aria-hidden="true" /> : <ChevronRight className="mt-0.5 size-4 shrink-0 text-gray-300 group-hover:text-[#0066cc]" aria-hidden="true" />}
             </button>
-          ))}
-          {history?.data.length === 0 && <p>{t("empty")}</p>}
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              disabled={page <= 1 || busy}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              {t("previous")}
-            </Button>
-            <span>{t("page", { page })}</span>
-            <Button
-              variant="outline"
-              disabled={
-                !history || page * history.limit >= history.total || busy
-              }
-              onClick={() => setPage((p) => p + 1)}
-            >
-              {t("next")}
-            </Button>
+          );})}
           </div>
+          {!historyError && history?.data.length === 0 && <div className="flex flex-col items-center rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-5 py-12 text-center">
+            <div className="mb-4 flex size-16 items-center justify-center rounded-2xl border border-blue-100 bg-white text-[#0066cc] shadow-xs"><FolderOpen className="size-8" aria-hidden="true" /></div>
+            <h3 className="font-semibold text-gray-800">{t("empty")}</h3><p className="mt-2 max-w-sm text-sm leading-6 text-gray-500">{t("workspace.emptyHint")}</p>
+          </div>}
+          {history && history.total > 0 && <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-4">
+            <span className="text-xs text-gray-500">{t("page", { page })}</span>
+            <div className="flex gap-2">
+              <Button size="sm" className="border-gray-200" variant="outline" disabled={page <= 1 || busy || historyLoading} onClick={() => setPage((p) => p - 1)}><ChevronLeft className="size-4" />{t("previous")}</Button>
+              <Button size="sm" className="border-gray-200" variant="outline" disabled={page * history.limit >= history.total || busy || historyLoading} onClick={() => setPage((p) => p + 1)}>{t("next")}<ChevronRight className="size-4" /></Button>
+            </div>
+          </div>}
+          {document && <Button asChild variant="ghost" className="h-auto min-h-9 w-full whitespace-normal text-[#0066cc] hover:bg-blue-50"><a href="#document-preview"><ScanText className="size-4 shrink-0" />{t("workspace.viewSelected")}<ArrowRight className="size-4 shrink-0" /></a></Button>}
         </CardContent>
       </Card>
+      </div>
+      {!document && <section className="flex flex-col items-start gap-4 rounded-xl border border-gray-200 bg-white p-5 sm:flex-row sm:items-center sm:p-6">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0066cc]"><BookOpen className="size-6" aria-hidden="true" /></div>
+        <div className="space-y-1"><h2 className="text-sm font-semibold text-gray-800">{t("workspace.previewTitle")}</h2><p className="text-sm leading-6 text-gray-500">{t("workspace.previewHint")}</p></div>
+      </section>}
       {document && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {document.title} — {t("preview")}
-            </CardTitle>
+        <Card id="document-preview" className="min-w-0 scroll-mt-6 gap-0 border-gray-200 py-0 shadow-sm">
+          <CardHeader className="gap-3 border-b border-gray-100 p-5 sm:p-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0066cc]"><ScanText className="size-5" aria-hidden="true" /></div>
+              <div className="min-w-0 space-y-1"><p className="text-xs font-medium text-[#0066cc]">{t("preview")}</p><CardTitle className="break-words text-lg leading-7 text-gray-900 [overflow-wrap:anywhere]">{document.title}</CardTitle></div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5 p-5 sm:p-6">
+            <div className="max-w-2xl space-y-2">
+            <Label htmlFor="document-version">{t("workspace.selectedVersion")}</Label>
             <select
-              aria-label={t("preview")}
-              className="w-full rounded border p-2"
+              id="document-version"
+              className={selectClassName}
               value={versionId}
               disabled={busy}
               onChange={(e) => {
@@ -438,15 +530,16 @@ export function LearningDocumentsScreen() {
                 </option>
               ))}
             </select>
+            </div>
             {version?.error_code && (
-              <p role="alert">{t("errorCode", { code: version.error_code })}</p>
+              <p role="alert" className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{t("errorCode", { code: version.error_code })}</p>
             )}
             {status === "OCR_REQUIRED" && (
-              <p role="alert" className="rounded bg-amber-50 p-3">
-                {t("ocr")}
+              <p role="alert" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                <Info className="mt-1 size-4 shrink-0" aria-hidden="true" />{t("ocr")}
               </p>
             )}
-            {status === "EXTRACTED" && <p>{t("extracted")}</p>}
+            {status === "EXTRACTED" && <p className="flex items-start gap-2 text-sm leading-6 text-gray-500"><Info className="mt-1 size-4 shrink-0 text-[#0066cc]" aria-hidden="true" />{t("extracted")}</p>}
             {version && <DocumentRagPanel key={version.id} documentId={document.id} version={version} refresh={refresh} disabled={busy} />}
             {status === "UPLOADING" && (
               <Button
@@ -458,20 +551,23 @@ export function LearningDocumentsScreen() {
                 {t("resume")}
               </Button>
             )}
-            {!content && <p>{t("noPreview")}</p>}
+            <section aria-label={t("preview")} className="space-y-3">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-gray-800"><FileText className="size-4 text-[#0066cc]" aria-hidden="true" />{t("preview")}</h3>
+            {!content && <p role="status" className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-5 text-sm leading-6 text-gray-500">{t("noPreview")}</p>}
             {content?.data.map((span) => (
               <section
                 key={`${span.kind}:${span.position}`}
-                className="rounded border p-3"
+                className="overflow-hidden rounded-xl border border-gray-200 bg-white"
               >
-                <h3 className="font-medium">
+                <h4 className="border-b border-gray-100 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-600">
                   {t(`kind.${span.kind}`, { position: span.position })}
-                </h3>
-                <pre className="whitespace-pre-wrap break-words font-sans">
+                </h4>
+                <pre className="whitespace-pre-wrap break-words p-4 font-sans text-sm leading-7 text-gray-700 [overflow-wrap:anywhere]">
                   {span.text || t("emptyUnit")}
                 </pre>
               </section>
             ))}
+            </section>
             {content && (
               <div className="flex gap-3">
                 <Button
@@ -496,15 +592,15 @@ export function LearningDocumentsScreen() {
                 </Button>
               </div>
             )}
-            <Button
-              variant="destructive"
-              disabled={busy}
-              onClick={() => {
-                void revoke();
-              }}
-            >
-              {t("revoke")}
-            </Button>
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-gray-100 pt-5">
+              <p className="max-w-2xl text-xs leading-5 text-gray-500">{t("workspace.revokeHint")}</p>
+              <Button
+                variant="outline"
+                className="shrink-0 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                disabled={busy}
+                onClick={() => { void revoke(); }}
+              ><Trash2 className="size-4" />{t("revoke")}</Button>
+            </div>
           </CardContent>
         </Card>
       )}

@@ -28,7 +28,8 @@
   "monitor": "Giám sát",
   "manageParticipants": "Quản lý thí sinh",
   "editRole": "Đổi vai trò",
-  "manageChapters": "Quản lý Chapter",
-  "manageSubChapters": "Quản lý Chapter con",
-  "manageQuestions": "Quản lý câu hỏi"
+  "manageChapters": "Quản lý chương",
+  "manageSubChapters": "Quản lý chương con",
+  "manageQuestions": "Quản lý câu hỏi",
+  "reorder": "Kéo để sắp xếp"
 }

@@ -7,7 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Camera, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  Camera,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  KeyRound,
+  Loader2,
+  LockKeyhole,
+  Mail,
+  Save,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import { useAppDispatch, useAppSelector } from "@/store/hook";
 import { useS3 } from "@/hooks/useS3";
 import { useFiles } from "@/hooks/useFiles";
@@ -17,6 +29,7 @@ import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { iconLabelProps, useIconLabels } from "@/lib/icon-button";
 
+/** Renders the lecturer's profile, avatar and account security forms. */
 export default function LecturerProfile() {
   const t = useTranslations("lecturer.profile");
   const iconLabels = useIconLabels();
@@ -26,7 +39,7 @@ export default function LecturerProfile() {
   const { uploadAvatar, markFileDeletedByUrl } = useFiles();
 
   const [formData, setFormData] = useState({
-    email: "lecturer@email.com",
+    email: "",
     username: "",
   });
 
@@ -193,222 +206,225 @@ export default function LecturerProfile() {
   }, [user.email, user.full_name]);
 
   return (
-    <div className="space-y-6">
-      {/* Profile Picture Card */}
-      <Card className="shadow-sm bg-white border-gray-300">
-        <CardContent className="p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-6">
-            {t("personalPhoto")}</h3>
-          <div className="flex flex-col items-center space-y-4">
-            <div className="relative">
-              <div className="w-32 h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-300 overflow-hidden">
+    <div className="w-full min-w-0 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+          {t("pageTitle")}
+        </h1>
+        <p className="mt-1.5 text-sm leading-6 text-gray-500">
+          {t("pageDescription")}
+        </p>
+      </div>
+
+      <Card className="relative overflow-hidden border-blue-100 bg-white py-0 shadow-sm">
+        <div aria-hidden="true" className="absolute inset-x-0 top-0 h-1 bg-[#0066cc]" />
+        <CardContent className="relative isolate flex flex-col gap-6 overflow-hidden bg-gradient-to-br from-blue-50/80 via-white to-white p-5 sm:flex-row sm:items-center sm:p-7">
+          <div aria-hidden="true" className="pointer-events-none absolute -right-16 -top-24 -z-10 size-72 rounded-full border border-blue-100/80 bg-blue-50/40" />
+          <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 right-24 -z-10 size-52 rounded-full border border-blue-100/60" />
+          <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-5">
+            <div className="relative shrink-0">
+              <div className="flex size-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-blue-100 shadow-sm sm:size-28">
                 {profileImage ? (
                   <img
                     src={profileImage}
                     alt={t("avatarAlt")}
-                    className="w-full h-full object-cover"
+                    className="size-full object-cover"
                   />
                 ) : (
-                  <Camera className="h-12 w-12 text-gray-400" />
+                  <UserRound className="size-11 text-[#0066cc]" aria-hidden="true" />
                 )}
               </div>
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 bg-[#0066cc] text-white rounded-full p-3 shadow-lg hover:bg-[#0052a3] transition-colors"
+                disabled={isUploading}
+                className="absolute bottom-0 right-0 flex size-9 items-center justify-center rounded-full border-2 border-white bg-[#0066cc] text-white shadow-sm transition-colors hover:bg-[#0052a3] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0066cc] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 {...iconLabelProps(iconLabels.uploadPhoto)}
               >
-                <Camera className="h-5 w-5" aria-hidden="true" />
+                {isUploading ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Camera className="size-4" aria-hidden="true" />
+                )}
               </button>
             </div>
+            <div className="min-w-0 space-y-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100/80 px-2.5 py-1 text-xs font-medium text-[#0066cc]">
+                <GraduationCap className="size-3.5" aria-hidden="true" />
+                {t("lecturerRole")}
+              </span>
+              <h2 className="break-words text-xl font-semibold text-gray-900 sm:text-2xl">
+                {user.full_name || t("pageTitle")}
+              </h2>
+              <p className="flex items-start gap-2 text-sm text-gray-500">
+                <Mail className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                <span className="break-all">{user.email}</span>
+              </p>
+            </div>
+          </div>
+          <div className="space-y-2 border-t border-blue-100 pt-4 sm:max-w-48 sm:shrink-0 sm:border-0 sm:pt-0">
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               onChange={handleImageUpload}
               className="hidden"
+              aria-label={t("changePhoto")}
             />
             <Button
+              type="button"
+              variant="outline"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full border-blue-200 bg-white text-[#0066cc] hover:bg-blue-50 hover:text-[#0052a3]"
             >
               {isUploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t("uploading")}</>
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               ) : (
-                t("changePhoto")
+                <Camera className="size-4" aria-hidden="true" />
               )}
+              {isUploading ? t("uploading") : t("changePhoto")}
             </Button>
+            <p className="text-xs leading-5 text-gray-500">{t("photoDescription")}</p>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Personal Information Form */}
-        <Card className="shadow-sm bg-white border-gray-300">
-          <CardContent className="p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">
-              {t("personalInformation")}</h3>
-            <form onSubmit={handleProfileSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">{t("emailLabel")}</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  disabled
-                  className="bg-gray-200 border-gray-300 cursor-not-allowed "
-                />
+      <div className="grid min-w-0 grid-cols-1 items-start gap-6 lg:grid-cols-2">
+        <Card className="gap-0 border-gray-200 bg-white py-0 shadow-sm">
+          <div className="flex items-start gap-3 border-b border-gray-100 p-5 sm:p-6">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0066cc]">
+              <UserRound className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-gray-900">{t("personalInformation")}</h2>
+              <p className="mt-1 text-sm leading-5 text-gray-500">{t("personalDescription")}</p>
+            </div>
+          </div>
+          <CardContent className="p-0">
+            <form onSubmit={handleProfileSubmit}>
+              <div className="space-y-5 p-5 sm:p-6">
+                <div className="space-y-2">
+                  <Label htmlFor="email">{t("emailLabel")}</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    value={formData.email}
+                    disabled
+                    aria-describedby="email-help"
+                    className="h-10 cursor-not-allowed border-gray-200 bg-gray-50 disabled:opacity-100"
+                  />
+                  <p id="email-help" className="flex items-start gap-1.5 text-xs leading-5 text-gray-500">
+                    <LockKeyhole className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+                    {t("emailHelp")}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">
+                    {t("userName")} <span className="text-red-500" aria-hidden="true">*</span>
+                  </Label>
+                  <Input
+                    id="username"
+                    name="username"
+                    autoComplete="name"
+                    value={formData.username}
+                    onChange={handleInputChange}
+                    aria-describedby="name-help"
+                    className="h-10 border-gray-200 bg-white"
+                    required
+                  />
+                  <p id="name-help" className="text-xs leading-5 text-gray-500">{t("nameHelp")}</p>
+                </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="username">
-                  {t("userName")}<span className="text-red-500">*</span> :
-                </Label>
-                <Input
-                  id="username"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="bg-white border-gray-300"
-                  required
-                />
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-t border-gray-100 bg-gray-50/70 p-5 sm:px-6 sm:py-4">
+                <p className="text-xs text-gray-500">{t("requiredFields")}</p>
+                <Button type="submit" className="w-full bg-[#0066cc] text-white hover:bg-[#0052a3] sm:w-auto">
+                  <Save className="size-4" aria-hidden="true" />
+                  {t("updateInformation")}
+                </Button>
               </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer"
-              >
-                {t("updateInformation")}</Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Change Password Form */}
-        <Card className="shadow-sm bg-white border-gray-300">
-          <CardContent className="p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">
-              {t("changePassword")}</h3>
-            <form onSubmit={handlePasswordSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">{t("currentPassword")}</Label>
-                <div className="relative">
-                  <Input
-                    id="currentPassword"
-                    name="currentPassword"
-                    type={showPasswords.current ? "text" : "password"}
-                    value={passwordData.currentPassword}
-                    onChange={handlePasswordChange}
-                    className="bg-white border-gray-300"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPasswords({
-                        ...showPasswords,
-                        current: !showPasswords.current,
-                      })
-                    }
-                    className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    {...iconLabelProps(
-                      showPasswords.current
-                        ? iconLabels.hidePassword
-                        : iconLabels.showPassword,
-                    )}
-                  >
-                    {showPasswords.current ? (
-                      <EyeOff className="h-5 w-5" aria-hidden="true" />
-                    ) : (
-                      <Eye className="h-5 w-5" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
+        <Card className="gap-0 border-gray-200 bg-white py-0 shadow-sm">
+          <div className="flex items-start gap-3 border-b border-gray-100 p-5 sm:p-6">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#0066cc]">
+              <ShieldCheck className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-gray-900">{t("changePassword")}</h2>
+              <p className="mt-1 text-sm leading-5 text-gray-500">{t("passwordDescription")}</p>
+            </div>
+          </div>
+          <CardContent className="p-0">
+            <form onSubmit={handlePasswordSubmit}>
+              <div className="space-y-4 p-5 sm:p-6">
+                {([
+                  { name: "currentPassword", visibility: "current", autoComplete: "current-password" },
+                  { name: "newPassword", visibility: "new", autoComplete: "new-password" },
+                  { name: "confirmPassword", visibility: "confirm", autoComplete: "new-password" },
+                ] as const).map(({ name, visibility, autoComplete }) => (
+                  <div key={name} className="space-y-2">
+                    <Label htmlFor={name}>{t(name)}</Label>
+                    <div className="relative">
+                      <Input
+                        id={name}
+                        name={name}
+                        type={showPasswords[visibility] ? "text" : "password"}
+                        autoComplete={autoComplete}
+                        value={passwordData[name]}
+                        onChange={handlePasswordChange}
+                        className="h-10 border-gray-200 bg-white pr-12"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswords((previous) => ({
+                          ...previous,
+                          [visibility]: !previous[visibility],
+                        }))}
+                        aria-pressed={showPasswords[visibility]}
+                        aria-controls={name}
+                        className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md text-gray-400 transition-colors hover:text-[#0066cc] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        {...iconLabelProps(showPasswords[visibility] ? iconLabels.hidePassword : iconLabels.showPassword)}
+                      >
+                        {showPasswords[visibility] ? (
+                          <EyeOff className="size-4" aria-hidden="true" />
+                        ) : (
+                          <Eye className="size-4" aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">{t("newPassword")}</Label>
-                <div className="relative">
-                  <Input
-                    id="newPassword"
-                    name="newPassword"
-                    type={showPasswords.new ? "text" : "password"}
-                    value={passwordData.newPassword}
-                    onChange={handlePasswordChange}
-                    className="bg-white border-gray-300"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPasswords({
-                        ...showPasswords,
-                        new: !showPasswords.new,
-                      })
-                    }
-                    className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    {...iconLabelProps(
-                      showPasswords.new
-                        ? iconLabels.hidePassword
-                        : iconLabels.showPassword,
-                    )}
-                  >
-                    {showPasswords.new ? (
-                      <EyeOff className="h-5 w-5" aria-hidden="true" />
-                    ) : (
-                      <Eye className="h-5 w-5" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-b-xl border-t border-gray-100 bg-gray-50/70 p-5 sm:px-6 sm:py-4">
+                <p className="flex items-center gap-1.5 text-xs text-gray-500">
+                  <KeyRound className="size-3.5 shrink-0" aria-hidden="true" />
+                  {t("passwordHelp")}
+                </p>
+                <Button type="submit" className="w-full bg-[#0066cc] text-white hover:bg-[#0052a3] sm:w-auto">
+                  <LockKeyhole className="size-4" aria-hidden="true" />
+                  {t("changePassword")}
+                </Button>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showPasswords.confirm ? "text" : "password"}
-                    value={passwordData.confirmPassword}
-                    onChange={handlePasswordChange}
-                    className="bg-white border-gray-300"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setShowPasswords({
-                        ...showPasswords,
-                        confirm: !showPasswords.confirm,
-                      })
-                    }
-                    className="absolute right-3 top-2.5 rounded text-gray-500 hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    {...iconLabelProps(
-                      showPasswords.confirm
-                        ? iconLabels.hidePassword
-                        : iconLabels.showPassword,
-                    )}
-                  >
-                    {showPasswords.confirm ? (
-                      <EyeOff className="h-5 w-5" aria-hidden="true" />
-                    ) : (
-                      <Eye className="h-5 w-5" aria-hidden="true" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full bg-[#7ba7d6] hover:bg-[#6b97c6] text-white hover:cursor-pointer"
-              >
-                {t("changePassword")}</Button>
             </form>
           </CardContent>
         </Card>
       </div>
+
+      <aside aria-labelledby="profile-security-note" className="flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4 sm:p-5">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-[#0066cc]">
+          <ShieldCheck className="size-4" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <h2 id="profile-security-note" className="text-sm font-medium text-gray-900">{t("securityNoteTitle")}</h2>
+          <p className="mt-1 text-sm leading-6 text-gray-500">{t("securityNoteDescription")}</p>
+        </div>
+      </aside>
     </div>
   );
 }
