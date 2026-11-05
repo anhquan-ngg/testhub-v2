@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Search } from "lucide-react";
 import {
   buildChapterPaths,
   chapterPath,
@@ -15,11 +16,13 @@ export function ChapterPicker({
   value,
   onChange,
   disabled = false,
+  id,
 }: {
   chapters: ChapterNode[];
   value?: string;
   onChange: (id: string) => void;
   disabled?: boolean;
+  id?: string;
 }) {
   const t = useTranslations("lecturer.editExam");
   const [search, setSearch] = useState(""),
@@ -34,30 +37,33 @@ export function ChapterPicker({
   const selected = value ? byId.get(value) : undefined;
   const pages = Math.ceil(matches.length / 50),
     safePage = Math.min(page, Math.max(0, pages - 1));
+  const selectedPath = selected ? chapterPath(selected.id, byId, 8) : "";
   return (
-    <div className="space-y-2 min-w-0">
-      <p
-        className="break-words text-sm"
-        title={selected ? paths.get(selected.id) : undefined}
-      >
-        {selected
-          ? chapterPath(selected.id, byId, 8)
-          : t("chooseChapterAtAnyDepth")}
-      </p>
-      <Input
-        disabled={disabled}
-        aria-label={t("searchChapterPath")}
-        placeholder={t("searchChapterPath")}
-        value={search}
-        onChange={(event) => {
-          setSearch(event.target.value);
-          setPage(0);
-        }}
-      />
-      <select
-        disabled={disabled}
-        aria-label={t("chapter")}
-        className="w-full min-w-0 rounded border bg-background p-2 text-sm"
+    <div className="min-w-0 space-y-1.5">
+      <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="relative min-w-0">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-400"
+            aria-hidden="true"
+          />
+          <Input
+            disabled={disabled}
+            aria-label={t("searchChapterPath")}
+            placeholder={t("searchChapterPath")}
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(0);
+            }}
+            className="border-gray-300 bg-white pl-9"
+          />
+        </div>
+        <select
+          id={id}
+          disabled={disabled}
+          aria-label={t("chapter")}
+          title={selected ? paths.get(selected.id) : undefined}
+          className="h-9 w-full min-w-0 truncate rounded-md border border-gray-300 bg-white px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
         value={
           value &&
           matches
@@ -76,7 +82,16 @@ export function ChapterPicker({
             {chapterPath(node.id, byId, 8)}
           </option>
         ))}
-      </select>
+        </select>
+      </div>
+      {selectedPath.length > 40 && (
+        <p
+          className="break-words text-xs text-neutral-500"
+          title={selected ? paths.get(selected.id) : undefined}
+        >
+          {selectedPath}
+        </p>
+      )}
       {pages > 1 && (
         <div className="flex items-center gap-2 text-xs">
           <Button

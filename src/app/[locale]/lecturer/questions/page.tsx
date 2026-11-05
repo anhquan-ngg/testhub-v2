@@ -19,6 +19,9 @@ import {
   FileImage,
   FileQuestion,
   FileVideo,
+  FolderTree,
+  ListChecks,
+  ListTree,
   Loader2,
   Pencil,
   PenTool,
@@ -1044,16 +1047,18 @@ export default function LecturerQuestions() {
                         <TableCell className="text-center">
                           <div className="flex justify-center gap-1">
                             <Button
+                              size="icon"
                               variant="ghost"
-                              size="sm"
-                              className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
+                              className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
                               onClick={() =>
                                 openTopic(topic).catch(() =>
                                   toast.error(t("cannotOpenChapter")),
                                 )
                               }
+                              {...iconLabelProps(iconLabels.manageChapters)}
                             >
-                              {t("chapterManagement2")}</Button>
+                              <FolderTree className="h-4 w-4" aria-hidden="true" />
+                            </Button>
                             <DeleteButton
                               title={t("deleteTopic")}
                               description={t("thisTopicAlongWithAllChapters")}
@@ -1117,25 +1122,27 @@ export default function LecturerQuestions() {
                             <div className="flex flex-wrap justify-center gap-1">
                               {childCount > 0 && (
                                 <Button
+                                  size="icon"
                                   variant="ghost"
-                                  size="sm"
-                                  className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
+                                  className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
                                   onClick={() => openChapterChildren(chapter)}
+                                  {...iconLabelProps(iconLabels.manageSubChapters)}
                                 >
-                                  {t("manageSubChapters")}
+                                  <ListTree className="h-4 w-4" aria-hidden="true" />
                                 </Button>
                               )}
                               <Button
+                                size="icon"
                                 variant="ghost"
-                                size="sm"
-                                className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
+                                className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.success}`}
                                 onClick={() =>
                                   openChapterQuestions(chapter).catch(() =>
                                     toast.error(t("unableToLoadQuestion")),
                                   )
                                 }
+                                {...iconLabelProps(iconLabels.manageQuestions)}
                               >
-                                {t("questionManagement2")}
+                                <ListChecks className="h-4 w-4" aria-hidden="true" />
                               </Button>
                               <Button
                                 size="icon"

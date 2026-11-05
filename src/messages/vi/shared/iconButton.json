@@ -27,5 +27,8 @@
   "viewReport": "Xem báo cáo",
   "monitor": "Giám sát",
   "manageParticipants": "Quản lý thí sinh",
-  "editRole": "Đổi vai trò"
+  "editRole": "Đổi vai trò",
+  "manageChapters": "Quản lý Chapter",
+  "manageSubChapters": "Quản lý Chapter con",
+  "manageQuestions": "Quản lý câu hỏi"
 }

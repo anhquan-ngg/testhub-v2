@@ -27,5 +27,8 @@
   "viewReport": "View report",
   "monitor": "Monitor",
   "manageParticipants": "Manage participants",
-  "editRole": "Change role"
+  "editRole": "Change role",
+  "manageChapters": "Manage chapters",
+  "manageSubChapters": "Manage sub-chapters",
+  "manageQuestions": "Manage questions"
 }

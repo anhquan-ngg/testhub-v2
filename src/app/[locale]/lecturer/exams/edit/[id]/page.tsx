@@ -907,9 +907,10 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                                   className={`grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem] items-start gap-4 rounded-lg border border-gray-200 bg-gray-50/60 p-4 ${questionSelectionMode === "BY_CHAPTER" ? "sm:grid-cols-[minmax(0,1fr)_6rem_2.25rem]" : "sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_6rem_2.25rem]"}`}
                                 >
                                   {questionSelectionMode === "BY_CHAPTER" && (
-                                    <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1 [&_select]:h-9 [&_select]:rounded-md [&_select]:border-gray-300 [&_select]:shadow-xs">
-                                      <p className="text-sm font-medium">{t("chapter")}</p>
+                                    <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1">
+                                      <Label htmlFor={`question-chapter-${row.id}`}>{t("chapter")}</Label>
                                       <ChapterPicker
+                                        id={`question-chapter-${row.id}`}
                                         chapters={chapterOptions}
                                         value={row.chapter_id}
                                         onChange={(value) =>

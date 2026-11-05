@@ -33,6 +33,9 @@ export const ICON_LABEL_KEYS = [
   "monitor",
   "manageParticipants",
   "editRole",
+  "manageChapters",
+  "manageSubChapters",
+  "manageQuestions",
 ] as const;
 
 export type IconLabelKey = (typeof ICON_LABEL_KEYS)[number];
