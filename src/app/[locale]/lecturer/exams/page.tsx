@@ -57,17 +57,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useAppSelector } from "@/store/hook";
 import { useSocket } from "@/components/providers/SocketProvider";
 import apiClient from "@/lib/api-client";
-import { examStatusClass, examTypeClass, registrationStatusClass } from "@/lib/exam-style";
+import { examTypeClass, registrationStatusClass } from "@/lib/exam-style";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
 import { PrintExamDialog } from "@/components/exam-print/PrintExamDialog";
@@ -89,7 +82,6 @@ type LecturerExamItem = {
   exam_end_time: string | Date;
   duration: number;
   practice: boolean;
-  status?: string;
   _count?: {
     registrations?: number;
   };
@@ -108,8 +100,6 @@ const getTopicName = (topic: LecturerExamItem["topic"]) => {
   if (typeof topic === "string") return topic;
   return topic.name ?? "";
 };
-
-const getExamStatus = (exam: LecturerExamItem) => exam.status ?? "ACTIVE";
 
 function StudentManagementDialog({
   exam,
@@ -441,7 +431,6 @@ export default function LecturerExams() {
                 <TableHead>{t("end")}</TableHead>
                 <TableHead>{t("duration")}</TableHead>
                 <TableHead>{t("type")}</TableHead>
-                <TableHead>{t("status")}</TableHead>
                 <TableHead>{t("student")}</TableHead>
                 <TableHead className="text-center">{t("operation")}</TableHead>
               </TableRow>
@@ -465,52 +454,6 @@ export default function LecturerExams() {
                       <Badge variant="outline" className={examTypeClass(exam.practice)}>
                         {exam.practice ? t("practice") : t("official")}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={getExamStatus(exam)}
-                        disabled={!exam.status}
-                        onValueChange={async (value) => {
-                          try {
-                            await apiClient.patch(
-                              ENDPOINTS.EXAMS.DETAIL(exam.id),
-                              {
-                                status: value,
-                              },
-                            );
-                            setExams((prev) =>
-                              prev.map((item) =>
-                                item.id === exam.id
-                                  ? { ...item, status: value }
-                                  : item,
-                              ),
-                            );
-                            toast.success(t("statusUpdateSuccessful"));
-                          } catch {
-                            toast.error(t("errorUpdatingStatus"));
-                          }
-                        }}
-                      >
-                        <SelectTrigger
-                          className={`h-7 w-[100px] border text-xs font-medium hover:cursor-pointer ${examStatusClass(getExamStatus(exam))}`}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border-gray-300">
-                          <SelectItem
-                            value="ACTIVE"
-                            className="text-green-700 hover:cursor-pointer"
-                          >
-                            {t("active")}
-                          </SelectItem>
-                          <SelectItem
-                            value="INACTIVE"
-                            className="text-red-700 hover:cursor-pointer"
-                          >
-                            {t("inactive")}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
                     </TableCell>
                     <TableCell>
                       <Dialog open={registrationDialogId === exam.id} onOpenChange={(open) => setRegistrationDialogId(open ? exam.id : null)}>
@@ -608,7 +551,7 @@ export default function LecturerExams() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={9} className="h-72 text-center">
+                  <TableCell colSpan={8} className="h-72 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
                       <div className="p-4 bg-gray-50 rounded-full">
                         {searchTerm ? (

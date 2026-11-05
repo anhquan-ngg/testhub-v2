@@ -5,6 +5,7 @@ import { AlertCircle, Calendar, CheckCircle2, Clock, FileText, Maximize, Printer
 import { Link } from "@/i18n/navigation";
 import { intlLocales } from "@/i18n/config";
 import { examTypeClass } from "@/lib/exam-style";
+import { calculateTotalQuesions } from "@/lib/exam-utils";
 import type { ExamData } from "@/types/exam";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -109,6 +110,13 @@ export function ExamLanding({
 }: ExamLandingProps) {
   const t = useTranslations("student.exam");
   const locale = useLocale();
+  // Dynamic modes select questions only when an attempt starts.
+  const questionCount = calculateTotalQuesions({
+    exam: {
+      ...exam,
+      _count: { questions: exam.questions?.length ?? 0 },
+    },
+  });
 
   const topicName =
     typeof exam.topic === "string"
@@ -164,7 +172,7 @@ export function ExamLanding({
               tone="violet"
               icon={<FileText className="h-6 w-6" />}
               label={t("numberOfQuestions")}
-              value={`${exam.questions?.length || 0} ${t("sentence")}`}
+              value={`${questionCount} ${t("sentence")}`}
             />
           </div>
 
