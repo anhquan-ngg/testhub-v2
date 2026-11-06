@@ -38,6 +38,10 @@ export function ChapterPicker({
   const pages = Math.ceil(matches.length / 50),
     safePage = Math.min(page, Math.max(0, pages - 1));
   const selectedPath = selected ? chapterPath(selected.id, byId, 8) : "";
+  const visibleChapters = matches.slice(safePage * 50, (safePage + 1) * 50);
+  if (selected && !visibleChapters.some((node) => node.id === selected.id)) {
+    visibleChapters.unshift(selected);
+  }
   return (
     <div className="min-w-0 space-y-1.5">
       <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
@@ -64,24 +68,17 @@ export function ChapterPicker({
           aria-label={t("chapter")}
           title={selected ? paths.get(selected.id) : undefined}
           className="h-9 w-full min-w-0 truncate rounded-md border border-gray-300 bg-white px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-        value={
-          value &&
-          matches
-            .slice(safePage * 50, (safePage + 1) * 50)
-            .some((node) => node.id === value)
-            ? value
-            : ""
-        }
-        onChange={(event) => {
-          if (event.target.value) onChange(event.target.value);
-        }}
-      >
-        <option value="">{t("chooseChapterAtAnyDepth")}</option>
-        {matches.slice(safePage * 50, (safePage + 1) * 50).map((node) => (
-          <option key={node.id} value={node.id}>
-            {chapterPath(node.id, byId, 8)}
-          </option>
-        ))}
+          value={value ?? ""}
+          onChange={(event) => {
+            if (event.target.value) onChange(event.target.value);
+          }}
+        >
+          <option value="">{t("chooseChapterAtAnyDepth")}</option>
+          {visibleChapters.map((node) => (
+            <option key={node.id} value={node.id}>
+              {chapterPath(node.id, byId, 8)}
+            </option>
+          ))}
         </select>
       </div>
       {selectedPath.length > 40 && (
