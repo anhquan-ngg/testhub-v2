@@ -33,6 +33,10 @@ export const ICON_LABEL_KEYS = [
   "monitor",
   "manageParticipants",
   "editRole",
+  "manageChapters",
+  "manageSubChapters",
+  "manageQuestions",
+  "reorder",
 ] as const;
 
 export type IconLabelKey = (typeof ICON_LABEL_KEYS)[number];
@@ -50,6 +54,11 @@ export function useIconLabels(): Record<IconLabelKey, string> {
 /** Props that give an icon-only button an accessible name and a hover tooltip. */
 export function iconLabelProps(label: string) {
   return { title: label, "aria-label": label } as const;
+}
+
+/** Accessible name only; pair with `IconTooltip` for the visual tooltip. */
+export function iconAriaProps(label: string) {
+  return { "aria-label": label } as const;
 }
 
 /** Semantic colour tones built from design tokens (no hardcoded hex values). */

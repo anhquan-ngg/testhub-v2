@@ -1,50 +1,24 @@
 "use client";
 
 import { chapterPath } from "@/lib/chapter-tree";
-import { useLocale, useTranslations } from "next-intl";
-import { intlLocales } from "@/i18n/config";
-import { useEnumLabels } from "@/i18n/useEnumLabels";
+import { useTranslations } from "next-intl";
 import axios from "axios";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
-  ChevronLeft,
+  ChevronDown,
   ChevronRight,
-  CheckCircle,
-  Copy,
-  Eye,
-  ExternalLink,
   BookOpen,
-  FileAudio,
-  FileImage,
-  FileQuestion,
-  FileVideo,
-  Loader2,
-  Pencil,
-  PenTool,
+  List,
+  ListTree,
   Plus,
   Search,
   Sparkles,
-  Trash2,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -54,7 +28,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -62,253 +41,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { MathInput } from "@/components/MathInput";
-import { MathRenderer } from "@/components/MathRenderer";
 import { Link } from "@/i18n/navigation";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { fetchAllPages } from "@/lib/pagination";
 import apiClient from "@/lib/api-client";
-import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
-
-type ViewMode = "topics" | "chapters" | "questions";
-type QuestionType = "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "ESSAY";
-type QuestionFormat = "KNOWLEDGE" | "UNDERSTANDING" | "APPLYING" | "ADVANCED";
-type FileType = "AUDIO" | "IMAGE" | "VIDEO";
-
-type Topic = {
-  id: string;
-  name: string;
-  created_by: string;
-  created_at: string;
-  updated_at: string;
-};
-
-type Chapter = {
-  id: string;
-  topic_id: string;
-  parent_id?: string | null;
-  name: string;
-  order: number;
-  created_at: string;
-  updated_at: string;
-};
-
-type FileRecord = {
-  id: string;
-  name: string;
-  url: string;
-  s3_key: string;
-  type: FileType;
-  size?: number;
-  entity_type?: string | null;
-  entity_id?: string | null;
-  status: "PENDING" | "ACTIVE" | "DELETED";
-};
-
-type QuestionFile = {
-  order: number;
-  file: FileRecord;
-};
-
-type Question = {
-  id: string;
-  chapter_id: string;
-  question_text: string;
-  options?: string | null;
-  correct_answer?: string | null;
-  question_type: QuestionType;
-  question_format: QuestionFormat;
-  created_at: string;
-  updated_at: string;
-  chapter?: Chapter;
-  files?: QuestionFile[];
-};
-
-type QuestionOption = {
-  text: string;
-  isCorrect: boolean;
-};
-
-type ParsedQuestionOption = {
-  label?: string;
-  text: string;
-  isCorrect?: boolean;
-};
-
-type QuestionForm = {
-  chapter_id: string;
-  question_text: string;
-  question_type: QuestionType;
-  question_format: QuestionFormat;
-  options: QuestionOption[];
-  correct_answer: string;
-};
-
-const optionLabels = ["A", "B", "C", "D", "E", "F"];
-const ITEMS_PER_PAGE = 5;
-const QUESTION_PREVIEW_MAX_LENGTH = 80;
-
-const questionTypeConfig = {
-  SINGLE_CHOICE: {
-    color: "text-emerald-700",
-    bgColor: "bg-emerald-100",
-    Icon: CheckCircle,
-  },
-  MULTIPLE_CHOICE: {
-    color: "text-blue-700",
-    bgColor: "bg-blue-100",
-    Icon: Copy,
-  },
-  ESSAY: {
-    color: "text-amber-700",
-    bgColor: "bg-amber-100",
-    Icon: PenTool,
-  },
-} satisfies Record<
-  QuestionType,
-  {
-    color: string;
-    bgColor: string;
-    Icon: React.ComponentType<{ className?: string }>;
-  }
->;
-
-const questionFormatConfig = {
-  KNOWLEDGE: {
-    color: "text-cyan-700",
-    bgColor: "bg-cyan-100",
-    level: 1,
-  },
-  UNDERSTANDING: {
-    color: "text-sky-700",
-    bgColor: "bg-sky-100",
-    level: 2,
-  },
-  APPLYING: {
-    color: "text-purple-700",
-    bgColor: "bg-purple-100",
-    level: 3,
-  },
-  ADVANCED: {
-    color: "text-indigo-700",
-    bgColor: "bg-indigo-100",
-    level: 4,
-  },
-} satisfies Record<
+import { IconTooltip } from "@/components/ui/icon-tooltip";
+import { ChapterSidebar } from "./_components/chapter-sidebar";
+import { ChapterList } from "./_components/chapter-list";
+import { ChapterTreeView } from "./_components/chapter-tree-view";
+import { QuestionDetailDialog } from "./_components/question-detail-dialog";
+import { QuestionDialog } from "./_components/question-dialog";
+import { QuestionEmptyState } from "./_components/question-empty-state";
+import { QuestionList } from "./_components/question-list";
+import { TopicList } from "./_components/topic-list";
+import { ITEMS_PER_PAGE, initialQuestionForm } from "./constants";
+import {
+  getFileType,
+  getQuestionFormFromQuestion,
+} from "./utils";
+import type {
+  BreadcrumbTarget,
+  Chapter,
+  FileRecord,
+  Question,
+  QuestionFile,
+  QuestionForm,
   QuestionFormat,
-  {
-    color: string;
-    bgColor: string;
-    level: number;
-  }
->;
+  QuestionType,
+  Topic,
+  ViewMode,
+} from "./types";
 
-const emptyOptions = (): QuestionOption[] => [
-  { text: "", isCorrect: false },
-  { text: "", isCorrect: false },
-  { text: "", isCorrect: false },
-  { text: "", isCorrect: false },
-];
+type ChapterLayout = "list" | "tree";
 
-const initialQuestionForm = (chapterId = ""): QuestionForm => ({
-  chapter_id: chapterId,
-  question_text: "",
-  question_type: "SINGLE_CHOICE",
-  question_format: "KNOWLEDGE",
-  options: emptyOptions(),
-  correct_answer: "",
-});
+const QUESTION_TYPES: QuestionType[] = ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "ESSAY"];
+const QUESTION_FORMATS: QuestionFormat[] = ["KNOWLEDGE", "UNDERSTANDING", "APPLYING", "ADVANCED"];
 
-const getFileType = (file: File): FileType | null => {
-  if (file.type.startsWith("image/")) return "IMAGE";
-  if (file.type.startsWith("audio/")) return "AUDIO";
-  if (file.type.startsWith("video/")) return "VIDEO";
-  return null;
-};
-
-const fileIcon = (type: FileType) => {
-  if (type === "IMAGE") return <FileImage className="h-4 w-4" />;
-  if (type === "AUDIO") return <FileAudio className="h-4 w-4" />;
-  return <FileVideo className="h-4 w-4" />;
-};
-
-const formatDate = (value: string, locale: string) =>
-  new Intl.DateTimeFormat(locale, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
-
-const formatFileSize = (size?: number) => {
-  if (!size) return "";
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-const getQuestionPreviewText = (questionText: string) => {
-  const normalizedText = questionText.replace(/\s+/g, " ").trim();
-  if (normalizedText.length <= QUESTION_PREVIEW_MAX_LENGTH) {
-    return normalizedText;
-  }
-
-  let previewText = normalizedText
-    .slice(0, QUESTION_PREVIEW_MAX_LENGTH)
-    .trimEnd();
-
-  const hasUnclosedLatex = (value: string) => {
-    const singleDollarCount = (value.match(/(^|[^\\])\$/g) || []).length;
-    const inlineOpenCount = (value.match(/\\\(/g) || []).length;
-    const inlineCloseCount = (value.match(/\\\)/g) || []).length;
-    const displayOpenCount = (value.match(/\\\[/g) || []).length;
-    const displayCloseCount = (value.match(/\\\]/g) || []).length;
-    const beginCount = (value.match(/\\begin\{/g) || []).length;
-    const endCount = (value.match(/\\end\{/g) || []).length;
-
-    return (
-      singleDollarCount % 2 === 1 ||
-      inlineOpenCount > inlineCloseCount ||
-      displayOpenCount > displayCloseCount ||
-      beginCount > endCount
-    );
-  };
-
-  while (previewText && hasUnclosedLatex(previewText)) {
-    const cutCandidates = [
-      previewText.lastIndexOf("$$"),
-      previewText.lastIndexOf("\\("),
-      previewText.lastIndexOf("\\["),
-      previewText.lastIndexOf("\\begin{"),
-      previewText.lastIndexOf("$"),
-      previewText.lastIndexOf(" "),
-    ].filter((index) => index >= 0);
-
-    const cutIndex =
-      cutCandidates.length > 0
-        ? Math.min(...cutCandidates)
-        : previewText.length - 1;
-    previewText = previewText.slice(0, Math.max(0, cutIndex)).trimEnd();
-  }
-
-  return `${previewText}...`;
-};
 
 export default function LecturerQuestions() {
   const t = useTranslations("lecturer.questions");
-  const iconLabels = useIconLabels();
   const generationText = useTranslations("shared.questionGeneration");
   const documentText = useTranslations("shared.learningDocuments");
-  const locale = useLocale();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -316,7 +89,18 @@ export default function LecturerQuestions() {
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [chapterStack, setChapterStack] = useState<Chapter[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState<QuestionType | "ALL">("ALL");
+  const [formatFilter, setFormatFilter] = useState<QuestionFormat | "ALL">(
+    "ALL",
+  );
   const [isLoading, setIsLoading] = useState(false);
+  const [chapterLayout, setChapterLayout] = useState<ChapterLayout>("list");
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const navKeyRef = useRef<string | null>(null);
+  const hasStartedUrlRestore = useRef(false);
+  const [isUrlReady, setIsUrlReady] = useState(false);
   const [topicPage, setTopicPage] = useState(1);
   const [chapterPage, setChapterPage] = useState(1);
   const [questionPage, setQuestionPage] = useState(1);
@@ -396,21 +180,39 @@ export default function LecturerQuestions() {
 
   const chapterRows = useMemo(() => {
     const parentId = currentChapter?.id ?? null;
+    const keyword = searchTerm.trim().toLowerCase();
     return chapters
       .filter((chapter) => (chapter.parent_id ?? null) === parentId)
+      .filter(
+        (chapter) => !keyword || chapter.name.toLowerCase().includes(keyword),
+      )
       .sort((a, b) => a.order - b.order);
-  }, [chapters, currentChapter?.id]);
+  }, [chapters, currentChapter?.id, searchTerm]);
+
+  const questionsInChapter = useMemo(
+    () =>
+      questions.filter(
+        (question) =>
+          !currentChapter || question.chapter_id === currentChapter.id,
+      ),
+    [currentChapter, questions],
+  );
 
   const questionRows = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
-    return questions.filter((question) => {
-      const matchesChapter =
-        !currentChapter || question.chapter_id === currentChapter.id;
+    return questionsInChapter.filter((question) => {
       const matchesSearch =
         !keyword || question.question_text.toLowerCase().includes(keyword);
-      return matchesChapter && matchesSearch;
+      const matchesType =
+        typeFilter === "ALL" || question.question_type === typeFilter;
+      const matchesFormat =
+        formatFilter === "ALL" || question.question_format === formatFilter;
+      return matchesSearch && matchesType && matchesFormat;
     });
-  }, [currentChapter, questions, searchTerm]);
+  }, [formatFilter, questionsInChapter, searchTerm, typeFilter]);
+
+  const isQuestionFiltering =
+    searchTerm.trim() !== "" || typeFilter !== "ALL" || formatFilter !== "ALL";
 
   const topicTotalPages = Math.ceil(topicRows.length / ITEMS_PER_PAGE);
   const chapterTotalPages = Math.ceil(chapterRows.length / ITEMS_PER_PAGE);
@@ -457,6 +259,121 @@ export default function LecturerQuestions() {
 
   const chaptersById = useMemo(()=>new Map(chapters.map(chapter=>[chapter.id,chapter])),[chapters]);
 
+  const getChapterPathStack = (chapter: Chapter) => {
+    const path: Chapter[] = [];
+    const seen = new Set<string>();
+    let cursor: Chapter | undefined = chapter;
+    while (cursor && !seen.has(cursor.id)) {
+      seen.add(cursor.id);
+      path.unshift(cursor);
+      cursor = cursor.parent_id ? chaptersById.get(cursor.parent_id) : undefined;
+    }
+    return path;
+  };
+
+  useEffect(() => {
+    setSelectedQuestionIds(new Set());
+  }, [currentChapter?.id, viewMode, searchTerm, typeFilter, formatFilter, questionPage]);
+
+  const applyUrlState = useCallback(async (params: URLSearchParams) => {
+    const topicId = params.get("topic");
+    if (!topicId) {
+      setSelectedTopic(null);
+      setChapterStack([]);
+      setViewMode("topics");
+      setSearchTerm("");
+      setTypeFilter("ALL");
+      setFormatFilter("ALL");
+      return;
+    }
+
+    const [allTopics, topicChapters] = await Promise.all([
+      fetchAllPages<Topic>(ENDPOINTS.TOPICS.BASE, {}),
+      fetchAllPages<Chapter>(ENDPOINTS.CHAPTERS.BASE, { topic_id: topicId }),
+    ]);
+    const topic = allTopics.find((item) => item.id === topicId);
+    if (!topic) return;
+
+    const byId = new Map(topicChapters.map((item) => [item.id, item]));
+    const stack: Chapter[] = [];
+    const seen = new Set<string>();
+    let cursor = byId.get(params.get("chapter") ?? "");
+    while (cursor && !seen.has(cursor.id)) {
+      seen.add(cursor.id);
+      stack.unshift(cursor);
+      cursor = cursor.parent_id ? byId.get(cursor.parent_id) : undefined;
+    }
+
+    const type = params.get("type") as QuestionType | null;
+    const format = params.get("format") as QuestionFormat | null;
+    setSelectedTopic(topic);
+    setChapterStack(stack);
+    setViewMode(
+      stack.length > 0 && params.get("view") === "questions"
+        ? "questions"
+        : "chapters",
+    );
+    setSearchTerm(params.get("q") ?? "");
+    setTypeFilter(type && QUESTION_TYPES.includes(type) ? type : "ALL");
+    setFormatFilter(format && QUESTION_FORMATS.includes(format) ? format : "ALL");
+    setChapterLayout(params.get("layout") === "tree" ? "tree" : "list");
+  }, []);
+
+  useEffect(() => {
+    if (hasStartedUrlRestore.current) return;
+    hasStartedUrlRestore.current = true;
+    applyUrlState(new URLSearchParams(window.location.search))
+      .catch(() => toast.error(t("unableToLoadQuestionBankData")))
+      .finally(() => setIsUrlReady(true));
+  }, [applyUrlState, t]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      applyUrlState(new URLSearchParams(window.location.search)).catch(() =>
+        toast.error(t("unableToLoadQuestionBankData")),
+      );
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [applyUrlState, t]);
+
+  useEffect(() => {
+    if (!isUrlReady) return;
+    const params = new URLSearchParams();
+    if (selectedTopic) {
+      params.set("topic", selectedTopic.id);
+      if (currentChapter) params.set("chapter", currentChapter.id);
+      if (viewMode === "questions") params.set("view", "questions");
+      if (viewMode === "chapters" && chapterLayout === "tree") params.set("layout", "tree");
+      if (viewMode !== "topics" && searchTerm.trim()) params.set("q", searchTerm.trim());
+      if (viewMode === "questions") {
+        if (typeFilter !== "ALL") params.set("type", typeFilter);
+        if (formatFilter !== "ALL") params.set("format", formatFilter);
+      }
+    }
+    const query = params.toString();
+    const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
+    const navKey = `${selectedTopic?.id ?? ""}|${currentChapter?.id ?? ""}|${viewMode}`;
+    const isNavigation = navKeyRef.current !== null && navKeyRef.current !== navKey;
+    navKeyRef.current = navKey;
+    if (url !== `${window.location.pathname}${window.location.search}`) {
+      if (isNavigation) {
+        window.history.pushState(window.history.state, "", url);
+      } else {
+        window.history.replaceState(window.history.state, "", url);
+      }
+    }
+  }, [
+    chapterLayout,
+    currentChapter,
+    formatFilter,
+    isUrlReady,
+    searchTerm,
+    selectedTopic,
+    typeFilter,
+    viewMode,
+  ]);
+
   const getChildCount = (chapterId: string) =>
     chapters.filter((chapter) => chapter.parent_id === chapterId).length;
 
@@ -477,10 +394,16 @@ export default function LecturerQuestions() {
     return ids;
   };
 
+  const resetFilters = () => {
+    setSearchTerm("");
+    setTypeFilter("ALL");
+    setFormatFilter("ALL");
+  };
+
   const openTopic = async (topic: Topic) => {
     setSelectedTopic(topic);
     setChapterStack([]);
-    setSearchTerm("");
+    resetFilters();
     setChapterPage(1);
     setViewMode("chapters");
     await fetchChapters(topic.id);
@@ -488,7 +411,7 @@ export default function LecturerQuestions() {
 
   const openChapterChildren = (chapter: Chapter) => {
     setChapterStack((prev) => [...prev, chapter]);
-    setSearchTerm("");
+    resetFilters();
     setChapterPage(1);
     setViewMode("chapters");
   };
@@ -497,33 +420,31 @@ export default function LecturerQuestions() {
     setChapterStack((prev) =>
       prev.some((item) => item.id === chapter.id) ? prev : [...prev, chapter],
     );
-    setSearchTerm("");
+    resetFilters();
     setQuestionPage(1);
     setViewMode("questions");
     await fetchQuestions(chapter.id);
   };
 
-  const goBack = async () => {
-    if (viewMode === "questions") {
-      setChapterStack((prev) => prev.slice(0, -1));
-      setChapterPage(1);
-      setViewMode("chapters");
-      await fetchChapters(selectedTopic?.id);
+  const goToBreadcrumb = async (target: BreadcrumbTarget) => {
+    const wasQuestions = viewMode === "questions";
+    resetFilters();
+
+    if (target.type === "root") {
+      setSelectedTopic(null);
+      setChapterStack([]);
+      setTopicPage(1);
+      setViewMode("topics");
       return;
     }
 
-    if (chapterStack.length > 0) {
-      setChapterStack((prev) => prev.slice(0, -1));
-      setChapterPage(1);
-      return;
-    }
-
-    setSelectedTopic(null);
-    setSearchTerm("");
-    setTopicPage(1);
-    setViewMode("topics");
+    setChapterStack((prev) =>
+      target.type === "topic" ? [] : prev.slice(0, target.index + 1),
+    );
+    setChapterPage(1);
+    setViewMode("chapters");
+    if (wasQuestions) await fetchChapters(selectedTopic?.id);
   };
-
   const resetTopicDialog = () => {
     setTopicName("");
     setIsTopicDialogOpen(false);
@@ -634,6 +555,36 @@ export default function LecturerQuestions() {
     }
 
     resetChapterDialog();
+    await fetchChapters(selectedTopic?.id);
+  };
+
+  const handleReorderChapters = async (orderedSiblings: Chapter[]) => {
+    const changed = orderedSiblings
+      .map((chapter, index) => ({ chapter, order: index }))
+      .filter(({ chapter, order }) => chapter.order !== order);
+    if (changed.length === 0) return;
+
+    const previous = chapters;
+    const nextOrders = new Map(changed.map(({ chapter, order }) => [chapter.id, order]));
+    setChapters((prev) =>
+      prev.map((chapter) =>
+        nextOrders.has(chapter.id)
+          ? { ...chapter, order: nextOrders.get(chapter.id) ?? chapter.order }
+          : chapter,
+      ),
+    );
+
+    try {
+      await Promise.all(
+        changed.map(({ chapter, order }) =>
+          apiClient.patch(ENDPOINTS.CHAPTERS.DETAIL(chapter.id), { order }),
+        ),
+      );
+      toast.success(t("chaptersReordered"));
+    } catch {
+      setChapters(previous);
+      toast.error(t("unableToReorderChapters"));
+    }
     await fetchChapters(selectedTopic?.id);
   };
 
@@ -781,6 +732,49 @@ export default function LecturerQuestions() {
     await fetchQuestions(currentChapter?.id);
   };
 
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedQuestionIds);
+    const results = await Promise.allSettled(
+      ids.map((id) => apiClient.delete(ENDPOINTS.QUESTIONS.DETAIL(id))),
+    );
+    const success = results.filter((result) => result.status === "fulfilled").length;
+    const failed = ids.length - success;
+    if (failed === 0) {
+      toast.success(t("bulkDeleteSuccess", { count: success }));
+    } else {
+      toast.error(t("bulkDeletePartial", { success, failed }));
+    }
+    setSelectedQuestionIds(new Set());
+    await fetchQuestions(currentChapter?.id);
+  };
+
+  const toggleQuestionSelection = (questionId: string, checked: boolean) => {
+    setSelectedQuestionIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(questionId);
+      else next.delete(questionId);
+      return next;
+    });
+  };
+
+  const openChapterQuestionsFromTree = (chapter: Chapter) => {
+    setChapterStack(getChapterPathStack(chapter));
+    resetFilters();
+    setQuestionPage(1);
+    setViewMode("questions");
+  };
+
+  const openAddSubChapterDialog = (parent: Chapter) => {
+    setChapterForm({
+      topic_id: parent.topic_id,
+      parent_id: parent.id,
+      name: "",
+      order: chapters.filter((item) => item.parent_id === parent.id).length,
+    });
+    setEditingChapterId(null);
+    setIsChapterDialogOpen(true);
+  };
+
   const openQuestionDetail = async (questionId: string) => {
     setLoadingDetailId(questionId);
     try {
@@ -795,63 +789,6 @@ export default function LecturerQuestions() {
     }
   };
 
-  const parseQuestionOptions = (question: Question) => {
-    if (!question.options) return [];
-    try {
-      return JSON.parse(question.options) as ParsedQuestionOption[];
-    } catch {
-      return [];
-    }
-  };
-
-  const getLegacyCorrectLabels = (question: Question) => {
-    const legacyAnswer = question.correct_answer?.trim();
-    if (!legacyAnswer) return new Set<string>();
-
-    try {
-      const labels = JSON.parse(legacyAnswer);
-      if (Array.isArray(labels)) {
-        return new Set(labels.map((label) => String(label)));
-      }
-    } catch {
-      // Old single-choice questions stored the correct answer as a plain label.
-    }
-
-    return new Set([legacyAnswer]);
-  };
-
-  const getQuestionFormFromQuestion = (question: Question): QuestionForm => {
-    const parsedOptions = parseQuestionOptions(question);
-    const hasCorrectFlag = parsedOptions.some(
-      (option) => typeof option.isCorrect === "boolean",
-    );
-    const legacyCorrectLabels = getLegacyCorrectLabels(question);
-    const normalizedOptions =
-      question.question_type === "ESSAY"
-        ? emptyOptions()
-        : parsedOptions.map((option, index) => ({
-            text: option.text ?? "",
-            isCorrect: hasCorrectFlag
-              ? Boolean(option.isCorrect)
-              : legacyCorrectLabels.has(option.label ?? optionLabels[index]),
-          }));
-
-    while (normalizedOptions.length < 4) {
-      normalizedOptions.push({ text: "", isCorrect: false });
-    }
-
-    return {
-      chapter_id: question.chapter_id,
-      question_text: question.question_text,
-      question_type: question.question_type,
-      question_format: question.question_format,
-      options: normalizedOptions.slice(0, optionLabels.length),
-      correct_answer:
-        question.question_type === "ESSAY"
-          ? (question.correct_answer ?? "")
-          : "",
-    };
-  };
 
   const openEditQuestionDialog = async (questionId: string) => {
     setLoadingEditId(questionId);
@@ -872,47 +809,35 @@ export default function LecturerQuestions() {
     }
   };
 
-  const getQuestionAnswerText = (question: Question) => {
-    if (question.question_type === "ESSAY") {
-      return question.correct_answer?.trim() || "-";
-    }
 
-    const options = parseQuestionOptions(question);
-    const correctOptions = options
-      .map((option, index) =>
-        option.isCorrect
-          ? `${option.label ?? optionLabels[index]}. ${option.text}`
-          : null,
-      )
-      .filter(Boolean);
+  const breadcrumbItems: {
+    key: string;
+    label: string;
+    target: BreadcrumbTarget;
+  }[] = [
+    { key: "root", label: t("topicsRoot"), target: { type: "root" } },
+    ...(selectedTopic
+      ? [
+          {
+            key: `topic-${selectedTopic.id}`,
+            label: selectedTopic.name,
+            target: { type: "topic" } as BreadcrumbTarget,
+          },
+        ]
+      : []),
+    ...chapterStack.map((chapter, index) => ({
+      key: `chapter-${chapter.id}`,
+      label: chapter.name,
+      target: { type: "chapter", index } as BreadcrumbTarget,
+    })),
+  ];
 
-    if (correctOptions.length) return correctOptions.join(", ");
+  const showChapterSidebar =
+    viewMode === "questions" && selectedTopic !== null && chapters.length > 0;
+  const showQuestionEmptyState =
+    !isLoading && questionsInChapter.length === 0 && !isQuestionFiltering;
 
-    const legacyAnswer = question.correct_answer?.trim();
-    if (!legacyAnswer) return "-";
-
-    try {
-      const labels = JSON.parse(legacyAnswer);
-      if (Array.isArray(labels)) {
-        return labels
-          .map((label) => {
-            const optionIndex = optionLabels.indexOf(String(label));
-            const option = options[optionIndex];
-            return option ? `${label}. ${option.text}` : String(label);
-          })
-          .join(", ");
-      }
-    } catch {
-      // Old single-choice questions stored the correct answer as a plain label.
-    }
-
-    const optionIndex = optionLabels.indexOf(legacyAnswer);
-    const option = options[optionIndex];
-    return option ? `${legacyAnswer}. ${option.text}` : legacyAnswer;
-  };
-
-  const panelTitle =
-    viewMode === "topics"
+  const panelTitle =    viewMode === "topics"
       ? t("topicManagement")
       : viewMode === "chapters"
         ? t("chapterManagement")
@@ -920,64 +845,101 @@ export default function LecturerQuestions() {
 
   return (
     <div className="w-full max-w-full space-y-6 overflow-hidden">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-3">
           <div>
             <h2 className="text-2xl font-bold text-neutral-900">
               {t("questionBank")}</h2>
             <p className="mt-1 text-sm text-neutral-500">{t("questionBankSubtitle")}</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" className="cursor-pointer gap-1.5 border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800">
-              <Link href={{ pathname: "/lecturer/questions/generate", query: {
-                ...(selectedTopic ? { topic: selectedTopic.id } : {}),
-                ...(currentChapter ? { chapter: currentChapter.id } : {}),
-              } }}><Sparkles className="h-4 w-4" />{generationText("title")}</Link>
-            </Button>
-            <Button asChild variant="outline" className="cursor-pointer gap-1.5 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800">
-              <Link href={{ pathname: "/lecturer/questions/import", query: {
-                ...(selectedTopic ? { topic: selectedTopic.id } : {}),
-                ...(currentChapter ? { chapter: currentChapter.id } : {}),
-              } }}><Upload className="h-4 w-4" />{t("importWordExcel")}</Link>
-            </Button>
-            <Button asChild variant="outline" className="cursor-pointer gap-1.5 border-gray-300 bg-white">
-              <Link href="/lecturer/questions/documents"><BookOpen className="h-4 w-4" />{documentText('title')}</Link>
-            </Button>
-          </div>
-          {viewMode !== "topics" && (
-            <Button
-              variant="ghost"
-              onClick={() =>
-                goBack().catch(() => toast.error(t("canTGoBack")))
-              }
-              className="h-8 gap-2 px-0 text-gray-700 hover:bg-transparent hover:text-[#0066cc] hover:cursor-pointer"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              {viewMode === "questions"
-                ? t("returnToChapter")
-                : chapterStack.length > 0
-                  ? t("returnToTheFatherChapter")
-                  : t("backToTopic")}
-            </Button>
-          )}
+          <nav aria-label={t("breadcrumbLabel")}>
+            <ol className="flex flex-wrap items-center gap-1 text-sm text-gray-600">
+              {breadcrumbItems.map((item, index) => {
+                const isLast = index === breadcrumbItems.length - 1;
+                return (
+                  <li key={item.key} className="flex min-w-0 items-center gap-1">
+                    {index > 0 && (
+                      <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+                    )}
+                    {isLast ? (
+                      <span
+                        className="max-w-[260px] truncate font-semibold text-neutral-900"
+                        aria-current="page"
+                        title={item.label}
+                      >
+                        {item.label}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className="max-w-[260px] truncate rounded-sm hover:cursor-pointer hover:text-[#0066cc] hover:underline"
+                        title={item.label}
+                        onClick={() =>
+                          goToBreadcrumb(item.target).catch(() =>
+                            toast.error(t("canTGoBack")),
+                          )
+                        }
+                      >
+                        {item.label}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
         </div>
 
-        {selectedTopic && (
-          <div className="rounded-md border border-gray-300 bg-white/70 px-4 py-2 text-sm text-gray-700">
-            <div>
-              {t("topicLabel")} <span className="font-medium">{selectedTopic.name}</span>
-            </div>
-            {currentChapter && (
-              <div>
-                {t("chapterLabel")}{" "}
-                <span className="font-medium">{currentChapter.name}</span>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {selectedTopic && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="cursor-pointer gap-1.5 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  {t("addQuestionsMenu")}
+                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border-gray-300">
+                <DropdownMenuItem asChild className="cursor-pointer gap-2 text-violet-700 focus:text-violet-800">
+                  <Link href={{ pathname: "/lecturer/questions/generate", query: {
+                    topic: selectedTopic.id,
+                    ...(currentChapter ? { chapter: currentChapter.id } : {}),
+                  } }}><Sparkles className="h-4 w-4" aria-hidden="true" />{generationText("title")}</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer gap-2 text-blue-700 focus:text-blue-800">
+                  <Link href={{ pathname: "/lecturer/questions/import", query: {
+                    topic: selectedTopic.id,
+                    ...(currentChapter ? { chapter: currentChapter.id } : {}),
+                  } }}><Upload className="h-4 w-4" aria-hidden="true" />{t("importWordExcel")}</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button asChild variant="outline" className="cursor-pointer gap-1.5 border-gray-300 bg-white">
+            <Link href="/lecturer/questions/documents"><BookOpen className="h-4 w-4" />{documentText('title')}</Link>
+          </Button>
+        </div>
       </div>
-
-      <Card className="bg-white border-gray-300 shadow-sm space-y-4">
+      <div
+        className={
+          showChapterSidebar
+            ? "grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]"
+            : undefined
+        }
+      >
+      {showChapterSidebar && selectedTopic && (
+        <ChapterSidebar
+          topicName={selectedTopic.name}
+          chapters={chapters}
+          activeChapterId={currentChapter?.id ?? null}
+          onSelect={openChapterQuestionsFromTree}
+        />
+      )}
+      <Card className="min-w-0 bg-white border-gray-300 shadow-sm space-y-4">
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>{panelTitle}</CardTitle>
           {viewMode === "topics" && (
@@ -1004,287 +966,218 @@ export default function LecturerQuestions() {
           )}
 
           {viewMode === "chapters" && (
-            <Button
-              onClick={openCreateChapterDialog}
-              className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {t("createChapter")}</Button>
+            <div className="flex w-full gap-2 sm:w-auto">
+              <div className="relative min-w-0 flex-1 sm:w-[320px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    setChapterPage(1);
+                  }}
+                  placeholder={t("searchChapters")}
+                  aria-label={t("searchChapters")}
+                  className="pl-10 bg-white border-gray-300"
+                />
+              </div>
+              <div className="flex shrink-0 rounded-md border border-gray-300 bg-white p-0.5">
+                {(
+                  [
+                    { layout: "list", icon: List, label: t("viewList") },
+                    { layout: "tree", icon: ListTree, label: t("viewTree") },
+                  ] as const
+                ).map(({ layout, icon: Icon, label }) => (
+                  <IconTooltip key={layout} label={label}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      aria-label={label}
+                      aria-pressed={chapterLayout === layout}
+                      onClick={() => setChapterLayout(layout)}
+                      className={`h-8 w-8 hover:cursor-pointer ${
+                        chapterLayout === layout
+                          ? "bg-blue-50 text-[#0066cc] hover:bg-blue-100"
+                          : "text-gray-500 hover:bg-gray-100"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </Button>
+                  </IconTooltip>
+                ))}
+              </div>
+              <Button
+                onClick={openCreateChapterDialog}
+                className="shrink-0 bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("createChapter")}</Button>
+            </div>
           )}
 
-          {viewMode === "questions" && (
-            <Button
-              onClick={openCreateQuestionDialog}
-              className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {t("createQuestions")}</Button>
+          {viewMode === "questions" && !showQuestionEmptyState && (
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
+              <div className="relative min-w-[200px] flex-1 sm:w-[260px] sm:flex-none">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => {
+                    setSearchTerm(event.target.value);
+                    setQuestionPage(1);
+                  }}
+                  placeholder={t("searchQuestions")}
+                  aria-label={t("searchQuestions")}
+                  className="pl-10 bg-white border-gray-300"
+                />
+              </div>
+              <Select
+                value={typeFilter}
+                onValueChange={(value) => {
+                  setTypeFilter(value as QuestionType | "ALL");
+                  setQuestionPage(1);
+                }}
+              >
+                <SelectTrigger
+                  className="w-[170px] bg-white border-gray-300"
+                  aria-label={t("questionTypeLabel")}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="ALL">{t("allTypes")}</SelectItem>
+                  <SelectItem value="SINGLE_CHOICE">{t("oneAnswer")}</SelectItem>
+                  <SelectItem value="MULTIPLE_CHOICE">{t("manyAnswers")}</SelectItem>
+                  <SelectItem value="ESSAY">{t("essay")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={formatFilter}
+                onValueChange={(value) => {
+                  setFormatFilter(value as QuestionFormat | "ALL");
+                  setQuestionPage(1);
+                }}
+              >
+                <SelectTrigger
+                  className="w-[170px] bg-white border-gray-300"
+                  aria-label={t("questionFormatLabel")}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="ALL">{t("allFormats")}</SelectItem>
+                  <SelectItem value="KNOWLEDGE">{t("recognize")}</SelectItem>
+                  <SelectItem value="UNDERSTANDING">{t("understanding")}</SelectItem>
+                  <SelectItem value="APPLYING">{t("manipulate")}</SelectItem>
+                  <SelectItem value="ADVANCED">{t("advanced")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={openCreateQuestionDialog}
+                className="shrink-0 bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {t("createQuestions")}</Button>
+            </div>
           )}
         </CardHeader>
 
         <CardContent>
+          {viewMode === "chapters" && chapterLayout === "list" && !isLoading && (
+            <p className="mb-3 text-sm text-muted-foreground">
+              {t("chapterCount", { count: chapterRows.length })}
+            </p>
+          )}
+          {viewMode === "questions" && !isLoading && !showQuestionEmptyState && (
+            <p className="mb-3 text-sm text-muted-foreground">
+              {isQuestionFiltering
+                ? t("questionCountFiltered", {
+                    count: questionRows.length,
+                    total: questionsInChapter.length,
+                  })
+                : t("questionCount", { count: questionsInChapter.length })}
+            </p>
+          )}
           {viewMode === "topics" && (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-300">
-                    <TableHead>{t("topicName")}</TableHead>
-                    <TableHead>{t("creationDate")}</TableHead>
-                    <TableHead className="text-center">{t("operation")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {topicRows.length > 0 ? (
-                    paginatedTopicRows.map((topic) => (
-                      <TableRow key={topic.id} className="border-gray-300">
-                        <TableCell className="font-medium">
-                          {topic.name}
-                        </TableCell>
-                        <TableCell>{formatDate(topic.created_at, intlLocales[locale])}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
-                              onClick={() =>
-                                openTopic(topic).catch(() =>
-                                  toast.error(t("cannotOpenChapter")),
-                                )
-                              }
-                            >
-                              {t("chapterManagement2")}</Button>
-                            <DeleteButton
-                              title={t("deleteTopic")}
-                              description={t("thisTopicAlongWithAllChapters")}
-                              onConfirm={() => handleDeleteTopic(topic.id)}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <EmptyRow
-                      colSpan={3}
-                      text={isLoading ? t("loadingData") : t("thereAreNoTopicsYet")}
-                    />
-                  )}
-                </TableBody>
-              </Table>
-
-              <PaginationControls
-                currentPage={topicPage}
-                totalPages={topicTotalPages}
-                setCurrentPage={setTopicPage}
-              />
-            </>
+            <TopicList
+              rows={paginatedTopicRows}
+              hasAnyTopic={topicRows.length > 0}
+              isLoading={isLoading}
+              page={topicPage}
+              totalPages={topicTotalPages}
+              setPage={setTopicPage}
+              onOpen={openTopic}
+              onDelete={handleDeleteTopic}
+            />
           )}
 
-          {viewMode === "chapters" && (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-300">
-                    <TableHead>{t("chapter")}</TableHead>
-                    <TableHead>{t("parentChapter")}</TableHead>
-                    <TableHead>{t("order")}</TableHead>
-                    <TableHead>{t("creationDate")}</TableHead>
-                    <TableHead>{t("updateDate")}</TableHead>
-                    <TableHead className="text-center">{t("operation")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {chapterRows.length > 0 ? (
-                    paginatedChapterRows.map((chapter) => {
-                      const childCount = getChildCount(chapter.id);
-                      const parent = chapters.find(
-                        (item) => item.id === chapter.parent_id,
-                      );
-                      return (
-                        <TableRow key={chapter.id} className="border-gray-300">
-                          <TableCell className="font-medium">
-                            {chapter.name}
-                          </TableCell>
-                          <TableCell>{parent?.name ?? t("doNotHave")}</TableCell>
-                          <TableCell>{chapter.order}</TableCell>
-                          <TableCell>
-                            {formatDate(chapter.created_at, intlLocales[locale])}
-                          </TableCell>
-                          <TableCell>
-                            {formatDate(chapter.updated_at, intlLocales[locale])}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex flex-wrap justify-center gap-1">
-                              {childCount > 0 && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
-                                  onClick={() => openChapterChildren(chapter)}
-                                >
-                                  {t("manageSubChapters")}
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
-                                onClick={() =>
-                                  openChapterQuestions(chapter).catch(() =>
-                                    toast.error(t("unableToLoadQuestion")),
-                                  )
-                                }
-                              >
-                                {t("questionManagement2")}
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
-                                onClick={() => openEditChapterDialog(chapter)}
-                                {...iconLabelProps(iconLabels.edit)}
-                              >
-                                <Pencil className="h-4 w-4" aria-hidden="true" />
-                              </Button>
-                              <DeleteButton
-                                title={t("deleteChapters")}
-                                description={t("thisChapterAndAllSubChapters")}
-                                onConfirm={() =>
-                                  handleDeleteChapter(chapter.id)
-                                }
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  ) : (
-                    <EmptyRow
-                      colSpan={6}
-                      text={
-                        isLoading
-                          ? t("loadingData")
-                          : t("thereAreNoChaptersAtThis")
-                      }
-                    />
-                  )}
-                </TableBody>
-              </Table>
+          {viewMode === "chapters" && chapterLayout === "tree" && (
+            <ChapterTreeView
+              chapters={chapters}
+              rootParentId={currentChapter?.id ?? null}
+              keyword={searchTerm}
+              isLoading={isLoading}
+              onOpenQuestions={openChapterQuestionsFromTree}
+              onEdit={openEditChapterDialog}
+              onAddChild={openAddSubChapterDialog}
+              onDelete={handleDeleteChapter}
+              onReorder={handleReorderChapters}
+            />
+          )}
 
-              <PaginationControls
-                currentPage={chapterPage}
-                totalPages={chapterTotalPages}
-                setCurrentPage={setChapterPage}
-              />
-            </>
+          {viewMode === "chapters" && chapterLayout === "list" && (
+            <ChapterList
+              rows={paginatedChapterRows}
+              hasAnyChapter={chapterRows.length > 0}
+              isLoading={isLoading}
+              isSearching={searchTerm.trim().length > 0}
+              page={chapterPage}
+              totalPages={chapterTotalPages}
+              setPage={setChapterPage}
+              getChildCount={getChildCount}
+              onOpenChildren={openChapterChildren}
+              onOpenQuestions={openChapterQuestions}
+              onEdit={openEditChapterDialog}
+              onDelete={handleDeleteChapter}
+            />
           )}
 
           {viewMode === "questions" && (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-gray-300">
-                    <TableHead className="w-[34%]">{t("question")}</TableHead>
-                    <TableHead>{t("questionTypeLabel")}</TableHead>
-                    <TableHead>{t("questionFormatLabel")}</TableHead>
-                    <TableHead>{t("answer")}</TableHead>
-                    <TableHead>{t("creationDate")}</TableHead>
-                    <TableHead>{t("updateDate")}</TableHead>
-                    <TableHead className="text-center">{t("operation")}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {questionRows.length > 0 ? (
-                    paginatedQuestionRows.map((question) => (
-                      <TableRow key={question.id} className="border-gray-300">
-                        <TableCell className="w-[34%] max-w-[420px]">
-                          <div
-                            className="line-clamp-2 max-w-[420px] overflow-hidden text-sm leading-5"
-                            title={question.question_text}
-                          >
-                            <MathRenderer
-                              content={getQuestionPreviewText(
-                                question.question_text,
-                              )}
-                            />
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <QuestionTypeBadge type={question.question_type} />
-                        </TableCell>
-                        <TableCell>
-                          <QuestionFormatBadge
-                            format={question.question_format}
-                          />
-                        </TableCell>
-                        <TableCell className="max-w-[180px] truncate">
-                          {getQuestionAnswerText(question)}
-                        </TableCell>
-                        <TableCell>{formatDate(question.created_at, intlLocales[locale])}</TableCell>
-                        <TableCell>{formatDate(question.updated_at, intlLocales[locale])}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-[#0066cc] hover:text-[#0066cc] font-medium hover:cursor-pointer"
-                              disabled={loadingDetailId === question.id}
-                              onClick={() => openQuestionDetail(question.id)}
-                              {...iconLabelProps(iconLabels.viewDetails)}
-                            >
-                              {loadingDetailId === question.id ? (
-                                <Loader2 className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
-                              ) : (
-                                <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
-                              )}
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
-                              disabled={loadingEditId === question.id}
-                              {...iconLabelProps(iconLabels.edit)}
-                              onClick={() =>
-                                openEditQuestionDialog(question.id)
-                              }
-                            >
-                              {loadingEditId === question.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                              ) : (
-                                <Pencil className="h-4 w-4" aria-hidden="true" />
-                              )}
-                            </Button>
-                            <DeleteButton
-                              title={t("deleteQuestion")}
-                              description={t("theQuestionWillBeRemovedFrom")}
-                              onConfirm={() =>
-                                handleDeleteQuestion(question.id)
-                              }
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <EmptyRow
-                      colSpan={7}
-                      text={
-                        isLoading ? t("loadingData") : t("noQuestionsYet")
-                      }
-                    />
-                  )}
-                </TableBody>
-              </Table>
-
-              <PaginationControls
-                currentPage={questionPage}
-                totalPages={questionTotalPages}
-                setCurrentPage={setQuestionPage}
-              />
-            </>
+            <QuestionList
+              rows={paginatedQuestionRows}
+              hasAnyQuestion={questionRows.length > 0}
+              isLoading={isLoading}
+              isFiltering={isQuestionFiltering}
+              emptyState={
+                selectedTopic && (
+                  <QuestionEmptyState
+                    topicId={selectedTopic.id}
+                    chapterId={currentChapter?.id}
+                    onCreate={openCreateQuestionDialog}
+                  />
+                )
+              }
+              page={questionPage}
+              totalPages={questionTotalPages}
+              setPage={setQuestionPage}
+              selectedIds={selectedQuestionIds}
+              onSelectAll={(checked) =>
+                setSelectedQuestionIds(
+                  checked ? new Set(paginatedQuestionRows.map((q) => q.id)) : new Set(),
+                )
+              }
+              onToggleSelect={toggleQuestionSelection}
+              onClearSelection={() => setSelectedQuestionIds(new Set())}
+              onBulkDelete={handleBulkDelete}
+              loadingDetailId={loadingDetailId}
+              loadingEditId={loadingEditId}
+              onView={openQuestionDetail}
+              onEdit={openEditQuestionDialog}
+              onDelete={handleDeleteQuestion}
+            />
           )}
         </CardContent>
       </Card>
+      </div>
 
       <Dialog open={isTopicDialogOpen} onOpenChange={setIsTopicDialogOpen}>
         <DialogContent className="bg-white border-gray-300">
@@ -1434,690 +1327,7 @@ export default function LecturerQuestions() {
       <QuestionDetailDialog
         question={detailQuestion}
         onOpenChange={(open) => !open && setDetailQuestion(null)}
-        parseQuestionOptions={parseQuestionOptions}
-        getQuestionAnswerText={getQuestionAnswerText}
       />
-
     </div>
-  );
-}
-
-function PaginationControls({
-  currentPage,
-  totalPages,
-  setCurrentPage,
-}: {
-  currentPage: number;
-  totalPages: number;
-  setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
-}) {
-  const t = useTranslations("lecturer.questions");
-  if (totalPages <= 0) return null;
-
-  return (
-    <div className="flex items-center justify-end space-x-2 py-4">
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-        className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
-        disabled={currentPage === 1}
-      >
-        <ChevronLeft className="h-4 w-4" />
-        {t("before")}</Button>
-      <div className="text-sm font-medium">
-                {t("pageOf", { page: currentPage, total: totalPages })}
-      </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-        className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
-        disabled={currentPage === totalPages}
-      >
-        {t("next")}
-        <ChevronRight className="h-4 w-4" />
-      </Button>
-    </div>
-  );
-}
-
-function QuestionTypeBadge({ type }: { type: QuestionType }) {
-  const labels = useEnumLabels();
-  const config = questionTypeConfig[type];
-  const Icon = config.Icon;
-
-  return (
-    <div
-      className={`inline-flex items-center gap-2 whitespace-nowrap rounded-full ${config.bgColor} px-3 py-1.5`}
-    >
-      <Icon className={`h-3.5 w-3.5 ${config.color}`} />
-      <span className={`text-xs font-semibold ${config.color}`}>
-        {labels.questionType(type)}
-      </span>
-    </div>
-  );
-}
-
-function QuestionFormatBadge({ format }: { format: QuestionFormat }) {
-  const labels = useEnumLabels();
-  const config = questionFormatConfig[format];
-
-  return (
-    <div
-      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full ${config.bgColor} px-3 py-1.5`}
-    >
-      <div className="flex gap-0.5">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={index}
-            className={`h-2 w-2 rounded-full bg-current ${config.color} ${
-              index < config.level ? "" : "opacity-30"
-            }`}
-          />
-        ))}
-      </div>
-      <span className={`text-xs font-semibold ${config.color}`}>
-        {labels.questionFormat(format)}
-      </span>
-    </div>
-  );
-}
-
-function EmptyRow({ colSpan, text }: { colSpan: number; text: string }) {
-  return (
-    <TableRow className="border-gray-300">
-      <TableCell colSpan={colSpan} className="h-72 text-center">
-        <div className="flex flex-col items-center justify-center space-y-3">
-          <div className="p-4 bg-gray-50 rounded-full">
-            <FileQuestion className="h-10 w-10 text-gray-400" />
-          </div>
-          <div className="space-y-1">
-            <p className="text-lg font-medium text-gray-900">{text}</p>
-          </div>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
-}
-
-function DeleteButton({
-  title,
-  description,
-  onConfirm,
-}: {
-  title: string;
-  description: string;
-  onConfirm: () => Promise<void>;
-}) {
-  const t = useTranslations("lecturer.questions");
-  const iconLabels = useIconLabels();
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          size="icon"
-          variant="ghost"
-          className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.danger}`}
-          {...iconLabelProps(iconLabels.delete)}
-        >
-          <Trash2 className="h-4 w-4" aria-hidden="true" />
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent className="bg-white border-gray-300">
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel className="hover:cursor-pointer">
-            {t("cancel")}</AlertDialogCancel>
-          <AlertDialogAction
-            className="bg-red-600 hover:bg-red-700 text-white hover:cursor-pointer"
-            onClick={() =>
-              onConfirm().catch(() => toast.error(t("dataCannotBeDeleted")))
-            }
-          >
-            {t("delete")}</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
-function QuestionFilesList({ files }: { files?: QuestionFile[] }) {
-  const t = useTranslations("lecturer.questions");
-  if (!files?.length) {
-    return (
-      <div className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
-        {t("thereAreNoAttachedFiles")}</div>
-    );
-  }
-
-  return (
-    <div className="grid min-w-0 max-w-full gap-2">
-      {files.map((item) => {
-        const fileSize = formatFileSize(item.file.size);
-
-        return (
-          <div
-            key={item.file.id}
-            className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden rounded-md border border-gray-300 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-50 text-gray-600">
-                {fileIcon(item.file.type)}
-              </div>
-              <div className="min-w-0 flex-1 overflow-hidden">
-                <div
-                  className="block max-w-full truncate font-medium text-gray-900"
-                  title={item.file.name}
-                >
-                  {item.file.name}
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                  <Badge variant="outline" className="h-5 px-2">
-                    {item.file.type}
-                  </Badge>
-                  {fileSize && <span>{fileSize}</span>}
-                </div>
-              </div>
-            </div>
-
-            {item.file.url && (
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="shrink-0 self-start border-gray-300 hover:cursor-pointer sm:self-center"
-              >
-                <a href={item.file.url} target="_blank" rel="noreferrer">
-                  <ExternalLink className="h-4 w-4" />
-                  {t("openTheFile")}</a>
-              </Button>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function SelectedFilesList({ files }: { files: File[] }) {
-  return (
-    <div className="grid gap-2 md:grid-cols-2">
-      {files.map((file, index) => {
-        const type = getFileType(file);
-        return (
-          <div
-            key={`${file.name}-${index}`}
-            className="flex min-w-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-          >
-            {type ? fileIcon(type) : <FileQuestion className="h-4 w-4" />}
-            <span className="min-w-0 flex-1 truncate" title={file.name}>
-              {file.name}
-            </span>
-            {type && <Badge variant="outline">{type}</Badge>}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function QuestionDialog({
-  open,
-  onOpenChange,
-  mode,
-  questionForm,
-  setQuestionForm,
-  selectedFiles,
-  setSelectedFiles,
-  existingFiles,
-  replaceFiles,
-  setReplaceFiles,
-  isSubmitting,
-  onCancel,
-  onSubmit,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  mode: "create" | "edit";
-  questionForm: QuestionForm;
-  setQuestionForm: React.Dispatch<React.SetStateAction<QuestionForm>>;
-  selectedFiles: File[];
-  setSelectedFiles: React.Dispatch<React.SetStateAction<File[]>>;
-  existingFiles: QuestionFile[];
-  replaceFiles: boolean;
-  setReplaceFiles: React.Dispatch<React.SetStateAction<boolean>>;
-  isSubmitting: boolean;
-  onCancel: () => void;
-  onSubmit: () => Promise<void>;
-}) {
-  const t = useTranslations("lecturer.questions");
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] sm:max-w-4xl overflow-y-auto bg-white border-gray-300">
-        <DialogHeader>
-          <DialogTitle>
-            {mode === "edit" ? t("updateQuestion") : t("createQuestions")}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-2">
-          <div className="space-y-2">
-            <Label>{t("questionContent")}</Label>
-            <MathInput
-              value={questionForm.question_text}
-              onChange={(value) =>
-                setQuestionForm((prev) => ({ ...prev, question_text: value }))
-              }
-              placeholder={t("enterQuestionContent")}
-              className="bg-white border-gray-300"
-            />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>{t("questionTypeLabel")}</Label>
-              <Select
-                value={questionForm.question_type}
-                onValueChange={(value) =>
-                  setQuestionForm((prev) => ({
-                    ...prev,
-                    question_type: value as QuestionType,
-                    options: value === "ESSAY" ? emptyOptions() : value === "SINGLE_CHOICE"
-                      ? prev.options.map((option, index) => ({ ...option, isCorrect: option.isCorrect && index === prev.options.findIndex((item) => item.isCorrect) }))
-                      : prev.options,
-                  }))
-                }
-              >
-                <SelectTrigger className="bg-white border-gray-300">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="SINGLE_CHOICE">{t("oneAnswer")}</SelectItem>
-                  <SelectItem value="MULTIPLE_CHOICE">{t("manyAnswers")}</SelectItem>
-                  <SelectItem value="ESSAY">{t("essay")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t("questionFormatLabel")}</Label>
-              <Select
-                value={questionForm.question_format}
-                onValueChange={(value) =>
-                  setQuestionForm((prev) => ({
-                    ...prev,
-                    question_format: value as QuestionFormat,
-                  }))
-                }
-              >
-                <SelectTrigger className="bg-white border-gray-300">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-gray-300">
-                  <SelectItem value="KNOWLEDGE">{t("recognize")}</SelectItem>
-                  <SelectItem value="UNDERSTANDING">{t("understanding")}</SelectItem>
-                  <SelectItem value="APPLYING">{t("manipulate")}</SelectItem>
-                  <SelectItem value="ADVANCED">{t("advanced")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {questionForm.question_type === "ESSAY" ? (
-            <div className="space-y-2">
-              <Label>{t("answer")}</Label>
-              <MathInput
-                value={questionForm.correct_answer}
-                onChange={(value) =>
-                  setQuestionForm((prev) => ({
-                    ...prev,
-                    correct_answer: value,
-                  }))
-                }
-                placeholder={t("enterTheReferenceAnswer")}
-                className="bg-white border-gray-300"
-              />
-            </div>
-          ) : (
-            <QuestionOptionsEditor
-              questionForm={questionForm}
-              setQuestionForm={setQuestionForm}
-            />
-          )}
-
-          {mode === "edit" ? (
-            <div className="min-w-0 space-y-4">
-              <div className="min-w-0 space-y-2">
-                <Label>{t("currentAttachment")}</Label>
-                <QuestionFilesList
-                  files={replaceFiles ? undefined : existingFiles}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>{t("replacementFile")}</Label>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <label className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-600 hover:border-[#0066cc]">
-                    <Upload className="mb-2 h-5 w-5" />
-                    {t("selectAudioVideoOrImage")}<Input
-                      type="file"
-                      multiple
-                      accept="image/*,audio/*,video/*"
-                      className="hidden"
-                      onChange={(event) => {
-                        const files = Array.from(event.target.files ?? []);
-                        if (!files.length) return;
-                        const validFiles = files.filter((file) =>
-                          getFileType(file),
-                        );
-                        if (validFiles.length !== files.length) {
-                          toast.error(t("onlySupportsAudioVideoOrImages"));
-                        }
-                        if (validFiles.length) {
-                          setSelectedFiles(validFiles);
-                          setReplaceFiles(true);
-                        }
-                      }}
-                    />
-                  </label>
-
-                  <div className="flex gap-2 sm:flex-col">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-gray-300 hover:cursor-pointer"
-                      onClick={() => {
-                        setSelectedFiles([]);
-                        setReplaceFiles(false);
-                      }}
-                    >
-                      {t("keepTheCurrentFile")}</Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:cursor-pointer"
-                      onClick={() => {
-                        setSelectedFiles([]);
-                        setReplaceFiles(true);
-                      }}
-                    >
-                      {t("deleteCurrentFile")}</Button>
-                  </div>
-                </div>
-
-                {replaceFiles && selectedFiles.length > 0 && (
-                  <SelectedFilesList files={selectedFiles} />
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>{t("attachedFiles")}</Label>
-              <label className="flex cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-gray-300 bg-white p-5 text-sm text-gray-600 hover:border-[#0066cc]">
-                <Upload className="mb-2 h-5 w-5" />
-                {t("selectAudioVideoOrImage")}<Input
-                  type="file"
-                  multiple
-                  accept="image/*,audio/*,video/*"
-                  className="hidden"
-                  onChange={(event) => {
-                    const files = Array.from(event.target.files ?? []);
-                    const validFiles = files.filter((file) =>
-                      getFileType(file),
-                    );
-                    if (validFiles.length !== files.length) {
-                      toast.error(t("onlySupportsAudioVideoOrImages"));
-                    }
-                    setSelectedFiles(validFiles);
-                  }}
-                />
-              </label>
-              {selectedFiles.length > 0 && (
-                <SelectedFilesList files={selectedFiles} />
-              )}
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={onCancel}
-            disabled={isSubmitting}
-            className="hover:cursor-pointer"
-          >
-            {t("cancel")}</Button>
-          <Button
-            disabled={isSubmitting}
-            onClick={() =>
-              onSubmit().catch(() =>
-                toast.error(
-                  mode === "edit"
-                    ? t("unableToUpdateQuestion")
-                    : t("cannotCreateQuestion"),
-                ),
-              )
-            }
-            className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t("processing")}</>
-            ) : mode === "edit" ? (
-              t("save")
-            ) : (
-              t("create")
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function QuestionOptionsEditor({
-  questionForm,
-  setQuestionForm,
-}: {
-  questionForm: QuestionForm;
-  setQuestionForm: React.Dispatch<React.SetStateAction<QuestionForm>>;
-}) {
-  const t = useTranslations("lecturer.questions");
-  if (questionForm.question_type === "SINGLE_CHOICE") {
-    return (
-      <div className="space-y-3">
-        <Label>{t("answer")}</Label>
-        <RadioGroup
-          value={String(
-            questionForm.options.findIndex((option) => option.isCorrect),
-          )}
-          onValueChange={(value) => {
-            const selected = Number(value);
-            setQuestionForm((prev) => ({
-              ...prev,
-              options: prev.options.map((option, index) => ({
-                ...option,
-                isCorrect: index === selected,
-              })),
-            }));
-          }}
-        >
-          {questionForm.options.map((option, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <span className="w-5 text-sm font-medium">
-                {optionLabels[index]}
-              </span>
-              <MathInput
-                value={option.text}
-                onChange={(value) => {
-                  const next = [...questionForm.options];
-                  next[index] = { ...next[index], text: value };
-                  setQuestionForm((prev) => ({ ...prev, options: next }));
-                }}
-                placeholder={t("optionLabel", { label: optionLabels[index] })}
-                className="bg-white border-gray-300"
-              />
-              <RadioGroupItem value={String(index)} />
-            </div>
-          ))}
-        </RadioGroup>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <Label>{t("answer")}</Label>
-      {questionForm.options.map((option, index) => (
-        <div key={index} className="flex items-center gap-2">
-          <span className="w-5 text-sm font-medium">{optionLabels[index]}</span>
-          <MathInput
-            value={option.text}
-            onChange={(value) => {
-              const next = [...questionForm.options];
-              next[index] = { ...next[index], text: value };
-              setQuestionForm((prev) => ({ ...prev, options: next }));
-            }}
-            placeholder={t("optionLabel", { label: optionLabels[index] })}
-            className="bg-white border-gray-300"
-          />
-          <Checkbox
-            checked={option.isCorrect}
-            onCheckedChange={(checked) => {
-              const next = [...questionForm.options];
-              next[index] = { ...next[index], isCorrect: Boolean(checked) };
-              setQuestionForm((prev) => ({ ...prev, options: next }));
-            }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function QuestionDetailDialog({
-  question,
-  onOpenChange,
-  parseQuestionOptions,
-  getQuestionAnswerText,
-}: {
-  question: Question | null;
-  onOpenChange: (open: boolean) => void;
-  parseQuestionOptions: (question: Question) => ParsedQuestionOption[];
-  getQuestionAnswerText: (question: Question) => string;
-}) {
-  const t = useTranslations("lecturer.questions");
-  return (
-    <Dialog open={Boolean(question)} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] w-[calc(100vw-2rem)] sm:max-w-3xl overflow-y-auto overflow-x-hidden bg-white border-gray-300">
-        <DialogHeader>
-          <DialogTitle>{t("questionDetails")}</DialogTitle>
-        </DialogHeader>
-        {question && (
-          <div className="min-w-0 space-y-4">
-            <div className="min-w-0 overflow-hidden rounded-md border border-gray-300 bg-white p-3">
-              <MathRenderer content={question.question_text} />
-            </div>
-            <div className="grid gap-3 grid-rows-3">
-              <div>
-                <Label>{t("questionTypeLabel")}</Label>
-                <div className="mt-1 text-sm">
-                  <QuestionTypeBadge type={question.question_type} />
-                </div>
-              </div>
-              <div>
-                <Label>{t("questionFormatLabel")}</Label>
-                <div className="mt-1 text-sm">
-                  <QuestionFormatBadge format={question.question_format} />
-                </div>
-              </div>
-              <div>
-                <Label>{t("answer")}</Label>
-                <div className="mt-1 text-sm">
-                  {getQuestionAnswerText(question)}
-                </div>
-              </div>
-            </div>
-            {parseQuestionOptions(question).length > 0 && (
-              <div className="space-y-2">
-                <Label>{t("options")}</Label>
-                <div className="grid gap-2">
-                  {parseQuestionOptions(question).map((option, index) => (
-                    <div
-                      key={`${question.id}-${index}`}
-                      className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                    >
-                      {option.label ?? optionLabels[index]}. {option.text}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {question.files?.length ? (
-              <div className="min-w-0 space-y-2">
-                <Label>{t("files")}</Label>
-                <div className="grid min-w-0 max-w-full gap-2">
-                  {question.files.map((item) => {
-                    const fileSize = formatFileSize(item.file.size);
-
-                    return (
-                      <div
-                        key={item.file.id}
-                        className="flex min-w-0 max-w-full flex-col gap-3 overflow-hidden rounded-md border border-gray-300 bg-white px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="flex min-w-0 flex-1 items-center gap-3 overflow-hidden">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-gray-50 text-gray-600">
-                            {fileIcon(item.file.type)}
-                          </div>
-                          <div className="min-w-0 flex-1 overflow-hidden">
-                            <div
-                              className="block max-w-full truncate font-medium text-gray-900"
-                              title={item.file.name}
-                            >
-                              {item.file.name}
-                            </div>
-                            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                              <Badge variant="outline" className="h-5 px-2">
-                                {item.file.type}
-                              </Badge>
-                              {fileSize && <span>{fileSize}</span>}
-                            </div>
-                          </div>
-                        </div>
-
-                        {item.file.url && (
-                          <Button
-                            asChild
-                            variant="outline"
-                            size="sm"
-                            className="shrink-0 self-start border-gray-300 hover:cursor-pointer sm:self-center"
-                          >
-                            <a
-                              href={item.file.url}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                              {t("openTheFile")}</a>
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label>{t("files")}</Label>
-                <div className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-4 text-sm text-gray-500">
-                  {t("thereAreNoAttachedFiles")}</div>
-              </div>
-            )}
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
   );
 }
