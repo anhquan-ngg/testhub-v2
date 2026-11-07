@@ -34,6 +34,8 @@
     "save": "Lưu kế hoạch",
     "approve": "Xác nhận kế hoạch đã lưu",
     "generate": "Sinh theo kế hoạch đã xác nhận",
+    "generateNew": "Sinh thêm lô mới",
+    "generateNewHint": "Tạo một lô bản nháp mới từ cùng kế hoạch và tài liệu, không cần tải lại hay lập chỉ mục lại.",
     "coverage": "Độ phủ kế hoạch",
     "coverageCounts": "{requested} yêu cầu · {generated} đã sinh · {approved} đã duyệt · {committed} đã lưu",
     "status": {
@@ -50,6 +52,21 @@
   "back": "Về ngân hàng câu hỏi",
   "textOnly": "PDF/PPTX · RAG · Một/nhiều đáp án · Tiếng Việt",
   "fileSource": "Tài liệu nguồn",
+  "sourceMode": {
+    "upload": "Tải tài liệu mới",
+    "existing": "Dùng tài liệu đã tải"
+  },
+  "existing": {
+    "label": "Phiên bản tài liệu trong thư viện",
+    "choose": "Chọn phiên bản tài liệu",
+    "indexed": "Đã có chỉ mục",
+    "pickTopic": "Hãy chọn chủ đề để xem các tài liệu đã tải.",
+    "loading": "Đang tải thư viện tài liệu…",
+    "error": "Không tải được thư viện tài liệu. Hãy thử lại sau.",
+    "empty": "Chủ đề này chưa có tài liệu đã tải. Hãy tải tài liệu mới hoặc thêm trong thư viện.",
+    "hint": "Chỉ các phiên bản đã trích xuất hoặc đang xử lý mới chọn được. Tài liệu cần OCR, lỗi hoặc chưa hoàn tất upload bị khóa. Dùng lại tài liệu giúp bỏ qua upload, trích xuất và tạo chỉ mục tài liệu.",
+    "manage": "Mở thư viện tài liệu"
+  },
   "sourceFileLabel": "Nguồn: {file} · Phiên bản {version}",
   "fileHint": "Đính kèm một PDF có lớp văn bản hoặc PPTX, tối đa 20 MB. Hệ thống trích xuất và tạo chỉ mục trước khi sinh câu hỏi. Nội dung scan cần OCR nên chưa được hỗ trợ.",
   "includeNotes": "Sử dụng cả speaker notes trong PPTX",

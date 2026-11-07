@@ -744,6 +744,28 @@ export function KnowledgePlanWorkspace({
                   >
                     {t("generate")}
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="cursor-pointer gap-1.5 border-violet-300 bg-white text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                    title={t("generateNewHint")}
+                    disabled={
+                      plan.status !== "APPROVED" || isDirty || busy || disabled
+                    }
+                    onClick={() =>
+                      void mutate(async () => {
+                        // A fresh key always creates another batch from the same approved plan.
+                        generationKey.current = null;
+                        const result = await api.generate(
+                          plan,
+                          crypto.randomUUID(),
+                        );
+                        onGenerated(result.batch_id);
+                      })
+                    }
+                  >
+                    {t("generateNew")}
+                  </Button>
                 </div>
               </form>
             )}

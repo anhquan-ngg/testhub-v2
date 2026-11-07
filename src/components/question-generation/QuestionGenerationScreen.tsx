@@ -55,7 +55,21 @@ import { knowledgePlanService } from "@/services/knowledgePlanService";
 import { KnowledgePlanWorkspace } from "./KnowledgePlanWorkspace";
 
 import { learningDocumentService as documentApi } from "@/services/learningDocumentService";
-import type { DocumentReservation } from "@/types/learning-document";
+import type {
+  DocumentReservation,
+  DocumentStatus,
+  LearningDocument,
+} from "@/types/learning-document";
+
+const uuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const REUSABLE_STATUSES: DocumentStatus[] = [
+  "EXTRACTED",
+  "QUEUED",
+  "PROCESSING",
+];
+const selectClass =
+  "h-9 w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20 disabled:cursor-not-allowed disabled:opacity-60";
 
 type Target = {
   id: string;
@@ -92,6 +106,17 @@ export function QuestionGenerationScreen() {
   const batchId = params.get("batch");
   const [topicId, setTopicId] = useState(params.get("topic") ?? "");
   const [topics, setTopics] = useState<Target[]>([]);
+  const hintedVersion = params.get("version") ?? "";
+  const [sourceMode, setSourceMode] = useState<"upload" | "existing">(
+    uuidPattern.test(hintedVersion) ? "existing" : "upload",
+  );
+  const [existingVersionId, setExistingVersionId] = useState(
+    uuidPattern.test(hintedVersion) ? hintedVersion : "",
+  );
+  const [libraryDocs, setLibraryDocs] = useState<LearningDocument[] | null>(
+    null,
+  );
+  const [libraryError, setLibraryError] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [includeNotes, setIncludeNotes] = useState(false);
   const [uploadStage, setUploadStage] = useState<
@@ -144,6 +169,35 @@ export function QuestionGenerationScreen() {
       });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (sourceMode !== "existing" || !uuidPattern.test(topicId)) {
+      setLibraryDocs(null);
+      return;
+    }
+    const controller = new AbortController();
+    setLibraryDocs(null);
+    setLibraryError(false);
+    documentApi
+      .list(1, controller.signal, { topic_id: topicId, limit: 50 })
+      .then((value) => {
+        setLibraryDocs(value.data);
+        const reusable = value.data.some((doc) =>
+          doc.versions.some(
+            (version) =>
+              REUSABLE_STATUSES.includes(version.status) &&
+              version.id === existingVersionId,
+          ),
+        );
+        if (!reusable) setExistingVersionId("");
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setLibraryError(true);
+      });
+    return () => controller.abort();
+    // The selected version is validated against the list once per topic/mode load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceMode, topicId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -251,87 +305,93 @@ export function QuestionGenerationScreen() {
       external_processing_consent: consent,
       query: "",
     });
-    const sourceType = file?.name.toLowerCase().endsWith(".pdf")
+    const sourceType: "PDF" | "PPTX" | null = file?.name
+      .toLowerCase()
+      .endsWith(".pdf")
       ? "PDF"
       : file?.name.toLowerCase().endsWith(".pptx")
         ? "PPTX"
         : null;
-    if (
-      !parsed.success ||
-      !file ||
-      !sourceType ||
-      file.size <= 0 ||
-      file.size > 20 * 1024 * 1024 ||
-      file.name.length > 200
-    ) {
+    const uploadInput =
+      sourceMode === "upload" &&
+      file &&
+      sourceType &&
+      file.size > 0 &&
+      file.size <= 20 * 1024 * 1024 &&
+      file.name.length <= 200
+        ? { file, sourceType }
+        : null;
+    const reuseInput =
+      sourceMode === "existing" && uuidPattern.test(existingVersionId);
+    if (!parsed.success || (!uploadInput && !reuseInput)) {
       setInvalidCommand(true);
       return;
     }
     createLock.current = true;
     setCreating(true);
     setInvalidCommand(false);
-    setUploadStage("UPLOADING");
+    setUploadStage(uploadInput ? "UPLOADING" : "CREATING");
     try {
-      const signature = JSON.stringify({
-        topicId,
-        includeNotes: sourceType === "PPTX" && includeNotes,
-      });
-      let checkpoint = uploadCheckpoint.current;
-      if (
-        !checkpoint ||
-        (!checkpoint.uploaded &&
-          Date.parse(checkpoint.reservation.upload_expires_at) <= Date.now()) ||
-        checkpoint.file !== file ||
-        checkpoint.signature !== signature
-      ) {
+      let sourceVersionId = existingVersionId;
+      if (uploadInput) {
+        const { file: source, sourceType: type } = uploadInput;
+        const signature = JSON.stringify({
+          topicId,
+          includeNotes: type === "PPTX" && includeNotes,
+        });
         const mime =
-          sourceType === "PDF"
+          type === "PDF"
             ? "application/pdf"
             : "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-        const reservation = await documentApi.create({
-          title: file.name,
-          topic_id: topicId,
-          chapter_id: null,
-          upload: {
-            file_name: file.name,
-            source_type: sourceType,
-            mime_type: mime,
-            size: file.size,
-            include_notes: sourceType === "PPTX" && includeNotes,
-            consent: true,
-          },
-        });
-        checkpoint = {
-          file,
-          signature,
-          reservation,
-          uploaded: false,
-          confirmed: false,
-        };
-        uploadCheckpoint.current = checkpoint;
-      }
-      if (!checkpoint.uploaded) {
-        await documentApi.upload(
-          checkpoint.reservation,
-          file,
-          sourceType === "PDF"
-            ? "application/pdf"
-            : "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        );
-        checkpoint.uploaded = true;
-      }
-      setUploadStage("CONFIRMING");
-      if (!checkpoint.confirmed) {
-        await documentApi.complete(
-          checkpoint.reservation.document_id,
-          checkpoint.reservation.version_id,
-        );
-        checkpoint.confirmed = true;
+        let checkpoint = uploadCheckpoint.current;
+        if (
+          !checkpoint ||
+          (!checkpoint.uploaded &&
+            Date.parse(checkpoint.reservation.upload_expires_at) <=
+              Date.now()) ||
+          checkpoint.file !== source ||
+          checkpoint.signature !== signature
+        ) {
+          const reservation = await documentApi.create({
+            title: source.name,
+            topic_id: topicId,
+            chapter_id: null,
+            upload: {
+              file_name: source.name,
+              source_type: type,
+              mime_type: mime,
+              size: source.size,
+              include_notes: type === "PPTX" && includeNotes,
+              consent: true,
+            },
+          });
+          checkpoint = {
+            file: source,
+            signature,
+            reservation,
+            uploaded: false,
+            confirmed: false,
+          };
+          uploadCheckpoint.current = checkpoint;
+        }
+        if (!checkpoint.uploaded) {
+          await documentApi.upload(checkpoint.reservation, source, mime);
+          checkpoint.uploaded = true;
+        }
+        setUploadStage("CONFIRMING");
+        if (!checkpoint.confirmed) {
+          await documentApi.complete(
+            checkpoint.reservation.document_id,
+            checkpoint.reservation.version_id,
+          );
+          checkpoint.confirmed = true;
+        }
+        sourceVersionId = checkpoint.reservation.version_id;
       }
       const { question_configs } = parsed.data;
       const command = {
         topic_id: topicId,
-        version_id: checkpoint.reservation.version_id,
+        version_id: sourceVersionId,
         question_configs,
         external_processing_consent: true as const,
       };
@@ -452,6 +512,7 @@ export function QuestionGenerationScreen() {
                   disabled={creating}
                   onChange={(event) => {
                     setTopicId(event.target.value);
+                    setExistingVersionId("");
                   }}
                 >
                   <option value="">{t("chooseTopic")}</option>
@@ -462,7 +523,97 @@ export function QuestionGenerationScreen() {
                   ))}
                 </select>
               </div>
-              <div className="space-y-2">
+              <div
+                className="grid grid-cols-2 gap-1 rounded-md bg-gray-100 p-1"
+                role="group"
+                aria-label={t("fileSource")}
+              >
+                {(["upload", "existing"] as const).map((mode) => (
+                  <Button
+                    key={mode}
+                    type="button"
+                    size="sm"
+                    variant={sourceMode === mode ? "default" : "ghost"}
+                    aria-pressed={sourceMode === mode}
+                    className="cursor-pointer"
+                    disabled={creating}
+                    onClick={() => {
+                      setSourceMode(mode);
+                      setInvalidCommand(false);
+                    }}
+                  >
+                    {t(`sourceMode.${mode}`)}
+                  </Button>
+                ))}
+              </div>
+              {sourceMode === "existing" && (
+                <div className="space-y-2">
+                  <Label htmlFor="ai-existing-version">
+                    {t("existing.label")}
+                  </Label>
+                  <select
+                    id="ai-existing-version"
+                    className={selectClass}
+                    value={existingVersionId}
+                    disabled={creating || !libraryDocs?.length}
+                    onChange={(event) => {
+                      setExistingVersionId(event.target.value);
+                      setInvalidCommand(false);
+                    }}
+                  >
+                    <option value="">{t("existing.choose")}</option>
+                    {(libraryDocs ?? []).map((doc) => (
+                      <optgroup key={doc.id} label={doc.title}>
+                        {doc.versions.map((version) => {
+                          const reusable = REUSABLE_STATUSES.includes(
+                            version.status,
+                          );
+                          const ready = version.indexes.some(
+                            (index) => index.status === "READY",
+                          );
+                          return (
+                            <option
+                              key={version.id}
+                              value={version.id}
+                              disabled={!reusable}
+                            >
+                              {documentText("version", {
+                                version: version.version,
+                                name: version.file_name,
+                              })}
+                              {" · "}
+                              {documentText(`status.${version.status}`)}
+                              {ready ? ` · ${t("existing.indexed")}` : ""}
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    {!uuidPattern.test(topicId)
+                      ? t("existing.pickTopic")
+                      : libraryError
+                        ? t("existing.error")
+                        : libraryDocs === null
+                          ? t("existing.loading")
+                          : libraryDocs.length === 0
+                            ? t("existing.empty")
+                            : t("existing.hint")}
+                  </p>
+                  <Link
+                    href="/lecturer/questions/documents"
+                    className="text-xs text-accent-700 underline"
+                  >
+                    {t("existing.manage")}
+                  </Link>
+                </div>
+              )}
+              <div
+                className={
+                  sourceMode === "upload" ? "space-y-2" : "hidden"
+                }
+              >
                 <Label htmlFor="ai-source-file">{t("fileSource")}</Label>
                 <Input
                   id="ai-source-file"
@@ -534,7 +685,11 @@ export function QuestionGenerationScreen() {
                 className="w-full cursor-pointer bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-violet-200 disabled:text-violet-700 disabled:opacity-100"
                 type="submit"
                 disabled={
-                  creating || busy || Boolean(editingId) || !consent || !file
+                  creating ||
+                  busy ||
+                  Boolean(editingId) ||
+                  !consent ||
+                  (sourceMode === "upload" ? !file : !existingVersionId)
                 }
               >
                 {creating ? (

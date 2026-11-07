@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
 import { z } from "zod";
 import axios from "axios";
 import { toast } from "sonner";
@@ -10,13 +10,18 @@ import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { learningDocumentService as api } from "@/services/learningDocumentService";
 import type {
+  DocumentArchiveFilter,
   DocumentContent,
+  DocumentDuplicate,
   DocumentPage,
+  DocumentQuota,
   DocumentReservation,
   DocumentUpload,
+  DocumentVersion,
   LearningDocument,
 } from "@/types/learning-document";
 import { DocumentRagPanel } from "./DocumentRagPanel";
+import { DocumentManagePanel } from "./DocumentManagePanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,9 +30,20 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronLeft, ChevronRight,
-  CloudUpload, FileStack, FileText, FolderOpen, Info, Library, Loader2,
-  RefreshCw, ScanText, ShieldCheck, Sparkles, Trash2,
+  Copy, CloudUpload, FileStack, FileText, FolderOpen, Info, Library, Loader2,
+  RefreshCw, ScanText, Search, ShieldCheck, Sparkles, Trash2,
 } from "lucide-react";
+
+const VERSION_PAGE_SIZE = 20;
+const DETAIL_VERSION_LIMIT = 50;
+const MB = 1024 * 1024;
+
+async function sha256Hex(file: File) {
+  const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+  return Array.from(new Uint8Array(digest), (b) =>
+    b.toString(16).padStart(2, "0"),
+  ).join("");
+}
 
 const selectClassName = "h-10 w-full min-w-0 rounded-md border border-gray-200 bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-[#0066cc] focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
 const statusClassName = {
@@ -43,7 +59,7 @@ type Target = { id: string; name: string; parent_id?: string | null };
 const metadata = z.object({
   title: z.string().trim().min(1).max(200),
   topic_id: z.string().uuid(),
-  chapter_id: z.string().uuid(),
+  chapter_id: z.union([z.string().uuid(), z.literal("")]).transform((value) => value || null),
 });
 
 async function targets(
@@ -65,6 +81,7 @@ async function targets(
 /** Upload/version workflow with safe plain-text preview and resumable confirmation. */
 export function LearningDocumentsScreen() {
   const t = useTranslations("shared.learningDocuments");
+  const format = useFormatter();
   const [title, setTitle] = useState("");
   const [topic, setTopic] = useState("");
   const [chapter, setChapter] = useState("");
@@ -86,8 +103,30 @@ export function LearningDocumentsScreen() {
   const [contentPage, setContentPage] = useState(1);
   const [content, setContent] = useState<DocumentContent | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [query, setQuery] = useState("");
+  const [topicFilter, setTopicFilter] = useState("");
+  const [archivedFilter, setArchivedFilter] =
+    useState<DocumentArchiveFilter>("false");
+  const [quota, setQuota] = useState<DocumentQuota | null>(null);
+  const [extraVersions, setExtraVersions] = useState<DocumentVersion[]>([]);
+  const [versionTotal, setVersionTotal] = useState<number | null>(null);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const [duplicates, setDuplicates] = useState<DocumentDuplicate[]>([]);
+  const [duplicateChecking, setDuplicateChecking] = useState(false);
   const selectedId = document?.id;
-  const version = document?.versions.find((v) => v.id === versionId);
+  const allVersions = useMemo(() => {
+    const known = new Set((document?.versions ?? []).map((v) => v.id));
+    return [
+      ...(document?.versions ?? []),
+      ...extraVersions.filter((v) => !known.has(v.id)),
+    ].sort((a, b) => b.version - a.version);
+  }, [document, extraVersions]);
+  const canLoadMoreVersions =
+    versionTotal === null
+      ? (document?.versions.length ?? 0) >= DETAIL_VERSION_LIMIT
+      : allVersions.length < versionTotal;
+  const version = allVersions.find((v) => v.id === versionId);
   const status = version?.status;
   const pending = (value: LearningDocument) =>
     value.versions.some(
@@ -125,7 +164,11 @@ export function LearningDocumentsScreen() {
       running = true;
       if (notify) setHistoryLoading(true);
       try {
-        const list = await api.list(page, controller.signal);
+        const list = await api.list(page, controller.signal, {
+          q: query,
+          topic_id: topicFilter,
+          archived: archivedFilter,
+        });
         if (!controller.signal.aborted) {
           setHistory(list);
           setHistoryError(false);
@@ -163,7 +206,24 @@ export function LearningDocumentsScreen() {
       controller.abort();
       if (timer) clearInterval(timer);
     };
-  }, [page, selectedId, reloadKey, shouldPoll, t]);
+  }, [page, query, topicFilter, archivedFilter, selectedId, reloadKey, shouldPoll, t]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQuery(searchInput.trim());
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void api
+      .quota(controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) setQuota(value);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [reloadKey]);
   useEffect(() => {
     const controller = new AbortController();
     if (
@@ -183,12 +243,76 @@ export function LearningDocumentsScreen() {
     return () => controller.abort();
   }, [selectedId, versionId, status, contentPage, reloadKey, t]);
 
+  useEffect(() => {
+    setDuplicates([]);
+    const type = file?.name.toLowerCase().endsWith(".pdf")
+      ? "PDF"
+      : file?.name.toLowerCase().endsWith(".pptx")
+        ? "PPTX"
+        : null;
+    if (!file || !type || !file.size || file.size > 20 * MB) return;
+    const controller = new AbortController();
+    setDuplicateChecking(true);
+    sha256Hex(file)
+      .then((hash) => api.checkDuplicate(hash, type, controller.signal))
+      .then((matches) => {
+        if (!controller.signal.aborted)
+          setDuplicates(matches.filter((m) => m.include_notes === (type === "PPTX" && notes)));
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) setDuplicateChecking(false);
+      });
+    return () => {
+      controller.abort();
+      setDuplicateChecking(false);
+    };
+  }, [file, notes]);
+
+  const openDuplicate = async (match: DocumentDuplicate) => {
+    try {
+      const detail = await api.detail(match.document_id);
+      open(detail);
+      setVersionId(match.version_id);
+      setDuplicates([]);
+    } catch {
+      toast.error(t("failed"));
+    }
+  };
+
   const open = (value: LearningDocument) => {
     setDocument(value);
     setVersionId(value.versions[0]?.id ?? "");
     setContent(null);
     setContentPage(1);
+    setExtraVersions([]);
+    setVersionTotal(null);
   };
+  const loadMoreVersions = async () => {
+    if (!document || versionsLoading) return;
+    setVersionsLoading(true);
+    try {
+      const next = await api.versions(
+        document.id,
+        Math.floor(allVersions.length / VERSION_PAGE_SIZE) + 1,
+      );
+      setExtraVersions((current) => [...current, ...next.data]);
+      setVersionTotal(next.total);
+    } catch {
+      toast.error(t("failed"));
+    } finally {
+      setVersionsLoading(false);
+    }
+  };
+  const changeFilter = (apply: () => void) => {
+    apply();
+    setPage(1);
+  };
+  const megabytes = (bytes: number) => Math.round(bytes / MB);
+  const quotaNearLimit =
+    quota !== null &&
+    (quota.documents.used >= quota.documents.limit * 0.9 ||
+      quota.bytes.used >= quota.bytes.limit * 0.9);
   const upload = async (replacement: boolean) => {
     if (lock.current) return;
     const parsed = metadata.safeParse({
@@ -238,10 +362,21 @@ export function LearningDocumentsScreen() {
       setContent(null);
       setContentPage(1);
       await api.upload(reservation, file, input.mime_type);
-      await api.complete(reservation.document_id, reservation.version_id);
-      toast.success(t("success"));
-    } catch {
-      toast.error(t("failed"));
+      const done = await api.complete(
+        reservation.document_id,
+        reservation.version_id,
+      );
+      toast.success(
+        done?.reused_extraction
+          ? t("manage.reusedExtraction")
+          : t("success"),
+      );
+    } catch (error) {
+      toast.error(
+        axios.isAxiosError(error) && error.response?.status === 409
+          ? t("manage.quotaExceeded")
+          : t("failed"),
+      );
     } finally {
       lock.current = false;
       setBusy(false);
@@ -253,8 +388,12 @@ export function LearningDocumentsScreen() {
     lock.current = true;
     setBusy(true);
     try {
-      await api.complete(document.id, version.id);
-      toast.success(t("success"));
+      const done = await api.complete(document.id, version.id);
+      toast.success(
+        done?.reused_extraction
+          ? t("manage.reusedExtraction")
+          : t("success"),
+      );
     } catch {
       toast.error(t("failed"));
     } finally {
@@ -363,7 +502,7 @@ export function LearningDocumentsScreen() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="document-chapter">{t("chapter")}</Label>
+                <Label htmlFor="document-chapter">{t("chapterOptional")}</Label>
                 <select
                   id="document-chapter"
                   className={selectClassName}
@@ -371,7 +510,7 @@ export function LearningDocumentsScreen() {
                   disabled={busy || !topic}
                   onChange={(e) => setChapter(e.target.value)}
                 >
-                  <option value="">{t("choose")}</option>
+                  <option value="">{t("noChapter")}</option>
                   {chapters.map((v) => (
                     <option key={v.id} value={v.id}>
                       {v.name}
@@ -397,6 +536,43 @@ export function LearningDocumentsScreen() {
                 />
               </div>
             </div>
+            {duplicateChecking && (
+              <p className="flex items-center gap-2 text-xs text-gray-500" role="status">
+                <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                {t("manage.duplicateChecking")}
+              </p>
+            )}
+            {duplicates.length > 0 && (
+              <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4" role="alert">
+                <p className="flex items-center gap-2 text-sm font-medium text-amber-900">
+                  <Copy className="size-4 shrink-0" aria-hidden="true" />
+                  {t("manage.duplicateTitle")}
+                </p>
+                <p className="text-xs leading-5 text-amber-800">{t("manage.duplicateHint")}</p>
+                <ul className="space-y-2">
+                  {duplicates.slice(0, 3).map((m) => (
+                    <li key={m.version_id} className="flex flex-wrap items-center justify-between gap-2 text-xs text-amber-900">
+                      <span className="min-w-0 break-words">
+                        {t("manage.duplicateLine", {
+                          title: m.title,
+                          version: m.version,
+                          date: format.dateTime(new Date(m.created_at), { dateStyle: "medium" }),
+                        })}
+                        {m.archived_at && (
+                          <Badge variant="outline" className="ml-2">{t("manage.archived")}</Badge>
+                        )}
+                      </span>
+                      <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { void openDuplicate(m); }}>
+                        {t("manage.duplicateOpen")}
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+                <Button type="button" size="sm" variant="ghost" className="text-amber-900" onClick={() => setDuplicates([])}>
+                  {t("manage.duplicateIgnore")}
+                </Button>
+              </div>
+            )}
             <label className="flex items-start gap-3 text-sm leading-6 text-gray-600 has-disabled:opacity-50">
               <input
                 className="mt-1 size-4 shrink-0 accent-[#0066cc]"
@@ -452,6 +628,55 @@ export function LearningDocumentsScreen() {
             </Button>
           </div>
           <p className="text-sm leading-6 text-gray-500">{t("workspace.historyHint")}</p>
+          {quota && (
+            <p
+              role="status"
+              className={cn("rounded-lg border px-3 py-2 text-xs leading-5", quotaNearLimit ? "border-amber-200 bg-amber-50 text-amber-800" : "border-gray-200 bg-gray-50 text-gray-600")}
+            >
+              {t("manage.quota", {
+                docs: quota.documents.used,
+                docLimit: quota.documents.limit,
+                mb: megabytes(quota.bytes.used),
+                mbLimit: megabytes(quota.bytes.limit),
+              })}
+            </p>
+          )}
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,11rem)_minmax(0,11rem)]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+              <Input
+                className="pl-9"
+                type="search"
+                value={searchInput}
+                placeholder={t("manage.searchPlaceholder")}
+                aria-label={t("manage.searchPlaceholder")}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
+            <select
+              className={selectClassName}
+              aria-label={t("manage.filterTopic")}
+              value={topicFilter}
+              onChange={(e) => changeFilter(() => setTopicFilter(e.target.value))}
+            >
+              <option value="">{t("manage.allTopics")}</option>
+              {topics.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+            <select
+              className={selectClassName}
+              aria-label={t("manage.filterStatus")}
+              value={archivedFilter}
+              onChange={(e) =>
+                changeFilter(() => setArchivedFilter(e.target.value as DocumentArchiveFilter))
+              }
+            >
+              <option value="false">{t("manage.filterActive")}</option>
+              <option value="true">{t("manage.filterArchived")}</option>
+              <option value="all">{t("manage.filterAll")}</option>
+            </select>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4 p-5 sm:p-6" aria-busy={historyLoading}>
           {historyError && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-800">{t("failed")}</div>}
@@ -476,7 +701,11 @@ export function LearningDocumentsScreen() {
                   {latest && <><span>{latest.source_type}</span><span aria-hidden="true">·</span><span>{t("workspace.versionNumber", { version: latest.version })}</span></>}
                   {topics.find((item) => item.id === v.topic_id)?.name && <span className="truncate">{topics.find((item) => item.id === v.topic_id)?.name}</span>}
                 </div>
+                <div className="flex flex-wrap items-center gap-2">
                 {latest && <Badge variant="outline" className={cn("max-w-full whitespace-normal text-left", statusClassName[latest.status])}><span className="size-1.5 shrink-0 rounded-full bg-current" />{t(`status.${latest.status}`)}</Badge>}
+                {v.archived_at && <Badge variant="outline" className="border-gray-300 bg-gray-100 text-gray-600">{t("manage.archived")}</Badge>}
+                </div>
+                {v.last_used_at && <p className="text-xs text-gray-400">{t("manage.lastUsed", { date: format.dateTime(new Date(v.last_used_at), { dateStyle: "medium" }) })}</p>}
               </div>
               {selected ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-[#0066cc]" aria-hidden="true" /> : <ChevronRight className="mt-0.5 size-4 shrink-0 text-gray-300 group-hover:text-[#0066cc]" aria-hidden="true" />}
             </button>
@@ -523,14 +752,44 @@ export function LearningDocumentsScreen() {
                 setContentPage(1);
               }}
             >
-              {document.versions.map((v) => (
+              {allVersions.map((v) => (
                 <option key={v.id} value={v.id}>
                   {t("version", { version: v.version, name: v.file_name })} —{" "}
                   {t(`status.${v.status}`)}
                 </option>
               ))}
             </select>
+            {canLoadMoreVersions && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={busy || versionsLoading}
+                onClick={() => { void loadMoreVersions(); }}
+              >
+                {versionsLoading && <Loader2 className="size-3.5 animate-spin" />}
+                {t("manage.loadMoreVersions")}
+              </Button>
+            )}
             </div>
+            <DocumentManagePanel
+              key={document.id}
+              document={document}
+              disabled={busy}
+              onChanged={(next) => {
+                setDocument(next);
+                refresh();
+              }}
+              onPurged={() => {
+                setDocument(null);
+                setContent(null);
+                setVersionId("");
+                refresh();
+              }}
+            />
+            {document.archived_at && (
+              <p role="status" className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm leading-6 text-gray-600">{t("manage.archivedNotice")}</p>
+            )}
             {version?.error_code && (
               <p role="alert" className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-700">{t("errorCode", { code: version.error_code })}</p>
             )}
@@ -540,6 +799,20 @@ export function LearningDocumentsScreen() {
               </p>
             )}
             {status === "EXTRACTED" && <p className="flex items-start gap-2 text-sm leading-6 text-gray-500"><Info className="mt-1 size-4 shrink-0 text-[#0066cc]" aria-hidden="true" />{t("extracted")}</p>}
+            {version &&
+              !document.archived_at &&
+              (status === "EXTRACTED" ||
+                status === "QUEUED" ||
+                status === "PROCESSING") && (
+                <Button asChild variant="outline" className="w-fit cursor-pointer">
+                  <Link
+                    href={`/lecturer/questions/generate?topic=${document.topic_id}&document=${document.id}&version=${version.id}`}
+                  >
+                    <Sparkles className="size-4" aria-hidden="true" />
+                    {t("workspace.generateFromVersion")}
+                  </Link>
+                </Button>
+              )}
             {version && <DocumentRagPanel key={version.id} documentId={document.id} version={version} refresh={refresh} disabled={busy} />}
             {status === "UPLOADING" && (
               <Button
