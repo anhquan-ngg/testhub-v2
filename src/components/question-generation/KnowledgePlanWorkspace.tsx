@@ -102,6 +102,11 @@ export function KnowledgePlanWorkspace({
       revision: number;
       key: string;
     } | null>(null);
+  const newBatchKey = useRef<{
+    plan: string;
+    revision: number;
+    key: string;
+  } | null>(null);
   const form = useForm<PlanMatrix>({
     resolver: zodResolver(planMatrixSchema),
     defaultValues: { nodes: [], rows: [] },
@@ -754,12 +759,20 @@ export function KnowledgePlanWorkspace({
                     }
                     onClick={() =>
                       void mutate(async () => {
-                        // A fresh key always creates another batch from the same approved plan.
-                        generationKey.current = null;
+                        if (
+                          newBatchKey.current?.plan !== plan.id ||
+                          newBatchKey.current.revision !== plan.revision
+                        )
+                          newBatchKey.current = {
+                            plan: plan.id,
+                            revision: plan.revision,
+                            key: crypto.randomUUID(),
+                          };
                         const result = await api.generate(
                           plan,
-                          crypto.randomUUID(),
+                          newBatchKey.current.key,
                         );
+                        newBatchKey.current = null;
                         onGenerated(result.batch_id);
                       })
                     }
