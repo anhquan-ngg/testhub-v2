@@ -48,7 +48,35 @@ export type LearningDocument = {
   topic_id: string;
   chapter_id: string | null;
   created_at: string;
+  archived_at?: string | null;
+  last_used_at?: string | null;
   versions: DocumentVersion[];
+};
+export type DocumentArchiveFilter = "false" | "true" | "all";
+export type DocumentQuota = {
+  documents: { used: number; limit: number };
+  bytes: { used: number; limit: number };
+};
+export type DocumentHistory = {
+  plans: {
+    id: string;
+    status: string;
+    revision: number;
+    error_code: string | null;
+    created_at: string;
+    sourceVersion: { id: string; version: number };
+  }[];
+  batches: {
+    id: string;
+    plan_id: string | null;
+    status: string;
+    requested_count: number;
+    total_items: number;
+    error_code: string | null;
+    created_at: string;
+    finished_at: string | null;
+    sourceVersion: { id: string; version: number };
+  }[];
 };
 export type DocumentPage<T> = {
   data: T[];
@@ -82,4 +110,24 @@ export type DocumentUpload = {
   size: number;
   include_notes: boolean;
   consent: true;
+};
+
+export type DocumentCompletion = {
+  document_id: string;
+  version_id: string;
+  status: DocumentStatus;
+  reused_extraction?: boolean;
+};
+export type DocumentDuplicate = {
+  document_id: string;
+  title: string;
+  topic_id: string;
+  chapter_id: string | null;
+  archived_at: string | null;
+  version_id: string;
+  version: number;
+  file_name: string;
+  status: DocumentStatus;
+  include_notes: boolean;
+  created_at: string;
 };

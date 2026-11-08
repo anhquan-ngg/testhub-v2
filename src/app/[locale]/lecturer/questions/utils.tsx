@@ -70,7 +70,7 @@ export const getQuestionPreviewText = (questionText: string) => {
 
     const cutIndex =
       cutCandidates.length > 0
-        ? Math.min(...cutCandidates)
+        ? Math.max(...cutCandidates)
         : previewText.length - 1;
     previewText = previewText.slice(0, Math.max(0, cutIndex)).trimEnd();
   }

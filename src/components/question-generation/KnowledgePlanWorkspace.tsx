@@ -102,6 +102,11 @@ export function KnowledgePlanWorkspace({
       revision: number;
       key: string;
     } | null>(null);
+  const newBatchKey = useRef<{
+    plan: string;
+    revision: number;
+    key: string;
+  } | null>(null);
   const form = useForm<PlanMatrix>({
     resolver: zodResolver(planMatrixSchema),
     defaultValues: { nodes: [], rows: [] },
@@ -743,6 +748,36 @@ export function KnowledgePlanWorkspace({
                     }
                   >
                     {t("generate")}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="cursor-pointer gap-1.5 border-violet-300 bg-white text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                    title={t("generateNewHint")}
+                    disabled={
+                      plan.status !== "APPROVED" || isDirty || busy || disabled
+                    }
+                    onClick={() =>
+                      void mutate(async () => {
+                        if (
+                          newBatchKey.current?.plan !== plan.id ||
+                          newBatchKey.current.revision !== plan.revision
+                        )
+                          newBatchKey.current = {
+                            plan: plan.id,
+                            revision: plan.revision,
+                            key: crypto.randomUUID(),
+                          };
+                        const result = await api.generate(
+                          plan,
+                          newBatchKey.current.key,
+                        );
+                        newBatchKey.current = null;
+                        onGenerated(result.batch_id);
+                      })
+                    }
+                  >
+                    {t("generateNew")}
                   </Button>
                 </div>
               </form>

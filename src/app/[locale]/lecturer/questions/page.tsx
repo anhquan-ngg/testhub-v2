@@ -728,6 +728,11 @@ export default function LecturerQuestions() {
 
   const handleDeleteQuestion = async (questionId: string) => {
     await apiClient.delete(ENDPOINTS.QUESTIONS.DETAIL(questionId));
+    setSelectedQuestionIds((prev) => {
+      const next = new Set(prev);
+      next.delete(questionId);
+      return next;
+    });
     toast.success(t("questionDeleted"));
     await fetchQuestions(currentChapter?.id);
   };

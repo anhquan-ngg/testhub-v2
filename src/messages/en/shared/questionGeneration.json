@@ -34,6 +34,8 @@
     "save": "Save plan",
     "approve": "Confirm saved plan",
     "generate": "Generate from confirmed plan",
+    "generateNew": "Generate another batch",
+    "generateNewHint": "Create a new batch of drafts from the same plan and document without re-uploading or re-indexing.",
     "coverage": "Plan coverage",
     "coverageCounts": "{requested} requested · {generated} generated · {approved} approved · {committed} saved",
     "status": {
@@ -50,6 +52,21 @@
   "back": "Back to question bank",
   "textOnly": "PDF/PPTX · RAG · Single/multiple choice · Vietnamese",
   "fileSource": "Source document",
+  "sourceMode": {
+    "upload": "Upload new document",
+    "existing": "Use uploaded document"
+  },
+  "existing": {
+    "label": "Library document version",
+    "choose": "Choose a document version",
+    "indexed": "Indexed",
+    "pickTopic": "Choose a topic to see its uploaded documents.",
+    "loading": "Loading document library…",
+    "error": "Could not load the document library. Please try again later.",
+    "empty": "This topic has no uploaded documents. Upload a new one or add it in the library.",
+    "hint": "Only extracted or processing versions can be selected. OCR-required, failed or unfinished uploads are locked. Reusing a document skips upload, extraction and document indexing.",
+    "manage": "Open document library"
+  },
   "sourceFileLabel": "Source: {file} · Version {version}",
   "fileHint": "Attach one text-layer PDF or PPTX, up to 20 MB. The system extracts and indexes it before generating questions. Scanned content requires OCR and is not supported yet.",
   "includeNotes": "Include PPTX speaker notes",

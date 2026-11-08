@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
+  CircleCheck,
   ChevronRight,
   FileQuestion,
   GraduationCap,
@@ -15,6 +16,7 @@ import {
   Sparkles,
   Timer,
   Users,
+  WifiOff,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -204,28 +206,45 @@ function DashboardMockup() {
                 </div>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <dl className="grid grid-cols-3 gap-2 sm:gap-3">
                 {[
-                  [t("mockup.online"), "48", "bg-blue-600"],
-                  [t("mockup.submitted"), "12", "bg-emerald-500"],
-                  [t("mockup.offline"), "3", "bg-amber-500"],
-                ].map(([label, value, color]) => (
+                  {
+                    label: t("mockup.online"),
+                    value: "48",
+                    icon: Timer,
+                    accent: "border-blue-100 bg-blue-50 text-[#0b63ce]",
+                  },
+                  {
+                    label: t("mockup.submitted"),
+                    value: "12",
+                    icon: CircleCheck,
+                    accent: "border-emerald-100 bg-emerald-50 text-emerald-600",
+                  },
+                  {
+                    label: t("mockup.offline"),
+                    value: "3",
+                    icon: WifiOff,
+                    accent: "border-amber-100 bg-amber-50 text-amber-600",
+                  },
+                ].map(({ label, value, icon: Icon, accent }) => (
                   <div
                     key={label}
-                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                    className="min-w-0 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
                   >
-                    <p className="text-xs font-semibold text-slate-500">
-                      {label}
-                    </p>
-                    <div className="mt-3 flex items-end justify-between gap-3">
-                      <p className="text-2xl font-black text-slate-950">
-                        {value}
-                      </p>
-                      <span className={`h-8 w-8 rounded-xl ${color}`} />
-                    </div>
+                    <dt className="flex flex-col items-start gap-3">
+                      <span className={`flex h-8 w-8 items-center justify-center rounded-lg border ${accent}`}>
+                        <Icon className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <span className="min-h-8 text-xs font-medium leading-4 text-slate-600">
+                        {label}
+                      </span>
+                    </dt>
+                    <dd className="mt-2 text-2xl font-bold leading-8 tabular-nums tracking-tight text-slate-950">
+                      {value}
+                    </dd>
                   </div>
                 ))}
-              </div>
+              </dl>
 
               <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
                 <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">

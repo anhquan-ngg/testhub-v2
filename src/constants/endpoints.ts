@@ -49,6 +49,12 @@ export const ENDPOINTS = {
 
     BASE: "/learning-documents",
     DETAIL: (id: string) => `/learning-documents/${id}`,
+    QUOTA: "/learning-documents/quota",
+    DUPLICATES: "/learning-documents/duplicates/check",
+    ARCHIVE: (id: string) => `/learning-documents/${id}/archive`,
+    UNARCHIVE: (id: string) => `/learning-documents/${id}/unarchive`,
+    PURGE: (id: string) => `/learning-documents/${id}/purge`,
+    HISTORY: (id: string) => `/learning-documents/${id}/history`,
     VERSIONS: (id: string) => `/learning-documents/${id}/versions`,
     COMPLETE: (id: string, versionId: string) => `/learning-documents/${id}/versions/${versionId}/complete`,
     CONTENT: (id: string, versionId: string) => `/learning-documents/${id}/versions/${versionId}/content`,

@@ -2,8 +2,14 @@ import axios from "axios";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 import type {
+  DocumentArchiveFilter,
+  DocumentCompletion,
+  DocumentDuplicate,
   DocumentContent,
+  DocumentHistory,
   DocumentIndex,
+  DocumentQuota,
+  DocumentVersion,
   RetrievalResult,
   DocumentPage,
   DocumentReservation,
@@ -30,10 +36,59 @@ export const learningDocumentService = {
       )
     ).data;
   },
-  async list(page: number, signal?: AbortSignal) {
+  async list(
+    page: number,
+    signal?: AbortSignal,
+    filter: {
+      topic_id?: string;
+      limit?: number;
+      q?: string;
+      archived?: DocumentArchiveFilter;
+    } = {},
+  ) {
     return (
       await apiClient.get<DocumentPage<LearningDocument>>(paths.BASE, {
-        params: { page, limit: 10 },
+        params: {
+          page,
+          limit: filter.limit ?? 10,
+          ...(filter.topic_id ? { topic_id: filter.topic_id } : {}),
+          ...(filter.q ? { q: filter.q } : {}),
+          ...(filter.archived && filter.archived !== "false"
+            ? { archived: filter.archived }
+            : {}),
+        },
+        signal,
+      })
+    ).data;
+  },
+  async quota(signal?: AbortSignal) {
+    return (await apiClient.get<DocumentQuota>(paths.QUOTA, { signal })).data;
+  },
+  async rename(id: string, title: string) {
+    return (await apiClient.patch<LearningDocument>(paths.DETAIL(id), { title }))
+      .data;
+  },
+  async archive(id: string) {
+    return (await apiClient.post<LearningDocument>(paths.ARCHIVE(id))).data;
+  },
+  async unarchive(id: string) {
+    return (await apiClient.post<LearningDocument>(paths.UNARCHIVE(id))).data;
+  },
+  async purge(id: string) {
+    await apiClient.post(paths.PURGE(id));
+  },
+  async versions(id: string, page: number, signal?: AbortSignal) {
+    return (
+      await apiClient.get<DocumentPage<DocumentVersion>>(paths.VERSIONS(id), {
+        params: { page, limit: 20 },
+        signal,
+      })
+    ).data;
+  },
+  async history(id: string, signal?: AbortSignal) {
+    return (
+      await apiClient.get<DocumentHistory>(paths.HISTORY(id), {
+        params: { limit: 10 },
         signal,
       })
     ).data;
@@ -63,9 +118,26 @@ export const learningDocumentService = {
     });
   },
   async complete(id: string, versionId: string) {
-    await apiClient.post(paths.COMPLETE(id, versionId), undefined, {
-      timeout: 90_000,
-    });
+    return (
+      await apiClient.post<DocumentCompletion>(
+        paths.COMPLETE(id, versionId),
+        undefined,
+        { timeout: 90_000 },
+      )
+    ).data;
+  },
+  async checkDuplicate(
+    sha256: string,
+    sourceType: "PDF" | "PPTX",
+    signal?: AbortSignal,
+  ) {
+    return (
+      await apiClient.post<{ data: DocumentDuplicate[] }>(
+        paths.DUPLICATES,
+        { sha256, source_type: sourceType },
+        { signal },
+      )
+    ).data.data;
   },
   async content(
     id: string,
