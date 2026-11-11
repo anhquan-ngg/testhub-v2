@@ -38,13 +38,16 @@ export const ENDPOINTS = {
     BASE: "/question-generation-batches",
     DETAIL: (id: string) => `/question-generation-batches/${id}`,
     ITEMS: (id: string) => `/question-generation-batches/${id}/items`,
-    ITEM: (id: string, itemId: string) => `/question-generation-batches/${id}/items/${itemId}`,
-    REVIEW: (id: string, itemId: string) => `/question-generation-batches/${id}/items/${itemId}/review`,
+    ITEM: (id: string, itemId: string) =>
+      `/question-generation-batches/${id}/items/${itemId}`,
+    REVIEW: (id: string, itemId: string) =>
+      `/question-generation-batches/${id}/items/${itemId}/review`,
     COMMIT: (id: string) => `/question-generation-batches/${id}/commit`,
   },
   LEARNING_DOCUMENTS: {
-    INDEX: (id:string, version:string) => `/learning-documents/${id}/versions/${version}/index`,
-    RETRY_INDEX: (id:string) => `/learning-documents/indexes/${id}/retry`,
+    INDEX: (id: string, version: string) =>
+      `/learning-documents/${id}/versions/${version}/index`,
+    RETRY_INDEX: (id: string) => `/learning-documents/indexes/${id}/retry`,
     RETRIEVE: "/learning-documents/retrieve",
 
     BASE: "/learning-documents",
@@ -56,13 +59,16 @@ export const ENDPOINTS = {
     PURGE: (id: string) => `/learning-documents/${id}/purge`,
     HISTORY: (id: string) => `/learning-documents/${id}/history`,
     VERSIONS: (id: string) => `/learning-documents/${id}/versions`,
-    COMPLETE: (id: string, versionId: string) => `/learning-documents/${id}/versions/${versionId}/complete`,
-    CONTENT: (id: string, versionId: string) => `/learning-documents/${id}/versions/${versionId}/content`,
+    COMPLETE: (id: string, versionId: string) =>
+      `/learning-documents/${id}/versions/${versionId}/complete`,
+    CONTENT: (id: string, versionId: string) =>
+      `/learning-documents/${id}/versions/${versionId}/content`,
   },
   EXAMS: {
     BASE: "/exams",
     DETAIL: (id: string) => `/exams/${id}`,
     PRINT: (id: string) => `/exams/${id}/print`,
+    DISTRIBUTION_DELTA_CHECK: "/exams/distribution-delta/check",
     QUESTIONS: {
       BASE: (id: string) => `/exams/${id}/questions`,
       DETAIL: (id: string, questionId: string) =>
