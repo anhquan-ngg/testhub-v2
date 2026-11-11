@@ -10,12 +10,7 @@ import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -68,8 +63,7 @@ type ExamChapterDistributionConfig = {
 };
 
 type ExamDistributionConfig =
-  | ExamTypeDistributionConfig
-  | ExamChapterDistributionConfig;
+  ExamTypeDistributionConfig | ExamChapterDistributionConfig;
 
 type QuestionItem = {
   id: string;
@@ -113,8 +107,31 @@ type ExamDetail = {
   mode: ExamMode;
   sample_size?: number | null;
   distribution?: string | null;
+  distribution_delta?: number;
+  distribution_delta_online?: boolean;
   questions?: ExamQuestionItem[];
 };
+
+type DeltaFeasibility = {
+  baseline_feasible: boolean;
+  delta_requested: number;
+  max_feasible_d: number;
+  total_questions: number;
+  warnings: { code: string; message: string }[];
+};
+
+const DELTA_OPTIONS = [0, 1, 2] as const;
+const DELTA_CHECK_DEBOUNCE_MS = 600;
+const KNOWN_DELTA_WARNINGS = [
+  "BASELINE_INSUFFICIENT",
+  "NO_FEASIBLE_VARIATION",
+  "DELTA_ABOVE_MAX_FEASIBLE",
+  "DELTA_HIGH_FOR_TOTAL",
+] as const;
+type KnownDeltaWarning = (typeof KNOWN_DELTA_WARNINGS)[number];
+
+const isKnownDeltaWarning = (code: string): code is KnownDeltaWarning =>
+  (KNOWN_DELTA_WARNINGS as readonly string[]).includes(code);
 
 const getQuestionTopicName = (question: QuestionItem) =>
   question.topic ??
@@ -314,6 +331,71 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     is_public: false,
   });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [distributionDelta, setDistributionDelta] = useState(0);
+  const [distributionDeltaOnline, setDistributionDeltaOnline] = useState(false);
+  const [deltaFeasibility, setDeltaFeasibility] =
+    useState<DeltaFeasibility | null>(null);
+
+  const supportsDelta =
+    questionSelectionMode === "BY_TYPE" ||
+    questionSelectionMode === "BY_CHAPTER";
+  const deltaTotal = useMemo(
+    () =>
+      supportsDelta
+        ? buildDistribution(questionSelectionMode, configRows).reduce(
+            (sum, item) => sum + item.quantity,
+            0,
+          )
+        : 0,
+    [supportsDelta, questionSelectionMode, configRows],
+  );
+  const deltaDistributionJson = useMemo(
+    () =>
+      supportsDelta
+        ? JSON.stringify(buildDistribution(questionSelectionMode, configRows))
+        : "",
+    [supportsDelta, questionSelectionMode, configRows],
+  );
+
+  // Non-blocking feasibility hint; saving is never gated on the result.
+  useEffect(() => {
+    if (
+      !supportsDelta ||
+      distributionDelta <= 0 ||
+      !examForm.topic_id ||
+      deltaTotal <= 0
+    ) {
+      setDeltaFeasibility(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      apiClient
+        .post<DeltaFeasibility>(ENDPOINTS.EXAMS.DISTRIBUTION_DELTA_CHECK, {
+          topic_id: examForm.topic_id,
+          mode: questionSelectionMode,
+          distribution: deltaDistributionJson,
+          distribution_delta: distributionDelta,
+        })
+        .then((response) => {
+          if (!cancelled) setDeltaFeasibility(response.data);
+        })
+        .catch(() => {
+          if (!cancelled) setDeltaFeasibility(null);
+        });
+    }, DELTA_CHECK_DEBOUNCE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    supportsDelta,
+    distributionDelta,
+    examForm.topic_id,
+    questionSelectionMode,
+    deltaDistributionJson,
+    deltaTotal,
+  ]);
 
   const handleToggleQuestion = (questionId: string) => {
     if (isLoadingQuestionBank) return;
@@ -482,6 +564,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
         questionSelectionMode === "BY_CHAPTER"
           ? JSON.stringify(distribution)
           : null,
+      distribution_delta: supportsDelta ? distributionDelta : 0,
+      distribution_delta_online:
+        supportsDelta && distributionDelta > 0 && distributionDeltaOnline,
     };
 
     try {
@@ -536,6 +621,8 @@ export default function EditExamPage({ params }: EditExamPageProps) {
       is_public: exam.is_public,
     });
     setQuestionSelectionMode(exam.mode);
+    setDistributionDelta(exam.distribution_delta ?? 0);
+    setDistributionDeltaOnline(exam.distribution_delta_online ?? false);
     setSelectedQuestions(questionIds);
     setExistingQuestionIds(questionIds);
 
@@ -592,7 +679,9 @@ export default function EditExamPage({ params }: EditExamPageProps) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-neutral-900">{t("editExam")}</h2>
-        <p className="mt-1 text-sm text-neutral-500">{t("fillInTheDetailsToCreate")}</p>
+        <p className="mt-1 text-sm text-neutral-500">
+          {t("fillInTheDetailsToCreate")}
+        </p>
       </div>
 
       <Card className="bg-white border-gray-300 shadow-sm">
@@ -772,23 +861,32 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                           <ListChecks className="size-5" aria-hidden="true" />
                         </div>
                         <div className="min-w-0 space-y-1">
-                          <DialogTitle className="text-lg font-semibold text-neutral-900">{t("selectQuestion")}</DialogTitle>
+                          <DialogTitle className="text-lg font-semibold text-neutral-900">
+                            {t("selectQuestion")}
+                          </DialogTitle>
                           <DialogDescription className="break-words text-sm text-neutral-500">
-                            {t("chooseQuestionsForExam", { title: examForm.title })}
+                            {t("chooseQuestionsForExam", {
+                              title: examForm.title,
+                            })}
                           </DialogDescription>
                         </div>
                       </div>
                     </DialogHeader>
                     <div className="min-h-0 space-y-5 overflow-y-auto p-5 sm:p-6">
                       <div className="space-y-2">
-                        <Label htmlFor="question-selection-mode">{t("selectionMethod")}</Label>
+                        <Label htmlFor="question-selection-mode">
+                          {t("selectionMethod")}
+                        </Label>
                         <Select
                           value={questionSelectionMode}
                           onValueChange={(value) =>
                             setQuestionSelectionMode(value as ExamMode)
                           }
                         >
-                          <SelectTrigger id="question-selection-mode" className="w-full min-w-0 border-gray-300 bg-white">
+                          <SelectTrigger
+                            id="question-selection-mode"
+                            className="w-full min-w-0 border-gray-300 bg-white"
+                          >
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="bg-white border-gray-300">
@@ -812,7 +910,7 @@ export default function EditExamPage({ params }: EditExamPageProps) {
                         <div className="space-y-2">
                           <div className="border border-gray-300 rounded-lg p-4 space-y-3 max-h-64 overflow-y-auto">
                             {!isLoadingQuestionBank &&
-                              questionBank?.length > 0 ? (
+                            questionBank?.length > 0 ? (
                               questionBank.map((question) => (
                                 <div
                                   key={question.id}
@@ -881,148 +979,269 @@ export default function EditExamPage({ params }: EditExamPageProps) {
 
                       {(questionSelectionMode === "BY_TYPE" ||
                         questionSelectionMode === "BY_CHAPTER") && (
-                          <div className="min-w-0 space-y-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                              <h3 className="text-sm font-semibold text-neutral-900">
-                                {t("questionConfiguration")}
-                              </h3>
-                              <Button
-                                onClick={handleAddConfigRow}
-                                variant="outline"
-                                className="border-gray-300 bg-white hover:bg-gray-50"
+                        <div className="min-w-0 space-y-4">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <h3 className="text-sm font-semibold text-neutral-900">
+                              {t("questionConfiguration")}
+                            </h3>
+                            <Button
+                              onClick={handleAddConfigRow}
+                              variant="outline"
+                              className="border-gray-300 bg-white hover:bg-gray-50"
+                            >
+                              <Plus className="size-4" aria-hidden="true" />
+                              {t("addGoodsConfiguration")}
+                            </Button>
+                          </div>
+                          {questionSelectionMode === "BY_CHAPTER" && (
+                            <p className="text-sm leading-relaxed text-neutral-500">
+                              {t("includesAllDescendants")}
+                            </p>
+                          )}
+                          <div className="space-y-3">
+                            {configRows.map((row) => (
+                              <div
+                                key={row.id}
+                                className={`grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem] items-start gap-4 rounded-lg border border-gray-200 bg-gray-50/60 p-4 ${questionSelectionMode === "BY_CHAPTER" ? "sm:grid-cols-[minmax(0,1fr)_6rem_2.25rem]" : "sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_6rem_2.25rem]"}`}
                               >
-                                <Plus className="size-4" aria-hidden="true" />
-                                {t("addGoodsConfiguration")}
-                              </Button>
-                            </div>
-                            {questionSelectionMode === "BY_CHAPTER" && (
-                              <p className="text-sm leading-relaxed text-neutral-500">
-                                {t("includesAllDescendants")}
-                              </p>
-                            )}
-                            <div className="space-y-3">
-                              {configRows.map((row) => (
-                                <div
-                                  key={row.id}
-                                  className={`grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem] items-start gap-4 rounded-lg border border-gray-200 bg-gray-50/60 p-4 ${questionSelectionMode === "BY_CHAPTER" ? "sm:grid-cols-[minmax(0,1fr)_6rem_2.25rem]" : "sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_6rem_2.25rem]"}`}
-                                >
-                                  {questionSelectionMode === "BY_CHAPTER" && (
-                                    <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1 [&_select]:h-9 [&_select]:rounded-md [&_select]:border-gray-300 [&_select]:shadow-xs">
-                                      <Label htmlFor={`question-chapter-${row.id}`}>{t("chapter")}</Label>
-                                      <ChapterPicker
-                                        id={`question-chapter-${row.id}`}
-                                        chapters={chapterOptions}
-                                        value={row.chapter_id}
-                                        onChange={(value) =>
+                                {questionSelectionMode === "BY_CHAPTER" && (
+                                  <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1 [&_select]:h-9 [&_select]:rounded-md [&_select]:border-gray-300 [&_select]:shadow-xs">
+                                    <Label
+                                      htmlFor={`question-chapter-${row.id}`}
+                                    >
+                                      {t("chapter")}
+                                    </Label>
+                                    <ChapterPicker
+                                      id={`question-chapter-${row.id}`}
+                                      chapters={chapterOptions}
+                                      value={row.chapter_id}
+                                      onChange={(value) =>
+                                        handleUpdateConfigRow(
+                                          row.id,
+                                          "chapter_id",
+                                          value,
+                                        )
+                                      }
+                                    />
+                                  </div>
+                                )}
+                                {questionSelectionMode === "BY_TYPE" && (
+                                  <>
+                                    <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1">
+                                      <Label
+                                        htmlFor={`question-type-${row.id}`}
+                                      >
+                                        {t("questionType")}
+                                      </Label>
+                                      <Select
+                                        value={row.question_type}
+                                        onValueChange={(value) =>
                                           handleUpdateConfigRow(
                                             row.id,
-                                            "chapter_id",
+                                            "question_type",
                                             value,
                                           )
                                         }
-                                      />
+                                      >
+                                        <SelectTrigger
+                                          id={`question-type-${row.id}`}
+                                          className="w-full min-w-0 bg-white border-gray-300"
+                                        >
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-gray-300">
+                                          <SelectItem value="SINGLE_CHOICE">
+                                            {t("multipleChoice1Answer")}
+                                          </SelectItem>
+                                          <SelectItem value="MULTIPLE_CHOICE">
+                                            {t(
+                                              "multipleChoiceTestWithMultipleAnswers",
+                                            )}
+                                          </SelectItem>
+                                          <SelectItem value="ESSAY">
+                                            {t("essay")}
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
                                     </div>
-                                  )}
-                                  {questionSelectionMode === "BY_TYPE" && (
-                                    <>
-                                      <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1">
-                                        <Label htmlFor={`question-type-${row.id}`}>{t("questionType")}</Label>
-                                        <Select
-                                          value={row.question_type}
-                                          onValueChange={(value) =>
-                                            handleUpdateConfigRow(
-                                              row.id,
-                                              "question_type",
-                                              value,
-                                            )
-                                          }
+                                    <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1">
+                                      <Label
+                                        htmlFor={`question-format-${row.id}`}
+                                      >
+                                        {t("format2")}
+                                      </Label>
+                                      <Select
+                                        value={row.question_format}
+                                        onValueChange={(value) =>
+                                          handleUpdateConfigRow(
+                                            row.id,
+                                            "question_format",
+                                            value,
+                                          )
+                                        }
+                                      >
+                                        <SelectTrigger
+                                          id={`question-format-${row.id}`}
+                                          className="w-full min-w-0 bg-white border-gray-300"
                                         >
-                                          <SelectTrigger id={`question-type-${row.id}`} className="w-full min-w-0 bg-white border-gray-300">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent className="bg-white border-gray-300">
-                                            <SelectItem value="SINGLE_CHOICE">
-                                              {t("multipleChoice1Answer")}
-                                            </SelectItem>
-                                            <SelectItem value="MULTIPLE_CHOICE">
-                                              {t(
-                                                "multipleChoiceTestWithMultipleAnswers",
-                                              )}
-                                            </SelectItem>
-                                            <SelectItem value="ESSAY">
-                                              {t("essay")}
-                                            </SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div className="col-span-2 min-w-0 space-y-2 sm:col-span-1">
-                                        <Label htmlFor={`question-format-${row.id}`}>{t("format2")}</Label>
-                                        <Select
-                                          value={row.question_format}
-                                          onValueChange={(value) =>
-                                            handleUpdateConfigRow(
-                                              row.id,
-                                              "question_format",
-                                              value,
-                                            )
-                                          }
-                                        >
-                                          <SelectTrigger id={`question-format-${row.id}`} className="w-full min-w-0 bg-white border-gray-300">
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent className="bg-white border-gray-300">
-                                            <SelectItem value="KNOWLEDGE">
-                                              {t("recognize")}
-                                            </SelectItem>
-                                            <SelectItem value="UNDERSTANDING">
-                                              {t("understanding")}
-                                            </SelectItem>
-                                            <SelectItem value="APPLYING">
-                                              {t("manipulate")}
-                                            </SelectItem>
-                                            <SelectItem value="ADVANCED">
-                                              {t("advanced")}
-                                            </SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    </>
-                                  )}
-                                  <div className="min-w-0 space-y-2">
-                                    <Label htmlFor={`question-quantity-${row.id}`}>{t("quantity")}</Label>
-                                    <Input
-                                      id={`question-quantity-${row.id}`}
-                                      type="number"
-                                      min="0"
-                                      value={row.quantity}
-                                      onChange={(e) =>
-                                        handleUpdateConfigRow(
-                                          row.id,
-                                          "quantity",
-                                          Number.parseInt(e.target.value) || 0,
-                                        )
-                                      }
-                                      className="w-full bg-white border-gray-300"
-                                    />
-                                  </div>
-                                  <div className="pt-[22px]">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className={`h-9 w-9 p-0 ${ICON_TONE.danger}`}
-                                      onClick={() =>
-                                        handleRemoveConfigRow(row.id)
-                                      }
-                                      {...iconLabelProps(iconLabels.delete)}
-                                    >
-                                      <Trash2 className="h-4 w-4" aria-hidden="true" />
-                                    </Button>
-                                  </div>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-white border-gray-300">
+                                          <SelectItem value="KNOWLEDGE">
+                                            {t("recognize")}
+                                          </SelectItem>
+                                          <SelectItem value="UNDERSTANDING">
+                                            {t("understanding")}
+                                          </SelectItem>
+                                          <SelectItem value="APPLYING">
+                                            {t("manipulate")}
+                                          </SelectItem>
+                                          <SelectItem value="ADVANCED">
+                                            {t("advanced")}
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </>
+                                )}
+                                <div className="min-w-0 space-y-2">
+                                  <Label
+                                    htmlFor={`question-quantity-${row.id}`}
+                                  >
+                                    {t("quantity")}
+                                  </Label>
+                                  <Input
+                                    id={`question-quantity-${row.id}`}
+                                    type="number"
+                                    min="0"
+                                    value={row.quantity}
+                                    onChange={(e) =>
+                                      handleUpdateConfigRow(
+                                        row.id,
+                                        "quantity",
+                                        Number.parseInt(e.target.value) || 0,
+                                      )
+                                    }
+                                    className="w-full bg-white border-gray-300"
+                                  />
                                 </div>
-                              ))}
-                            </div>
+                                <div className="pt-[22px]">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={`h-9 w-9 p-0 ${ICON_TONE.danger}`}
+                                    onClick={() =>
+                                      handleRemoveConfigRow(row.id)
+                                    }
+                                    {...iconLabelProps(iconLabels.delete)}
+                                  >
+                                    <Trash2
+                                      className="h-4 w-4"
+                                      aria-hidden="true"
+                                    />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        )}
+                          <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="distribution-delta">
+                                {t("distributionDelta")}
+                              </Label>
+                              <Select
+                                value={String(distributionDelta)}
+                                onValueChange={(value) => {
+                                  const next = Number.parseInt(value, 10);
+                                  setDistributionDelta(next);
+                                  if (next === 0)
+                                    setDistributionDeltaOnline(false);
+                                }}
+                              >
+                                <SelectTrigger
+                                  id="distribution-delta"
+                                  className="w-full min-w-0 bg-white border-gray-300 sm:w-64"
+                                >
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white border-gray-300">
+                                  {DELTA_OPTIONS.map((option) => (
+                                    <SelectItem
+                                      key={option}
+                                      value={String(option)}
+                                    >
+                                      {option === 0
+                                        ? t("deltaOff")
+                                        : t("deltaUpTo", { count: option })}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className="text-sm leading-relaxed text-neutral-500">
+                                {t("distributionDeltaHint")}
+                              </p>
+                            </div>
+                            {distributionDelta > 0 && deltaTotal > 0 && (
+                              <p className="text-sm text-neutral-600">
+                                {t("deltaImpact", {
+                                  total: deltaTotal,
+                                  percent: (
+                                    (100 * distributionDelta) /
+                                    deltaTotal
+                                  ).toFixed(1),
+                                })}
+                              </p>
+                            )}
+                            <div className="flex items-start gap-2">
+                              <Checkbox
+                                id="distribution-delta-online"
+                                checked={distributionDeltaOnline}
+                                disabled={distributionDelta === 0}
+                                onCheckedChange={(checked) =>
+                                  setDistributionDeltaOnline(checked === true)
+                                }
+                              />
+                              <div className="space-y-1">
+                                <Label htmlFor="distribution-delta-online">
+                                  {t("deltaApplyOnline")}
+                                </Label>
+                                <p className="text-sm leading-relaxed text-neutral-500">
+                                  {t("deltaApplyOnlineHint")}
+                                </p>
+                              </div>
+                            </div>
+                            {deltaFeasibility &&
+                              deltaFeasibility.warnings.length > 0 && (
+                                <div
+                                  role="status"
+                                  className="space-y-1 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800"
+                                >
+                                  <p className="font-medium">
+                                    {t("deltaWarningTitle")}
+                                  </p>
+                                  <ul className="list-disc pl-5">
+                                    {deltaFeasibility.warnings.map(
+                                      (warning) => (
+                                        <li key={warning.code}>
+                                          {isKnownDeltaWarning(warning.code)
+                                            ? t(
+                                                `deltaWarnings.${warning.code}`,
+                                                {
+                                                  max: deltaFeasibility.max_feasible_d,
+                                                  total:
+                                                    deltaFeasibility.total_questions,
+                                                },
+                                              )
+                                            : warning.message}
+                                        </li>
+                                      ),
+                                    )}
+                                  </ul>
+                                </div>
+                              )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex shrink-0 flex-col gap-3 border-t border-gray-200 bg-gray-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
                       <p
@@ -1066,7 +1285,6 @@ export default function EditExamPage({ params }: EditExamPageProps) {
           </div>
         </CardContent>
       </Card>
-
     </div>
   );
 }

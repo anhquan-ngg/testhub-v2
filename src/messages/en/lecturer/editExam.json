@@ -59,6 +59,20 @@
   "advanced": "Advanced application",
   "addGoodsConfiguration": "Add configuration",
   "takeRandomAccordingToConfiguration": "Select questions using this configuration",
+  "distributionDelta": "Distribution variation",
+  "distributionDeltaHint": "Each generated exam may shift 1-2 questions between levels/chapters versus the configuration, while the total number of questions stays the same.",
+  "deltaOff": "Off (follow configuration exactly)",
+  "deltaUpTo": "Up to {count} question(s)",
+  "deltaImpact": "Total {total} questions: up to {percent}% of the exam may differ from the configured distribution.",
+  "deltaApplyOnline": "Also apply to online exams",
+  "deltaApplyOnlineHint": "When enabled, each student's online exam is varied independently. Printed exams always use the variation when it is on.",
+  "deltaWarningTitle": "Variation may not be fully applied",
+  "deltaWarnings": {
+    "BASELINE_INSUFFICIENT": "The question bank does not have enough questions for the configured distribution.",
+    "NO_FEASIBLE_VARIATION": "The question bank has no spare questions to vary the distribution; exams will follow the configuration exactly.",
+    "DELTA_ABOVE_MAX_FEASIBLE": "The question bank only supports a variation of up to {max} question(s); the actual variation will be lower.",
+    "DELTA_HIGH_FOR_TOTAL": "A variation of 2 questions is large for an exam of only {total} questions; consider 1."
+  },
   "cancel": "Cancel",
   "updateExam": "Update exam"
 }

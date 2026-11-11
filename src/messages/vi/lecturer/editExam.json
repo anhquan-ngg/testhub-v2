@@ -59,6 +59,20 @@
   "advanced": "Nâng cao",
   "addGoodsConfiguration": "Thêm hàng cấu hình",
   "takeRandomAccordingToConfiguration": "Lấy ngẫu nhiên theo cấu hình",
+  "distributionDelta": "Dao động phân phối",
+  "distributionDeltaHint": "Mỗi đề được sinh ra có thể lệch 1-2 câu giữa các mức độ/chương so với cấu hình, nhưng tổng số câu hỏi luôn giữ nguyên.",
+  "deltaOff": "Tắt (đúng theo cấu hình)",
+  "deltaUpTo": "Tối đa {count} câu",
+  "deltaImpact": "Tổng {total} câu: tối đa {percent}% đề có thể khác phân phối đã cấu hình.",
+  "deltaApplyOnline": "Áp dụng cho cả thi online",
+  "deltaApplyOnlineHint": "Khi bật, đề online của mỗi sinh viên được dao động độc lập. Đề in luôn áp dụng dao động khi tính năng này bật.",
+  "deltaWarningTitle": "Dao động có thể không được áp dụng đầy đủ",
+  "deltaWarnings": {
+    "BASELINE_INSUFFICIENT": "Ngân hàng câu hỏi không đủ câu cho phân phối đã cấu hình.",
+    "NO_FEASIBLE_VARIATION": "Ngân hàng câu hỏi không còn câu dư để dao động; đề sẽ đúng theo cấu hình.",
+    "DELTA_ABOVE_MAX_FEASIBLE": "Ngân hàng câu hỏi chỉ hỗ trợ dao động tối đa {max} câu; dao động thực tế sẽ thấp hơn.",
+    "DELTA_HIGH_FOR_TOTAL": "Dao động 2 câu là lớn với đề chỉ {total} câu; nên cân nhắc chọn 1."
+  },
   "cancel": "Hủy",
   "updateExam": "Cập nhật bài thi"
 }
