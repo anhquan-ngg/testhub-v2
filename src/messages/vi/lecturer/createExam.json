@@ -1,4 +1,8 @@
 {
+  "invalidExamTime": "Thời gian kết thúc phải sau thời gian bắt đầu.",
+  "questionSaveIncomplete": "Bài thi đã được tạo nhưng chưa lưu xong câu hỏi hoặc trạng thái công khai. Hãy thử lưu lại để tiếp tục trên bài thi này, không tạo bản trùng; hoặc mở chỉnh sửa để hoàn tất sau.",
+  "retrySavingQuestions": "Thử lưu lại câu hỏi",
+  "continueEditing": "Mở chỉnh sửa bài thi",
   "unableToLoadTopicList": "Không thể tải danh sách chủ đề.",
   "pleaseFillInAllInformation": "Vui lòng điền đầy đủ thông tin!",
   "createASuccessfulTest": "Tạo bài thi thành công!",

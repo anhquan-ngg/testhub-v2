@@ -1,4 +1,8 @@
 {
+  "invalidExamTime": "The end time must be after the start time.",
+  "questionSaveIncomplete": "The exam was created, but saving its questions or visibility is incomplete. Retry to continue on the same exam without creating a duplicate, or open the editor to finish later.",
+  "retrySavingQuestions": "Retry saving questions",
+  "continueEditing": "Open exam editor",
   "unableToLoadTopicList": "Unable to load topic list.",
   "pleaseFillInAllInformation": "Please fill in all information!",
   "createASuccessfulTest": "Create a successful test!",
