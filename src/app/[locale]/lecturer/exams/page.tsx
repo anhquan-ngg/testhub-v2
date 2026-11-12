@@ -2,7 +2,8 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { intlLocales } from "@/i18n/config";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,31 +115,39 @@ function StudentManagementDialog({
   const [registrations, setRegistrations] = useState<
     ExamRegistrationWithStudent[]
   >([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadState, setLoadState] = useState<"loading" | "error" | "success">("loading");
+  const requestRef = useRef<AbortController | null>(null);
+  const [registrationToDelete, setRegistrationToDelete] = useState<ExamRegistrationWithStudent | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deletingRef = useRef(false);
 
   const refetchRegistrations = useCallback(async () => {
-    setIsLoading(true);
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setLoadState("loading");
     try {
       const response = await apiClient.get<
         PageResult<ExamRegistrationWithStudent>
       >(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
+        signal: controller.signal,
         params: {
           page: 1,
           limit: 100,
           exam_id: exam.id,
         },
       });
+      if (controller.signal.aborted) return;
       setRegistrations(response.data.data);
-    } catch (error) {
-      toast.error(t("errorLoadingStudentList"));
-      console.log(error);
-    } finally {
-      setIsLoading(false);
+      setLoadState("success");
+    } catch {
+      if (!controller.signal.aborted) setLoadState("error");
     }
-  }, [exam.id, t]);
+  }, [exam.id]);
 
   useEffect(() => {
     void refetchRegistrations();
+    return () => requestRef.current?.abort();
   }, [refetchRegistrations]);
 
   const handleApprove = async (regId: string) => {
@@ -154,14 +163,22 @@ function StudentManagementDialog({
     }
   };
 
-  const handleDelete = async (regId: string) => {
+  const handleDelete = async () => {
+    if (!registrationToDelete || deletingRef.current) return;
+    deletingRef.current = true;
+    setIsDeleting(true);
     try {
-      await apiClient.delete(ENDPOINTS.EXAM_REGISTRATIONS.DETAIL(regId));
+      await apiClient.delete(ENDPOINTS.EXAM_REGISTRATIONS.DETAIL(registrationToDelete.id));
       toast.success(t("studentRemovedFromList"));
+      setRegistrations((current) => current.filter((reg) => reg.id !== registrationToDelete.id));
+      setRegistrationToDelete(null);
       void refetchRegistrations();
       onRegistrationsChanged();
     } catch {
       toast.error(t("errorWhenDeletingStudents"));
+    } finally {
+      deletingRef.current = false;
+      setIsDeleting(false);
     }
   };
 
@@ -194,7 +211,7 @@ function StudentManagementDialog({
     <DialogContent className="bg-white border-gray-300 sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>{t("studentManagement")}</DialogTitle>
-        <DialogDescription>
+        <DialogDescription className="min-w-0 break-words">
           {t("manageExamStudents", { title: exam.title })}
         </DialogDescription>
       </DialogHeader>
@@ -236,13 +253,24 @@ function StudentManagementDialog({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
+              {loadState !== "success" && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" />
+                    {loadState === "loading" ? (
+                      <div role="status" className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                        {t("loadingStudents")}
+                      </div>
+                    ) : (
+                      <div role="alert" className="space-y-2">
+                        <p>{t("errorLoadingStudentList")}</p>
+                        <Button variant="outline" onClick={() => void refetchRegistrations()}>{t("retry")}</Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
-              ) : registrations && registrations.length > 0 ? (
+              )}
+              {registrations.length > 0 ? (
                 registrations.map((reg: ExamRegistrationWithStudent) => (
                   <TableRow key={reg.id} className="border-gray-300">
                     <TableCell>{reg.student?.full_name}</TableCell>
@@ -274,14 +302,15 @@ function StudentManagementDialog({
                           variant="ghost"
                           size="sm"
                           className="text-red-600 hover:text-red-700 hover:cursor-pointer"
-                          onClick={() => handleDelete(reg.id)}
+                          disabled={isDeleting}
+                          onClick={() => setRegistrationToDelete(reg)}
                         >
                           {t("erase")}</Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 ))
-              ) : (
+              ) : loadState === "success" ? (
                 <TableRow>
                   <TableCell
                     colSpan={4}
@@ -289,38 +318,79 @@ function StudentManagementDialog({
                   >
                     {t("noStudentsHaveRegisteredYet")}</TableCell>
                 </TableRow>
-              )}
+              ) : null}
             </TableBody>
           </Table>
         </div>
       </div>
+      <AlertDialog
+        open={registrationToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingRef.current) setRegistrationToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("confirmStudentRemoval")}</AlertDialogTitle>
+            <AlertDialogDescription className="break-words">
+              {t("confirmStudentRemovalDescription", {
+                student: registrationToDelete?.student?.full_name || registrationToDelete?.student?.email || t("student"),
+                title: exam.title,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>{t("cancel")}</AlertDialogCancel>
+            <Button variant="destructive" disabled={isDeleting} onClick={() => void handleDelete()}>
+              {isDeleting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+              {isDeleting ? t("removingStudent") : t("erase")}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DialogContent>
   );
 }
 
+/** Lists the lecturer's exams with URL-backed filtering and recoverable loading. */
 export default function LecturerExams() {
   const t = useTranslations("lecturer.exams");
   const iconLabels = useIconLabels();
   const locale = useLocale();
   const router = useRouter();
   const [exams, setExams] = useState<LecturerExamItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [loadState, setLoadState] = useState<"loading" | "error" | "success">("loading");
+  const requestRef = useRef<AbortController | null>(null);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const user = useAppSelector((state) => state.user);
-
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
+  const searchParams = useSearchParams();
+  const searchTerm = searchParams.get("q") ?? "";
+  const requestedPage = Number(searchParams.get("page") ?? "1");
+  const validPage = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
   const ITEMS_PER_PAGE = 5;
 
+  const updateListUrl = (query: string, page: number, replace: boolean) => {
+    const url = new URL(window.location.href);
+    if (query) url.searchParams.set("q", query);
+    else url.searchParams.delete("q");
+    url.searchParams.set("page", String(page));
+    // Next's native history integration keeps client-only filters synchronous and back-aware.
+    if (replace) window.history.replaceState(null, "", url);
+    else window.history.pushState(null, "", url);
+  };
+
   const refetchExams = useCallback(async () => {
-    if (!user.id) {
-      setExams([]);
-      return;
-    }
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setLoadState("loading");
+    if (!user.id) return;
 
     try {
       const response = await apiClient.get<PageResult<LecturerExamItem>>(
         ENDPOINTS.EXAMS.BASE,
         {
+          signal: controller.signal,
           params: {
             page: 1,
             limit: 100,
@@ -328,12 +398,14 @@ export default function LecturerExams() {
           },
         },
       );
+      if (controller.signal.aborted) return;
       setExams(response.data.data);
-    } catch (error) {
-      toast.error(t("errorLoadingTestList"));
-      console.log(error);
+      setLoadedUserId(user.id);
+      setLoadState("success");
+    } catch {
+      if (!controller.signal.aborted) setLoadState("error");
     }
-  }, [user.id, t]);
+  }, [user.id]);
 
   const handleDeleteExam = async (examId: string) => {
     try {
@@ -348,6 +420,7 @@ export default function LecturerExams() {
 
   useEffect(() => {
     void refetchExams();
+    return () => requestRef.current?.abort();
   }, [refetchExams]);
 
   // Listen for real-time registration requests
@@ -368,15 +441,22 @@ export default function LecturerExams() {
 
   const [registrationDialogId, setRegistrationDialogId] = useState<string | null>(null);
 
-  const filteredExams =
-    exams?.filter((exam) =>
-      exam.title.toLowerCase().includes(searchTerm.toLowerCase()),
-    ) || [];
-
+  const filteredExams = loadedUserId === user.id
+    ? exams.filter((exam) => exam.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    : [];
+  const listState = !user.id || (loadedUserId !== user.id && loadState === "success") ? "loading" : loadState;
   const totalPages = Math.ceil(filteredExams.length / ITEMS_PER_PAGE);
+  const currentPage = Math.min(validPage, Math.max(totalPages, 1));
   useEffect(() => {
-    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
-  }, [currentPage, totalPages]);
+    if (listState !== "success" || validPage === currentPage) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("page", String(currentPage));
+    window.history.replaceState(null, "", url);
+  }, [currentPage, validPage, listState]);
+  const returnParams = new URLSearchParams(searchParams.toString());
+  returnParams.set("page", String(listState === "success" ? currentPage : validPage));
+  const returnTo = `/lecturer/exams?${returnParams.toString()}`;
+  const createHref = `/lecturer/exams/create?${new URLSearchParams({ returnTo })}`;
   const paginatedExams = filteredExams.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
@@ -390,7 +470,7 @@ export default function LecturerExams() {
           <p className="mt-1 text-sm text-neutral-500">{t("manageAndEditExams")}</p>
         </div>
         <Button
-          onClick={() => router.push("/lecturer/exams/create")}
+          onClick={() => router.push(createHref)}
           className="bg-[#0066cc] hover:bg-[#0052a3] text-white hover:cursor-pointer"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -413,10 +493,8 @@ export default function LecturerExams() {
                 placeholder={t("searchForExam")}
                 className="pl-10 bg-white border-gray-300"
                 value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
+                aria-label={t("searchForExam")}
+                onChange={(e) => updateListUrl(e.target.value, 1, true)}
               />
             </div>
           </div>
@@ -436,13 +514,40 @@ export default function LecturerExams() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {listState !== "success" && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-10 text-center">
+                    {listState === "loading" ? (
+                      <div role="status" className="flex items-center justify-center gap-2">
+                        <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+                        {t("loadingExams")}
+                      </div>
+                    ) : (
+                      <div role="alert" className="space-y-3">
+                        <p>{t("errorLoadingTestList")}</p>
+                        <Button variant="outline" onClick={() => void refetchExams()}>{t("retry")}</Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )}
               {filteredExams.length > 0 ? (
                 paginatedExams.map((exam) => (
                   <TableRow key={exam.id} className="border-gray-300">
-                    <TableCell className="font-medium whitespace-nowrap">
-                      {exam.title}
+                    <TableCell className="font-medium">
+                      <span className="block w-44 truncate focus:whitespace-normal focus:break-words sm:w-60" title={exam.title} tabIndex={0}>
+                        {exam.title}
+                      </span>
                     </TableCell>
-                    <TableCell>{getTopicName(exam.topic)}</TableCell>
+                    <TableCell>
+                      <span
+                        className="block w-32 truncate focus:whitespace-normal focus:break-words sm:w-40"
+                        title={getTopicName(exam.topic)}
+                        tabIndex={0}
+                      >
+                        {getTopicName(exam.topic)}
+                      </span>
+                    </TableCell>
                     <TableCell className="text-xs">
                       {new Date(exam.exam_start_time).toLocaleString(intlLocales[locale])}
                     </TableCell>
@@ -486,7 +591,7 @@ export default function LecturerExams() {
                           variant="ghost"
                           size="icon"
                           onClick={() =>
-                            router.push(`/lecturer/exams/edit/${exam.id}`)
+                            router.push(`/lecturer/exams/edit/${exam.id}?${new URLSearchParams({ returnTo })}`)
                           }
                           className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
                           {...iconLabelProps(iconLabels.edit)}
@@ -549,7 +654,7 @@ export default function LecturerExams() {
                     </TableCell>
                   </TableRow>
                 ))
-              ) : (
+              ) : listState === "success" ? (
                 <TableRow>
                   <TableCell colSpan={8} className="h-72 text-center">
                     <div className="flex flex-col items-center justify-center space-y-3">
@@ -574,7 +679,7 @@ export default function LecturerExams() {
                       </div>
                       {!searchTerm && (
                         <Button
-                          onClick={() => router.push("/lecturer/exams/create")}
+                          onClick={() => router.push(createHref)}
                           className="bg-[#0066cc] hover:bg-[#0052a3] text-white mt-2"
                         >
                           <Plus className="h-4 w-4 mr-2" />
@@ -583,7 +688,7 @@ export default function LecturerExams() {
                     </div>
                   </TableCell>
                 </TableRow>
-              )}
+              ) : null}
             </TableBody>
           </Table>
           </div>
@@ -593,8 +698,8 @@ export default function LecturerExams() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
+                onClick={() => updateListUrl(searchTerm, Math.max(currentPage - 1, 1), false)}
+                className="text-foreground hover:cursor-pointer"
                 disabled={currentPage === 1}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -605,10 +710,8 @@ export default function LecturerExams() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                className="bg-[#0066cc] hover:bg-[#0052a3] border-none text-white hover:cursor-pointer"
+                onClick={() => updateListUrl(searchTerm, Math.min(currentPage + 1, totalPages), false)}
+                className="text-foreground hover:cursor-pointer"
                 disabled={currentPage === totalPages}
               >
                 {t("next")}

@@ -1,4 +1,15 @@
 {
+  "questionSelectionHint": "Pick questions directly or configure automatic selection from the exam's topic.",
+  "chooseTopicFirst": "Choose a topic above to browse its question bank and configure your exam.",
+  "untitledExam": "New exam",
+  "loadingQuestionBank": "Loading question bank...",
+  "retryLoading": "Retry",
+  "confirmSelection": "Done",
+  "configuredQuestionCount": "{count} questions in the exam",
+  "selectedQuestionPlaceholder": "Selected question",
+  "moreSelectedQuestions": "And {count} more questions. Open Select question to view all.",
+  "invalidRandomCount": "The random question count must be a positive integer.",
+  "invalidQuantity": "Each quantity must be a non-negative integer and the total must be valid.",
   "insufficientDistinctQuestions": "There are not enough distinct questions to satisfy every distribution row, including overlapping chapters. Reduce the quantities or add questions.",
   "chooseChapterAtAnyDepth": "Choose a chapter at any depth",
   "searchChapterPath": "Search chapter name or path",
@@ -74,5 +85,9 @@
     "DELTA_HIGH_FOR_TOTAL": "A variation of 2 questions is large for an exam of only {total} questions; consider 1."
   },
   "cancel": "Cancel",
-  "updateExam": "Update exam"
+  "updateExam": "Update exam",
+  "editDetailsDescription": "Update the exam details, settings and questions.",
+  "savingExam": "Saving...",
+  "loadingExam": "Loading exam...",
+  "retryLoad": "Retry"
 }

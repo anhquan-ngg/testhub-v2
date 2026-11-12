@@ -1,4 +1,15 @@
 {
+  "questionSelectionHint": "Chọn trực tiếp câu hỏi hoặc thiết lập cách lấy câu hỏi tự động theo chủ đề của bài thi.",
+  "chooseTopicFirst": "Chọn chủ đề ở trên để xem ngân hàng câu hỏi và cấu hình đề thi.",
+  "untitledExam": "Bài thi mới",
+  "loadingQuestionBank": "Đang tải ngân hàng câu hỏi...",
+  "retryLoading": "Tải lại",
+  "confirmSelection": "Xong",
+  "configuredQuestionCount": "{count} câu hỏi trong đề",
+  "selectedQuestionPlaceholder": "Câu hỏi đã chọn",
+  "moreSelectedQuestions": "Và {count} câu hỏi khác. Mở Chọn câu hỏi để xem toàn bộ.",
+  "invalidRandomCount": "Số câu hỏi ngẫu nhiên phải là số nguyên lớn hơn 0.",
+  "invalidQuantity": "Số lượng mỗi hàng phải là số nguyên không âm và tổng số câu hỏi phải hợp lệ.",
   "insufficientDistinctQuestions": "Không đủ câu hỏi khác nhau để đáp ứng tất cả các hàng phân phối, kể cả khi các chương được chọn chồng nhánh. Hãy giảm số lượng hoặc bổ sung câu hỏi.",
   "chooseChapterAtAnyDepth": "Chọn chương ở bất kỳ cấp nào",
   "searchChapterPath": "Tìm theo tên hoặc đường dẫn chương",
@@ -74,5 +85,9 @@
     "DELTA_HIGH_FOR_TOTAL": "Dao động 2 câu là lớn với đề chỉ {total} câu; nên cân nhắc chọn 1."
   },
   "cancel": "Hủy",
-  "updateExam": "Cập nhật bài thi"
+  "updateExam": "Cập nhật bài thi",
+  "editDetailsDescription": "Cập nhật thông tin, cấu hình và câu hỏi của bài thi.",
+  "savingExam": "Đang lưu...",
+  "loadingExam": "Đang tải bài thi...",
+  "retryLoad": "Thử lại"
 }

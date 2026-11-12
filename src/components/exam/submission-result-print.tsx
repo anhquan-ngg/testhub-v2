@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { isAxiosError } from "axios";
 import { ArrowLeft, FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@/i18n/navigation";
@@ -17,6 +18,18 @@ import {
 
 // Puppeteer renders KaTeX and S3 images server-side, so allow more than the default timeout.
 const PDF_TIMEOUT_MS = 120_000;
+
+type PreviewError = "previewForbidden" | "previewNotFound" | "previewNetworkError" | "previewServerError" | "previewUnavailable";
+
+const classifyPreviewError = (error: unknown): PreviewError => {
+  if (!isAxiosError(error)) return "previewUnavailable";
+  const status = error.response?.status;
+  if (status === 403) return "previewForbidden";
+  if (status === 404) return "previewNotFound";
+  if (status === undefined) return "previewNetworkError";
+  if (status >= 500) return "previewServerError";
+  return "previewUnavailable";
+};
 
 /** Removes diacritics so the downloaded file name is safe everywhere. */
 const toFileSlug = (value: string) =>
@@ -37,20 +50,23 @@ export function SubmissionResultPrint({
   submissionId: string;
 }) {
   const t = useTranslations("student.resultDetail");
+  const report = useTranslations("lecturer.examReport");
   const user = useAppSelector((state) => state.user);
   const [submission, setSubmission] = useState<ResultSubmission | null>(null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<PreviewError | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [isPrinting, setIsPrinting] = useState(false);
   const printingRef = useRef(false);
   const isStaff = user.role === "LECTURER" || user.role === "ADMIN";
   const reportHref = `/lecturer/exams/${examId}/report`;
+  const hasScore = submission?.total_score != null &&
+    String(submission.total_score).trim() !== "" && Number.isFinite(Number(submission.total_score));
 
   useEffect(() => {
     if (!isStaff || !user.id) return;
     const controller = new AbortController();
     setSubmission(null);
-    setError(false);
+    setError(null);
     void apiClient
       .get<ResultSubmission>(ENDPOINTS.SUBMISSIONS.DETAIL(submissionId), {
         signal: controller.signal,
@@ -61,19 +77,19 @@ export function SubmissionResultPrint({
           data.exam.id !== examId ||
           (user.role !== "ADMIN" && data.exam.lecturer_id !== user.id)
         ) {
-          setError(true);
+          setError("previewForbidden");
           return;
         }
         setSubmission(data);
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setError(true);
+      .catch((requestError: unknown) => {
+        if (!controller.signal.aborted) setError(classifyPreviewError(requestError));
       });
     return () => controller.abort();
   }, [attempt, examId, isStaff, submissionId, user.id, user.role]);
 
   const handleDownload = async () => {
-    if (!submission || printingRef.current) return;
+    if (!submission || !hasScore || !isStaff || error || printingRef.current) return;
     printingRef.current = true;
     setIsPrinting(true);
     try {
@@ -116,7 +132,7 @@ export function SubmissionResultPrint({
         </Button>
         <Button
           onClick={() => void handleDownload()}
-          disabled={!submission || isPrinting || !isStaff}
+          disabled={!submission || !hasScore || isPrinting || !isStaff || error !== null}
           className="cursor-pointer bg-[#0066cc] hover:bg-[#0052a3]"
         >
           {isPrinting ? (
@@ -137,12 +153,20 @@ export function SubmissionResultPrint({
       </div>
       {error || (user.role && !isStaff) ? (
         <Card className="gap-4 border-gray-300 p-8 text-center" role="alert">
-          <p className="text-red-700">{t("resultUnavailable")}</p>
+          <p className="text-red-700">{report(error ?? "previewForbidden")}</p>
           <Button
             variant="outline"
             className="mx-auto cursor-pointer"
             onClick={() => setAttempt((value) => value + 1)}
           >
+            {t("retry")}
+          </Button>
+        </Card>
+      ) : submission && !hasScore ? (
+        <Card className="gap-4 border-gray-300 p-8 text-center" role="status">
+          <p className="font-semibold">{report("noScore")}</p>
+          <p className="text-sm text-neutral-600">{report("unscoredPreview")}</p>
+          <Button variant="outline" className="mx-auto cursor-pointer" onClick={() => setAttempt((value) => value + 1)}>
             {t("retry")}
           </Button>
         </Card>

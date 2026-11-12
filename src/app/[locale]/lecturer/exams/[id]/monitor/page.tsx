@@ -703,7 +703,9 @@ export default function ExamMonitorPage() {
               {t("extendTimeDescription", { name: extendTarget?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
+          <label htmlFor="extend-minutes" className="text-sm font-medium">{t("numberOfMinutes")}</label>
           <Input
+            id="extend-minutes"
             type="number"
             min={1}
             max={120}

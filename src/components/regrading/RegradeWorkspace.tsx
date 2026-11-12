@@ -47,6 +47,7 @@ export function RegradeWorkspace({ examId, submissionId }: { examId: string; sub
   const locked = useRef(false);
   const pendingHref = useRef<string | null>(null);
   const bypassGuard = useRef(false);
+  const dialogTrigger = useRef<HTMLElement | null>(null);
 
   const baseline = workspace ? regradeValues(workspace) : {};
   const dirty = workspace !== null && (reason !== (workspace.draft?.reason ?? "") ||
@@ -328,7 +329,11 @@ export function RegradeWorkspace({ examId, submissionId }: { examId: string; sub
             </CardContent>
           </Card>
       <AlertDialog open={dialog !== null} onOpenChange={(open) => { if (!open && !(dialog === "publish" && locked.current)) { setDialog(null); pendingHref.current = null; } }}>
-        <AlertDialogContent className="bg-white">
+        <AlertDialogContent
+          className="bg-white"
+          onOpenAutoFocus={() => { dialogTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+          onCloseAutoFocus={(event) => { event.preventDefault(); dialogTrigger.current?.focus(); }}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>{t(dialog === "publish" ? "confirmPublish" : "confirmDiscard")}</AlertDialogTitle>
             <AlertDialogDescription>{t(dialog === "publish" ? "publishWarning" : "unsavedWarning")}</AlertDialogDescription>
