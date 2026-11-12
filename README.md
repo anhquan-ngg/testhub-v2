@@ -1,5 +1,32 @@
 # TESTHUB - Hệ thống Thi trực tuyến
 
+## Luồng quản lý bài thi
+
+- Danh sách giữ từ khóa `q` và trang `page` trong URL. Tạo/sửa nhận `returnTo`
+  chỉ trỏ về danh sách, giữ ngữ cảnh khi hủy hoặc lưu thành công; có trạng thái
+  tải, lỗi và thử lại riêng biệt, không dùng màn hình trống để biểu thị API lỗi.
+- Tạo và sửa dùng chung [trường thông tin](src/components/exams/ExamDetailsFields.tsx)
+  và [validation](src/components/exams/exam-form.ts): lỗi ngay dưới trường,
+  focus vào lỗi đầu tiên, thời lượng là số phút nguyên dương, kết thúc sau bắt đầu.
+  Các trường xếp một cột trên màn hình nhỏ; đang lưu thì khóa gửi lặp.
+- Khi có thay đổi chưa lưu, hủy, bấm liên kết hoặc đổi ngôn ngữ cần xác nhận.
+  Tải lại/đóng tab dùng cảnh báo của trình duyệt. Back/Forward dùng Navigation API
+  trên trình duyệt hỗ trợ; trình duyệt cũ không có API này chưa chặn được điều
+  hướng lịch sử trong cùng ứng dụng. Không có autosave hay nháp bền vững cho đề thi.
+- Xóa đăng ký và cấp quyền thi lại có xác nhận ghi rõ đối tượng, hậu quả và khóa
+  thao tác đang xử lý. Hủy hộp thoại không gửi yêu cầu thay đổi dữ liệu.
+- Báo cáo phân biệt lỗi toàn bộ với thiếu chi tiết, hiển thị số lượt hoàn thành
+  và số đã tải; có thể thử lại các chi tiết lỗi. Điểm `null` hiển thị **Chưa có điểm**,
+  không phải 0. Tạm khóa in báo cáo thiếu dữ liệu/chưa có điểm và PDF bài chưa chấm,
+  vì bộ render PDF hiện tại chưa xử lý điểm `null` đúng nghĩa.
+- Bản xem trước phân biệt lỗi 403, 404 và lỗi máy chủ/kết nối. Các nhãn mới có VI/EN;
+  hộp thoại chấm lại trả focus về nút mở, trường gia hạn có nhãn liên kết rõ ràng.
+
+Kiểm tra hồi quy với dữ liệu test: tạo/sửa hợp lệ và không hợp lệ, gửi lặp,
+thoát khi chưa lưu, Back/Forward giữ tìm kiếm/trang, hủy hành động nguy hiểm,
+API 500 và thử lại, báo cáo thiếu chi tiết/điểm `null`, Escape trả focus, cùng
+các kích thước 1440/1024/768/375 px. Không dùng dữ liệu thi thật để kiểm thử thao tác ghi.
+
 ## Cây chương nhiều cấp (2026-10-27)
 
 Cấu hình đề theo chương cho phép tìm/chọn chương ở mọi cấp và luôn bao gồm

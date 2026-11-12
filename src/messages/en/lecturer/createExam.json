@@ -24,5 +24,12 @@
   "makeTheExamPublicStudentsCan": "Make the exam public (Students can see it without registering)",
   "cancel": "Cancel",
   "creating": "Creating...",
-  "createTest": "Create test"
+  "createTest": "Create test",
+  "requiredField": "This field is required.",
+  "positiveDuration": "Duration must be a whole number of minutes greater than 0.",
+  "invalidDate": "Choose a valid date and time.",
+  "leaveTitle": "Leave without saving?",
+  "unsavedChanges": "Your unsaved changes will be lost. Do you want to leave this page?",
+  "keepEditing": "Keep editing",
+  "discardChanges": "Leave page"
 }

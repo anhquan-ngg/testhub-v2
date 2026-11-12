@@ -85,5 +85,9 @@
     "DELTA_HIGH_FOR_TOTAL": "A variation of 2 questions is large for an exam of only {total} questions; consider 1."
   },
   "cancel": "Cancel",
-  "updateExam": "Update exam"
+  "updateExam": "Update exam",
+  "editDetailsDescription": "Update the exam details, settings and questions.",
+  "savingExam": "Saving...",
+  "loadingExam": "Loading exam...",
+  "retryLoad": "Retry"
 }

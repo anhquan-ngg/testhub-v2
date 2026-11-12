@@ -1,5 +1,11 @@
 {
   "email": "Email",
+  "loadingExams": "Loading exams...",
+  "loadingStudents": "Loading students...",
+  "retry": "Retry",
+  "confirmStudentRemoval": "Confirm student removal",
+  "confirmStudentRemovalDescription": "Remove {student} from registration for “{title}”? The student will no longer be on this exam's participant list.",
+  "removingStudent": "Removing...",
   "manageExamStudents": "Manage candidates for the exam: {title}",
   "durationMinutes": "{minutes} min",
   "active": "Active",

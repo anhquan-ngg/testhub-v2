@@ -40,6 +40,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
           key={code}
           type="button"
           onClick={() => handleChange(code)}
+          data-page-navigation={code !== locale ? "locale" : undefined}
           aria-pressed={code === locale}
           title={localeLabels[code]}
           className={cn(

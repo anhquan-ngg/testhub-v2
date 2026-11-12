@@ -1,5 +1,11 @@
 {
   "email": "Email",
+  "loadingExams": "Đang tải danh sách bài thi…",
+  "loadingStudents": "Đang tải danh sách sinh viên…",
+  "retry": "Thử lại",
+  "confirmStudentRemoval": "Xác nhận xóa sinh viên",
+  "confirmStudentRemovalDescription": "Xóa {student} khỏi danh sách đăng ký bài thi “{title}”? Sinh viên sẽ không còn trong danh sách tham gia bài thi này.",
+  "removingStudent": "Đang xóa…",
   "manageExamStudents": "Quản lý danh sách sinh viên tham gia bài thi: {title}",
   "durationMinutes": "{minutes} phút",
   "active": "Đang hoạt động",

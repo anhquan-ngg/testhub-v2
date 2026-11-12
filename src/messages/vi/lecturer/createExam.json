@@ -24,5 +24,12 @@
   "makeTheExamPublicStudentsCan": "Công khai bài thi (Sinh viên có thể thấy mà không cần đăng ký)",
   "cancel": "Hủy",
   "creating": "Đang tạo...",
-  "createTest": "Tạo bài thi"
+  "createTest": "Tạo bài thi",
+  "requiredField": "Vui lòng điền trường này.",
+  "positiveDuration": "Thời lượng phải là số phút nguyên lớn hơn 0.",
+  "invalidDate": "Vui lòng chọn ngày và giờ hợp lệ.",
+  "leaveTitle": "Rời trang khi chưa lưu?",
+  "unsavedChanges": "Các thay đổi chưa lưu sẽ bị mất. Bạn có muốn rời trang?",
+  "keepEditing": "Tiếp tục chỉnh sửa",
+  "discardChanges": "Rời trang"
 }
