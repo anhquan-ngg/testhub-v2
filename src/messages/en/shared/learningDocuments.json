@@ -70,6 +70,17 @@
   "noPreview": "Content is not available yet. Keep this page open or reload to check its status.",
   "ocr": "This document requires OCR. The extracted text below may be incomplete and is not ready for RAG.",
   "extracted": "Text has been extracted. Search availability depends on the index status below.",
+  "noUsableText": "This document has no useful text (blank pages or only a few header/footer words). It needs OCR or another document and cannot generate questions yet.",
+  "partial": {
+    "page": "pages",
+    "slide": "slides",
+    "summary": "Extracted {text}/{total} {unit}; no text on: {missing}.",
+    "warning": "The missing pages may hold important knowledge but were not extracted (for example an image-only cover). Content is incomplete; use the extracted part only if you are sure the missing pages are not needed.",
+    "confirm": "Use extracted part",
+    "confirmPrompt": "Confirm using the extracted pages and skipping pages without text? Original page numbers are kept for citations.",
+    "confirmed": "Extracted part confirmed for use.",
+    "confirmedNotice": "You confirmed using the extracted part; pages without text are skipped and content is incomplete."
+  },
   "emptyUnit": "No text was extracted from this page/slide.",
   "revoke": "Revoke document",
   "revokeConfirm": "Revoke access and stop document processing? Files remain subject to retention policy; this does not physically delete them.",
@@ -84,6 +95,7 @@
     "QUEUED": "Queued",
     "PROCESSING": "Extracting",
     "EXTRACTED": "Extracted",
+    "PARTIAL": "Partially extracted",
     "OCR_REQUIRED": "OCR required",
     "FAILED": "Failed"
   },

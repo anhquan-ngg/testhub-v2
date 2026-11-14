@@ -19,7 +19,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +46,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ENDPOINTS } from "@/constants/endpoints";
 import apiClient from "@/lib/api-client";
-import { ICON_TONE, iconLabelProps, useIconLabels } from "@/lib/icon-button";
+import { ICON_TONE, iconAriaProps, useIconLabels } from "@/lib/icon-button";
+import { IconTooltip } from "@/components/ui/icon-tooltip";
 import {
   ImportQuestionData,
   ImportQuestionOption,
@@ -121,6 +122,8 @@ export function QuestionImportWorkspace({
   const [items, setItems] = useState<QuestionImportItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBusy, setIsBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [itemsState, setItemsState] = useState<"idle" | "loading" | "loaded" | "error">("idle");
   // Bumped when a status poll fails so the polling effect schedules a retry.
   const [pollTick, setPollTick] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -221,13 +224,11 @@ export function QuestionImportWorkspace({
     };
   }, [questionImport, pollTick, t]);
 
-  useEffect(() => {
-    if (questionImport?.status !== "REVIEW_REQUIRED" || items.length) return;
-    void loadItems(questionImport.id);
-  }, [items.length, questionImport?.id, questionImport?.status]);
-
-  const loadItems = async (importId: string) => {
+  const loadItems = useCallback(async (importId: string) => {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setIsBusy(true);
+    setItemsState("loading");
     try {
       const first = await apiClient.get<{
         data: QuestionImportItem[];
@@ -256,16 +257,30 @@ export function QuestionImportWorkspace({
             .map((item) => item.id),
         ),
       );
+      setItemsState("loaded");
     } catch (error) {
+      setItemsState("error");
       toast.error(getErrorMessage(error, t("unableToDownloadReviewData")));
     } finally {
+      busyRef.current = false;
       setIsBusy(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    if (questionImport?.status === "REVIEW_REQUIRED" && itemsState === "idle" && !isBusy) {
+      void loadItems(questionImport.id);
+    }
+  }, [isBusy, itemsState, loadItems, questionImport?.id, questionImport?.status]);
 
   const handleUpload = async () => {
+    if (busyRef.current) return;
     if (!activeTopicId || !file) {
       toast.error(t("pleaseSelectFileAndTopic"));
+      return;
+    }
+    if (file.size === 0) {
+      toast.error(t("emptyFile"));
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
@@ -284,7 +299,11 @@ export function QuestionImportWorkspace({
         ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+    busyRef.current = true;
     setIsBusy(true);
+    setItemsState("idle");
+    setItems([]);
+    setSelectedIds(new Set());
     let createdImportId: string | null = null;
     let uploadFinished = false;
     try {
@@ -338,12 +357,14 @@ export function QuestionImportWorkspace({
       }
       toast.error(getErrorMessage(error, t("unableToLoadAndProcessImport")));
     } finally {
+      busyRef.current = false;
       setIsBusy(false);
     }
   };
 
   const handleRetryComplete = async () => {
-    if (!questionImport || questionImport.status !== "UPLOADING" || isBusy) return;
+    if (!questionImport || questionImport.status !== "UPLOADING" || busyRef.current) return;
+    busyRef.current = true;
     setIsBusy(true);
     try {
       const response = await apiClient.post<{ status: QuestionImportRecord["status"] }>(
@@ -362,6 +383,7 @@ export function QuestionImportWorkspace({
       }
       toast.error(getErrorMessage(error, t("unableToLoadAndProcessImport")));
     } finally {
+      busyRef.current = false;
       setIsBusy(false);
     }
   };
@@ -420,7 +442,8 @@ export function QuestionImportWorkspace({
   };
 
   const saveItem = async () => {
-    if (!questionImport || !editingItemId || !editForm) return;
+    if (!questionImport || !editingItemId || !editForm || busyRef.current) return;
+    busyRef.current = true;
     setIsBusy(true);
     try {
       const response = await apiClient.patch<QuestionImportItem>(
@@ -457,12 +480,14 @@ export function QuestionImportWorkspace({
     } catch (error) {
       toast.error(getErrorMessage(error, t("unableToUpdateImportLine")));
     } finally {
+      busyRef.current = false;
       setIsBusy(false);
     }
   };
 
   const handleCommit = async () => {
-    if (!questionImport || selectedIds.size === 0) return;
+    if (!questionImport || selectedIds.size === 0 || editingItemId || busyRef.current) return;
+    busyRef.current = true;
     setIsBusy(true);
     try {
       const response = await apiClient.post<QuestionImportRecord>(
@@ -472,13 +497,25 @@ export function QuestionImportWorkspace({
       setQuestionImport(response.data);
       toast.success(t("importedQuestionsIntoTheBank"));
     } catch (error) {
+      try {
+        const current = await apiClient.get<QuestionImportRecord>(
+          ENDPOINTS.QUESTION_IMPORTS.DETAIL(questionImport.id),
+        );
+        setQuestionImport(current.data);
+      } catch {
+        // Keep this import for recovery after an ambiguous commit response.
+      }
       toast.error(getErrorMessage(error, t("unableToCompleteImport")));
     } finally {
+      busyRef.current = false;
       setIsBusy(false);
     }
   };
 
   const handleCancel = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setIsBusy(true);
     if (
       questionImport &&
       !["COMPLETED", "CANCELLED"].includes(questionImport.status)
@@ -504,6 +541,8 @@ export function QuestionImportWorkspace({
     setSelectedIds(new Set());
     setEditingItemId(null);
     setEditForm(null);
+    setItemsState("idle");
+    busyRef.current = false;
     setIsBusy(false);
   };
 
@@ -652,12 +691,23 @@ export function QuestionImportWorkspace({
               </span>
             </div>
 
+            {itemsState === "error" && (
+              <div role="alert" className="space-y-2 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                <p>{t("unableToDownloadReviewData")}</p>
+                <Button variant="outline" onClick={() => void loadItems(questionImport.id)} disabled={isBusy}>{t("retryLoading")}</Button>
+              </div>
+            )}
+            {(itemsState === "idle" || itemsState === "loading") && (
+              <p role="status" className="flex items-center gap-2 text-sm text-neutral-600"><Loader2 className="h-4 w-4 animate-spin" />{t("loadingReview")}</p>
+            )}
             <div className="max-h-[60vh] overflow-auto rounded-md border border-gray-300">
               <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-12">
                       <Checkbox
+                        aria-label={t("selectAllValid")}
+                        disabled={isBusy}
                         checked={
                           validItems.length > 0 &&
                           validItems.every((item) => selectedIds.has(item.id))
@@ -684,7 +734,8 @@ export function QuestionImportWorkspace({
                     <TableRow key={item.id}>
                       <TableCell>
                         <Checkbox
-                          disabled={item.status !== "VALID"}
+                          aria-label={t("selectRow", { row: item.source_index })}
+                          disabled={item.status !== "VALID" || isBusy}
                           checked={selectedIds.has(item.id)}
                           onCheckedChange={(checked) =>
                             setSelectedIds((current) => {
@@ -749,15 +800,18 @@ export function QuestionImportWorkspace({
                         ))}
                       </TableCell>
                       <TableCell>
+                        <IconTooltip label={iconLabels.edit} wrapDisabled={isBusy}>
                         <Button
                           variant="ghost"
                           size="icon"
+                          disabled={isBusy}
                           className={ICON_TONE.primary}
-                          {...iconLabelProps(iconLabels.edit)}
+                          {...iconAriaProps(iconLabels.edit)}
                           onClick={() => startEditing(item)}
                         >
                           <Pencil className="h-4 w-4" aria-hidden="true" />
                         </Button>
+                        </IconTooltip>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -766,7 +820,7 @@ export function QuestionImportWorkspace({
             </div>
 
             {editingItemId && editForm && (
-              <div className="space-y-4 border-t border-gray-200 pt-4">
+              <fieldset disabled={isBusy} className="min-w-0 space-y-4 border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">{t("editImportLine")}</h3>
                   <Button
@@ -781,8 +835,9 @@ export function QuestionImportWorkspace({
                 </div>
                 <div className="grid gap-4 md:grid-cols-3">
                   <div className="space-y-2 md:col-span-3">
-                    <Label>{t("questionContent")}</Label>
+                    <Label htmlFor="import-question-content">{t("questionContent")}</Label>
                     <Textarea
+                      id="import-question-content"
                       value={editForm.questionText}
                       onChange={(event) =>
                         setEditForm({
@@ -876,8 +931,9 @@ export function QuestionImportWorkspace({
 
                 {editForm.questionType === "ESSAY" ? (
                   <div className="space-y-2">
-                    <Label>{t("essayAnswers")}</Label>
+                    <Label htmlFor="import-essay-answer">{t("essayAnswers")}</Label>
                     <Textarea
+                      id="import-essay-answer"
                       value={editForm.correctAnswer ?? ""}
                       onChange={(event) =>
                         setEditForm({
@@ -896,6 +952,7 @@ export function QuestionImportWorkspace({
                         className="flex items-center gap-2"
                       >
                         <Checkbox
+                          aria-label={t("correctOptionLabel", { key: option.key })}
                           checked={option.isCorrect}
                           onCheckedChange={(checked) =>
                             updateOption(index, { isCorrect: Boolean(checked) })
@@ -904,17 +961,19 @@ export function QuestionImportWorkspace({
                         <span className="w-5 text-sm font-medium">
                           {option.key}
                         </span>
-                        <Input
+                        <Textarea
+                          aria-label={t("optionLabel", { key: option.key })}
                           value={option.text}
                           onChange={(event) =>
                             updateOption(index, { text: event.target.value })
                           }
                         />
+                        <IconTooltip label={iconLabels.delete} wrapDisabled={editForm.options.length <= 2 || isBusy}>
                         <Button
                           variant="ghost"
                           size="icon"
                           className={ICON_TONE.danger}
-                          {...iconLabelProps(iconLabels.delete)}
+                          {...iconAriaProps(iconLabels.delete)}
                           disabled={editForm.options.length <= 2}
                           onClick={() =>
                             setEditForm({
@@ -932,6 +991,7 @@ export function QuestionImportWorkspace({
                         >
                           <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
+                        </IconTooltip>
                       </div>
                     ))}
                     {editForm.options.length < optionKeys.length && (
@@ -944,7 +1004,7 @@ export function QuestionImportWorkspace({
                             options: [
                               ...editForm.options,
                               {
-                                key: optionKeys[editForm.options.length],
+                                key: optionKeys.find((key) => !editForm.options.some((option) => option.key === key)) ?? "",
                                 text: "",
                                 isCorrect: false,
                               },
@@ -961,7 +1021,7 @@ export function QuestionImportWorkspace({
                   <Button onClick={saveItem} disabled={isBusy}>
                     {t("saveAndCheckAgain")}</Button>
                 </div>
-              </div>
+              </fieldset>
             )}
           </div>
         )}

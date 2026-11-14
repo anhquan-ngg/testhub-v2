@@ -63,6 +63,8 @@ export const ENDPOINTS = {
       `/learning-documents/${id}/versions/${versionId}/complete`,
     CONTENT: (id: string, versionId: string) =>
       `/learning-documents/${id}/versions/${versionId}/content`,
+    CONFIRM_PARTIAL: (id: string, versionId: string) =>
+      `/learning-documents/${id}/versions/${versionId}/confirm-partial`,
   },
   EXAMS: {
     BASE: "/exams",

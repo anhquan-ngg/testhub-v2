@@ -1,4 +1,10 @@
 {
+  "emptyFile": "The selected file is empty. Please choose another file.",
+  "loadingReview": "Loading questions for review…",
+  "selectAllValid": "Select all valid questions",
+  "selectRow": "Select question on row {row}",
+  "optionLabel": "Option {key} content",
+  "correctOptionLabel": "Option {key} is correct",
   "retryUploadConfirmation": "Retry upload confirmation",
   "importSummary": "Created {created} questions; skipped {skipped} duplicates.",
   "totalCount": "Total {count}",

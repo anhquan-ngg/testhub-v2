@@ -90,8 +90,23 @@ export function KnowledgePlanWorkspace({
   const t = useTranslations("shared.questionGeneration.plan");
   const iconLabels = useIconLabels();
   const { questionType, questionFormat } = useEnumLabels();
+  const planErrorMessage = (code: string) => {
+    switch (code) {
+      case "PLAN_OUTLINE_INVALID":
+        return t("errors.PLAN_OUTLINE_INVALID");
+      case "PLAN_SOURCE_UNAVAILABLE":
+        return t("errors.PLAN_SOURCE_UNAVAILABLE");
+      case "PLAN_SOURCE_TIMEOUT":
+        return t("errors.PLAN_SOURCE_TIMEOUT");
+      case "PLAN_SCOPE_REVOKED":
+        return t("errors.PLAN_SCOPE_REVOKED");
+      default:
+        return code;
+    }
+  };
   const [plan, setPlan] = useState<KnowledgePlan | null>(null);
   const [formVersion, setFormVersion] = useState(0);
+  const [loadKey, setLoadKey] = useState(0);
   const [activeNode, setActiveNode] = useState<string | null>(null);
   const [history, setHistory] = useState<KnowledgePlan[]>([]);
   const [busy, setBusy] = useState(false),
@@ -165,7 +180,7 @@ export function KnowledgePlanWorkspace({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [planId, reset]);
+  }, [planId, reset, loadKey]);
   const mutate = async (operation: () => Promise<void>) => {
     if (lock.current) return;
     lock.current = true;
@@ -217,6 +232,14 @@ export function KnowledgePlanWorkspace({
     if (node && !seen.has(node.id)) parts.unshift("…");
     return parts.join(" / ");
   };
+  const targetTotal = plan?.target_total ?? null;
+  const nodeIds = new Set(matrix.nodes.map((node) => node.id));
+  const chaptersChanged =
+    !!plan?.matrix &&
+    JSON.stringify(matrix.nodes) !== JSON.stringify(plan.matrix.nodes);
+  const orphanRows = matrix.rows.some((row) => !nodeIds.has(row.node_id));
+  const totalMismatch = targetTotal !== null && total !== targetTotal;
+  const matrixStale = chaptersChanged || orphanRows || totalMismatch;
   const removeNode = (id: string) => {
     const removed = new Set([id]);
     let previous = 0;
@@ -226,13 +249,15 @@ export function KnowledgePlanWorkspace({
         if (node.parent_id && removed.has(node.parent_id)) removed.add(node.id);
       });
     }
-    if (matrix.rows.some((row) => removed.has(row.node_id))) {
-      toast.error(t("removeRowsFirst"));
-      return;
-    }
     setValue(
       "nodes",
       matrix.nodes.filter((node) => !removed.has(node.id)),
+      { shouldDirty: true },
+    );
+    // Rows of deleted chapters are dropped here; the matrix is rebuilt afterwards.
+    setValue(
+      "rows",
+      matrix.rows.filter((row) => !removed.has(row.node_id)),
       { shouldDirty: true },
     );
   };
@@ -299,6 +324,24 @@ export function KnowledgePlanWorkspace({
             >
               {t("reload")}
             </Button>
+            {plan.status === "FAILED" &&
+              plan.error_code?.startsWith("PLAN_") &&
+              plan.error_code !== "PLAN_SCOPE_REVOKED" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="cursor-pointer gap-1.5 border-gray-300 bg-white"
+                  disabled={busy || disabled}
+                  onClick={() =>
+                    void mutate(async () => {
+                      await api.retry(plan);
+                      setLoadKey((key) => key + 1);
+                    })
+                  }
+                >
+                  {t("retry")}
+                </Button>
+              )}
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
               <span className="font-medium text-neutral-900">
                 {plan.sourceVersion.file_name}
@@ -315,7 +358,7 @@ export function KnowledgePlanWorkspace({
                 role="alert"
                 className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
               >
-                {plan.error_code}
+                {planErrorMessage(plan.error_code)}
               </p>
             )}
             {plan.matrix && plan.content_map && (
@@ -333,9 +376,7 @@ export function KnowledgePlanWorkspace({
                   <legend className="font-semibold text-neutral-900">
                     {t("tree")}
                   </legend>
-                  <p className="text-xs text-neutral-700">
-                    {t("sourceHint")}
-                  </p>
+                  <p className="text-xs text-neutral-700">{t("sourceHint")}</p>
                   <div className="max-h-[480px] space-y-3 overflow-auto rounded-md border border-gray-300 bg-gray-50/60 p-3">
                     {matrix.nodes.map((node, index) => {
                       const origin = plan.content_map?.nodes.find(
@@ -605,10 +646,16 @@ export function KnowledgePlanWorkspace({
                                 ))}
                               </select>
                             </td>
-                            <td colSpan={4} className="min-w-0 sm:col-span-2 @min-[64rem]/matrix:p-2">
+                            <td
+                              colSpan={4}
+                              className="min-w-0 sm:col-span-2 @min-[64rem]/matrix:p-2"
+                            >
                               <div className="grid min-w-0 grid-cols-4 gap-2">
                                 {levels.map((level) => (
-                                  <label key={level} className="flex min-w-0 flex-col justify-end gap-1.5">
+                                  <label
+                                    key={level}
+                                    className="flex min-w-0 flex-col justify-end gap-1.5"
+                                  >
                                     <span className="block break-words text-xs font-medium @min-[64rem]/matrix:sr-only">
                                       {questionFormat(level)}
                                     </span>
@@ -687,6 +734,35 @@ export function KnowledgePlanWorkspace({
                     {t("addRow")}
                   </Button>
                 </fieldset>
+                {matrixStale && (
+                  <div
+                    role="alert"
+                    className="flex flex-wrap items-center gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+                  >
+                    <p className="min-w-0 flex-1">
+                      {chaptersChanged || orphanRows
+                        ? t("matrixStale")
+                        : t("matrixMismatch", {
+                            total,
+                            target: targetTotal ?? 0,
+                          })}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="cursor-pointer border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
+                      disabled={!editable || !matrix.nodes.length}
+                      onClick={() =>
+                        void mutate(async () =>
+                          accept(await api.rebuildMatrix(plan, matrix.nodes)),
+                        )
+                      }
+                    >
+                      {t("rebuildMatrix")}
+                    </Button>
+                  </div>
+                )}
                 <p className="inline-block rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-sm font-medium text-violet-700">
                   {t("total", { total, uncovered })}
                 </p>
@@ -714,6 +790,7 @@ export function KnowledgePlanWorkspace({
                       !editable ||
                       plan.status !== "REVIEW_REQUIRED" ||
                       isDirty ||
+                      totalMismatch ||
                       plan.chapter_matches?.some((match) => match.ambiguous)
                     }
                     onClick={() =>
@@ -726,7 +803,11 @@ export function KnowledgePlanWorkspace({
                     type="button"
                     className="cursor-pointer gap-1.5 bg-violet-600 text-white hover:bg-violet-700"
                     disabled={
-                      plan.status !== "APPROVED" || isDirty || busy || disabled
+                      plan.status !== "APPROVED" ||
+                      isDirty ||
+                      totalMismatch ||
+                      busy ||
+                      disabled
                     }
                     onClick={() =>
                       void mutate(async () => {
@@ -755,7 +836,11 @@ export function KnowledgePlanWorkspace({
                     className="cursor-pointer gap-1.5 border-violet-300 bg-white text-violet-700 hover:bg-violet-50 hover:text-violet-800"
                     title={t("generateNewHint")}
                     disabled={
-                      plan.status !== "APPROVED" || isDirty || busy || disabled
+                      plan.status !== "APPROVED" ||
+                      isDirty ||
+                      totalMismatch ||
+                      busy ||
+                      disabled
                     }
                     onClick={() =>
                       void mutate(async () => {
