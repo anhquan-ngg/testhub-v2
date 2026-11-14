@@ -1,5 +1,9 @@
 import apiClient from "@/lib/api-client";
-import type { KnowledgePlan, PlanMatrix } from "@/types/knowledge-plan";
+import type {
+  KnowledgePlan,
+  PlanMatrix,
+  PlanNode,
+} from "@/types/knowledge-plan";
 import type {
   GenerationPage,
   QuestionGenerationConfig,
@@ -43,12 +47,26 @@ export const knowledgePlanService = {
       })
     ).data;
   },
+  /** Persist the edited chapter list and regenerate rows to the batch size (clears approval). */
+  async rebuildMatrix(plan: KnowledgePlan, nodes: PlanNode[]) {
+    return (
+      await apiClient.post<KnowledgePlan>(`${base}/${plan.id}/rebuild-matrix`, {
+        revision: plan.revision,
+        nodes,
+      })
+    ).data;
+  },
   async approve(plan: KnowledgePlan) {
     return (
       await apiClient.post<KnowledgePlan>(`${base}/${plan.id}/approve`, {
         revision: plan.revision,
       })
     ).data;
+  },
+  /** User-initiated retry of a failed preparation; page loads never call it. */
+  async retry(plan: KnowledgePlan) {
+    return (await apiClient.post<KnowledgePlan>(`${base}/${plan.id}/retry`))
+      .data;
   },
   async generate(plan: KnowledgePlan, key: string) {
     return (

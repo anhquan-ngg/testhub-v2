@@ -3,6 +3,7 @@ export type DocumentStatus =
   | "QUEUED"
   | "PROCESSING"
   | "EXTRACTED"
+  | "PARTIAL"
   | "OCR_REQUIRED"
   | "FAILED";
 export type DocumentIndex = {
@@ -29,6 +30,12 @@ export type RetrievalResult = {
     end_offset: number;
   }[];
 };
+export type ExtractionQuality = {
+  total_units: number;
+  text_units: number;
+  ocr_suspected_units: number[];
+  blank_units: number[];
+};
 export type DocumentVersion = {
   indexes: DocumentIndex[];
   id: string;
@@ -41,7 +48,15 @@ export type DocumentVersion = {
   status: DocumentStatus;
   error_code: string | null;
   unit_count: number | null;
+  quality?: ExtractionQuality | null;
+  partial_confirmed_at?: string | null;
 };
+/** A version can feed RAG/generation when fully extracted or partial and confirmed. */
+export const isUsableVersion = (
+  version: Pick<DocumentVersion, "status" | "partial_confirmed_at">,
+) =>
+  version.status === "EXTRACTED" ||
+  (version.status === "PARTIAL" && Boolean(version.partial_confirmed_at));
 export type LearningDocument = {
   id: string;
   title: string;
@@ -102,6 +117,8 @@ export type DocumentContent = DocumentPage<SourceSpan> & {
   status: DocumentStatus;
   unit_count: number;
   warnings: string[];
+  quality?: ExtractionQuality | null;
+  partial_confirmed_at?: string | null;
 };
 export type DocumentUpload = {
   file_name: string;
