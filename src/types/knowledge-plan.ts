@@ -44,6 +44,8 @@ export type KnowledgePlan = {
     | "APPROVED"
     | "FAILED";
   error_code: string | null;
+  /** Questions the batch must contain; the matrix has to add up to it. */
+  target_total: number | null;
   sourceVersion: { file_name: string };
   matrix: PlanMatrix | null;
   content_map: {

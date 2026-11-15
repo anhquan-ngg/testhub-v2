@@ -26,7 +26,9 @@
     "actions": "Thao tác",
     "remove": "Xóa",
     "addRow": "Thêm hàng kiến thức",
-    "removeRowsFirst": "Hãy xóa các hàng ma trận thuộc nhánh này trước.",
+    "matrixStale": "Danh sách chương đã thay đổi nên ma trận chủ đề × mức nhận thức có thể không còn khớp. Hãy tạo lại ma trận để đủ số câu của lô; các hàng thuộc chương đã xóa sẽ bị loại và mục tiêu/số câu đã chỉnh tay sẽ được tạo lại.",
+    "matrixMismatch": "Ma trận đang có {total} câu nhưng lô yêu cầu {target} câu. Hãy tạo lại ma trận hoặc chỉnh số câu cho đủ.",
+    "rebuildMatrix": "Tạo lại ma trận từ danh sách chương",
     "total": "{total}/20 câu hỏi · {uncovered} chủ đề lá chưa có hàng ma trận",
     "reviewWarning": "Đề xuất dựa trên tiêu đề và nội dung trang. Hãy kiểm tra chủ đề suy ra, nguồn và mục tiêu. Mức nhận thức và độ đúng của đáp án chưa được đánh giá tự động. Chỉ các nhánh cần cho câu hỏi đã duyệt được chọn mới được tạo, trong cùng giao dịch lưu câu hỏi.",
     "unsaved": "Hãy lưu chỉnh sửa trước khi xác nhận.",
@@ -44,6 +46,13 @@
       "REVIEW_REQUIRED": "Chờ duyệt kế hoạch",
       "APPROVED": "Đã xác nhận",
       "FAILED": "Chuẩn bị thất bại"
+    },
+    "retry": "Chuẩn bị lại kế hoạch",
+    "errors": {
+      "PLAN_OUTLINE_INVALID": "Cây chương/chủ đề do AI đề xuất không hợp lệ (ví dụ: tên chủ đề trùng nhau). Hãy chuẩn bị lại; hệ thống sẽ tự phân biệt tên trùng. Kế hoạch không tự chạy lại khi tải trang.",
+      "PLAN_SOURCE_UNAVAILABLE": "Tài liệu nguồn chưa sẵn sàng: cần trích xuất xong, hoặc bản trích xuất một phần phải được xác nhận trong Thư viện tài liệu.",
+      "PLAN_SOURCE_TIMEOUT": "Tài liệu chưa sẵn sàng trong thời gian chờ (20 phút). Kiểm tra trạng thái trích xuất rồi chuẩn bị lại.",
+      "PLAN_SCOPE_REVOKED": "Quyền truy cập tài liệu đã bị thu hồi; không thể chuẩn bị lại kế hoạch."
     },
     "reload": "Tải lại bản đã lưu (bỏ chỉnh sửa)"
   },
@@ -109,7 +118,7 @@
     "hint": "Câu hỏi được sinh theo thứ tự các dòng. Tối đa {rows} dòng và {max} câu mỗi lần sinh. Câu nhiều đáp án có 2–3 đáp án đúng."
   },
   "configSummary": "{count} × {type} · {format}",
-  "consent": "Tôi có quyền sử dụng tài liệu này và đồng ý cho hệ thống xử lý, lưu trữ, gửi nội dung cùng phạm vi kiến thức tới Google để tạo embedding và sinh câu hỏi.",
+  "consent": "Đồng ý cho phép hệ thống xử lý, lưu trữ nội dung cùng phạm vi kiến thức để sinh câu hỏi.",
   "generate": "Sinh bản nháp",
   "invalidCommand": "Chọn chủ đề, đính kèm PDF/PPTX tối đa 20 MB, cấu hình tối đa 20 hàng với tổng 1-20 câu hỏi và đồng ý xử lý AI.",
   "targetError": "Không tải được môn/chương. Tải lại trang để thử lại.",
@@ -127,6 +136,20 @@
   "loadError": "Không tải được dữ liệu hoặc bạn không còn quyền truy cập. Tải lại để kiểm tra.",
   "processing": "Lô đang được xử lý. Trang tự cập nhật; bạn có thể quay lại sau.",
   "failed": "Không sinh được câu hỏi. Kiểm tra cấu hình hoặc tạo lô mới khi đã xử lý lỗi.",
+  "insufficientEvidence": {
+    "title": "Chưa đủ bằng chứng từ tài liệu để sinh câu hỏi",
+    "explanation": "Nội dung truy xuất chưa đủ để đáp ứng mục tiêu học tập, loại câu hỏi hoặc mức nhận thức được yêu cầu. Đây là giới hạn về bằng chứng, không phải lỗi JSON không hợp lệ hay lỗi cấu hình nhà cung cấp AI.",
+    "unknownSlots": "Dịch vụ chưa xác định vị trí câu hỏi bị lỗi. Không thể kết luận hàng kế hoạch hay câu hỏi cụ thể nào bị lỗi.",
+    "slot": "Vị trí câu hỏi {slot}:",
+    "planSlot": "Vị trí câu hỏi {slot} · {title} · {type} · {format}:",
+    "configSlot": "Vị trí câu hỏi {slot} · {type} · {format}:",
+    "reasons": {
+      "INSUFFICIENT_EVIDENCE": "Bằng chứng truy xuất chưa đủ để đáp ứng yêu cầu này.",
+      "NO_RETRIEVED_CONTEXT": "Không truy xuất được ngữ cảnh nguồn phù hợp cho yêu cầu này."
+    },
+    "action": "Kiểm tra mục tiêu, loại câu hỏi và mức nhận thức trong kế hoạch; xem lại các trang/slide nguồn liên quan hoặc chọn tài liệu phù hợp hơn, đồng thời cân nhắc giảm số câu trước khi chủ động tạo lô mới.",
+    "noDrafts": "Lô này vẫn ở trạng thái thất bại. Không có bản nháp nào được tạo hay lưu vào ngân hàng câu hỏi và hệ thống không tự sinh lại."
+  },
   "completed": "Đã xử lý xong lô. Các câu đã lưu có mã ngân hàng bên dưới.",
   "reviewHint": "AI có thể sai. Đọc nội dung, đáp án và mức nhận thức trước khi duyệt. Chỉ câu đã duyệt và được chọn mới được lưu.",
   "summary": "{total} bản nháp · {approved} đã duyệt · {committed} đã lưu",

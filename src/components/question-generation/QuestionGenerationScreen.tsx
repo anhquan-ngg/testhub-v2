@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { GenerationDraftCard } from "./GenerationDraftCard";
+import { GenerationBatchFailure } from "./GenerationBatchFailure";
 import { batchStatusClass, questionTypeClass } from "./generation-style";
 import {
   QuestionConfigTable,
@@ -55,19 +56,19 @@ import { knowledgePlanService } from "@/services/knowledgePlanService";
 import { KnowledgePlanWorkspace } from "./KnowledgePlanWorkspace";
 
 import { learningDocumentService as documentApi } from "@/services/learningDocumentService";
-import type {
-  DocumentReservation,
-  DocumentStatus,
-  LearningDocument,
+import {
+  isUsableVersion,
+  type DocumentReservation,
+  type DocumentVersion,
+  type LearningDocument,
 } from "@/types/learning-document";
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const REUSABLE_STATUSES: DocumentStatus[] = [
-  "EXTRACTED",
-  "QUEUED",
-  "PROCESSING",
-];
+const isReusable = (version: DocumentVersion) =>
+  isUsableVersion(version) ||
+  version.status === "QUEUED" ||
+  version.status === "PROCESSING";
 const selectClass =
   "h-9 w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20 disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -185,7 +186,7 @@ export function QuestionGenerationScreen() {
         const reusable = value.data.some((doc) =>
           doc.versions.some(
             (version) =>
-              REUSABLE_STATUSES.includes(version.status) &&
+              isReusable(version) &&
               version.id === existingVersionId,
           ),
         );
@@ -565,9 +566,7 @@ export function QuestionGenerationScreen() {
                     {(libraryDocs ?? []).map((doc) => (
                       <optgroup key={doc.id} label={doc.title}>
                         {doc.versions.map((version) => {
-                          const reusable = REUSABLE_STATUSES.includes(
-                            version.status,
-                          );
+                          const reusable = isReusable(version);
                           const ready = version.indexes.some(
                             (index) => index.status === "READY",
                           );
@@ -897,15 +896,7 @@ export function QuestionGenerationScreen() {
                           )}
                         </p>
                       )}
-                      {batch.status === "FAILED" && (
-                        <p
-                          role="alert"
-                          className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-                        >
-                          {t("failed")}{" "}
-                          <span className="font-mono">{batch.error_code}</span>
-                        </p>
-                      )}
+                      <GenerationBatchFailure batch={batch} />
                       {batch.status === "COMPLETED" && (
                         <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                           {t("completed")}

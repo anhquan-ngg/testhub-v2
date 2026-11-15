@@ -70,6 +70,17 @@
   "noPreview": "Nội dung chưa sẵn sàng. Giữ trang này mở hoặc tải lại để xem trạng thái.",
   "ocr": "Tài liệu có nội dung cần OCR. Phần văn bản dưới đây có thể chưa đầy đủ và chưa sẵn sàng cho RAG.",
   "extracted": "Đã trích xuất văn bản. Khả năng tìm kiếm phụ thuộc vào trạng thái chỉ mục bên dưới.",
+  "noUsableText": "Tài liệu không có văn bản hữu dụng (trang trắng hoặc chỉ có vài chữ header/footer). Cần OCR hoặc tài liệu khác; chưa thể dùng để sinh câu hỏi.",
+  "partial": {
+    "page": "trang",
+    "slide": "slide",
+    "summary": "Đã trích xuất {text}/{total} {unit}; chưa có text ở: {missing}.",
+    "warning": "Các trang này có thể chứa kiến thức quan trọng nhưng chưa được trích xuất (ví dụ trang bìa chỉ có hình). Nội dung chưa đầy đủ; chỉ nên dùng phần đã trích xuất nếu bạn chắc các trang thiếu không cần thiết.",
+    "confirm": "Dùng phần đã trích xuất",
+    "confirmPrompt": "Xác nhận dùng các trang đã trích xuất và bỏ qua các trang chưa có text? Số trang gốc được giữ nguyên để trích dẫn.",
+    "confirmed": "Đã xác nhận dùng phần đã trích xuất.",
+    "confirmedNotice": "Bạn đã xác nhận dùng phần đã trích xuất; các trang chưa có text bị bỏ qua và nội dung không đầy đủ."
+  },
   "emptyUnit": "Trang/slide này không có văn bản trích xuất được.",
   "revoke": "Thu hồi tài liệu",
   "revokeConfirm": "Thu hồi quyền truy cập và ngừng xử lý tài liệu? File được giữ theo chính sách lưu trữ; thao tác này không xóa vật lý file.",
@@ -84,6 +95,7 @@
     "QUEUED": "Đang chờ xử lý",
     "PROCESSING": "Đang trích xuất",
     "EXTRACTED": "Đã trích xuất",
+    "PARTIAL": "Trích xuất một phần",
     "OCR_REQUIRED": "Cần OCR",
     "FAILED": "Xử lý thất bại"
   },

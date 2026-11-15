@@ -27,6 +27,49 @@ thoát khi chưa lưu, Back/Forward giữ tìm kiếm/trang, hủy hành động
 API 500 và thử lại, báo cáo thiếu chi tiết/điểm `null`, Escape trả focus, cùng
 các kích thước 1440/1024/768/375 px. Không dùng dữ liệu thi thật để kiểm thử thao tác ghi.
 
+## Giám sát bài thi
+
+- Trang giám sát nhận `returnTo` hợp lệ từ danh sách để giữ từ khóa và trang khi quay lại.
+  Có tìm kiếm, lọc trạng thái/tín hiệu, số thí sinh đang hiển thị và phân biệt danh sách
+  chưa có thí sinh với kết quả lọc rỗng. Header và danh tính dài tự xuống dòng trên mobile.
+- Khi tải lại lỗi tạm thời, giữ danh sách gần nhất, ghi rõ dữ liệu có thể cũ và khóa gia hạn.
+  Lỗi 403/404 xóa danh sách khỏi màn hình. Hiển thị thời điểm cập nhật và thông báo khi
+  kênh trực tiếp gián đoạn; REST vẫn tải mỗi 30 giây, kết nối SSE đóng được thử lại sau 5 giây.
+- Snapshot SSE mới không bị REST cũ ghi đè; delta mới hơn snapshot REST được áp dụng lại.
+  Thiếu chuỗi sự kiện hoặc xuất hiện lượt thi mới sẽ tải lại danh sách và kết nối lại SSE.
+  Thí sinh chưa bắt đầu vẫn được giữ khi cập nhật delta.
+- Gia hạn nhận số phút nguyên 1–120, báo lỗi tại trường, hỗ trợ Enter, khóa gửi lặp/đóng
+  hộp thoại khi đang xử lý và kiểm tra lượt thi còn đang làm. Đây là thời gian cộng thêm
+  cho lượt thi, không thay đổi giờ kết thúc chung. Backend vẫn quyết định quyền và trạng thái.
+- Duyệt chuyển thiết bị dùng hộp thoại xác nhận có quản lý focus; phân biệt đang tải,
+  không có yêu cầu và lỗi/thử lại. Lỗi duyệt không bị polling tự xóa; sau duyệt tải lại dữ liệu.
+- Tín hiệu bất thường chỉ là thông tin tham khảo, không tự động kết luận gian lận.
+  UI có VI/EN và giữ các component, màu sắc hiện có.
+
+Kiểm thử thao tác ghi bằng fixture trình duyệt, không gia hạn/duyệt thiết bị thật.
+Khóa gửi lặp phía UI không thay thế idempotency backend: khi mất phản hồi của một lệnh
+đã gửi, cần xác minh kết quả trước khi thử gia hạn lại. Chưa xác minh E2E với nhiều sinh viên thật.
+
+## Nhập câu hỏi từ Excel/Word
+
+- Dùng mẫu chính thức ở `/lecturer/questions/import/templates/excel` hoặc `/word`.
+  Hỗ trợ `.xlsx`/`.docx` tối đa 20 MiB, ba loại SINGLE_CHOICE, MULTIPLE_CHOICE,
+  ESSAY, chương theo đường dẫn và ảnh nhúng. Không có luồng nhập định nghĩa đề thi
+  từ Office (thời gian, điểm, cấu trúc đề); API backend chỉ hỗ trợ tùy chọn gắn câu
+  hỏi vào một đề MANUAL đã tồn tại.
+- Kiểm tra dữ liệu trước khi lưu: dòng không hợp lệ không được chọn; có thể sửa và
+  kiểm tra lại. Chỉ những dòng hợp lệ được chọn mới được đưa vào ngân hàng. Chính sách
+  trùng lặp của UI là SKIP, không phải tự động loại bản ghi trong lúc trích xuất.
+- Lỗi tải dữ liệu kiểm tra có nút thử lại. Các thao tác upload/lưu/xác nhận/hủy có
+  khóa gửi lặp; sau lỗi xác nhận lưu, UI đọc lại trạng thái để tránh báo còn chờ duyệt
+  khi server đã hoàn tất. Khóa này không thay thế idempotency trên backend.
+- Trình sửa giữ xuống dòng trong lựa chọn, cấp khóa A–F chưa dùng khi thêm lựa chọn;
+  các nút icon dùng tooltip VI/EN và nhãn truy cập. Tệp rỗng bị chặn trước khi upload.
+- Bộ fixture thật, expected độc lập và kiểm thử parser/API/DB nằm trong repository
+  backend, thư mục `src/question-imports/`; hướng dẫn nằm trong
+  `src/question-imports/parsers/fixtures/README.md`. Chỉ dùng môi trường DB dùng một lần
+  cho kiểm thử ghi, không chạy các fixture trên tài khoản/ngân hàng đang sử dụng.
+
 ## Cây chương nhiều cấp (2026-10-27)
 
 Cấu hình đề theo chương cho phép tìm/chọn chương ở mọi cấp và luôn bao gồm

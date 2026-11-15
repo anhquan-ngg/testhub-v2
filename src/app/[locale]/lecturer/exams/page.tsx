@@ -602,7 +602,7 @@ export default function LecturerExams() {
                           variant="ghost"
                           size="icon"
                           onClick={() =>
-                            router.push(`/lecturer/exams/${exam.id}/monitor`)
+                            router.push(`/lecturer/exams/${exam.id}/monitor?${new URLSearchParams({ returnTo })}`)
                           }
                           className={`h-8 w-8 hover:cursor-pointer ${ICON_TONE.primary}`}
                           {...iconLabelProps(iconLabels.monitor)}

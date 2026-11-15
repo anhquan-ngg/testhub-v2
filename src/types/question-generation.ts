@@ -76,6 +76,12 @@ export type QuestionGenerationDraftStatus =
   | "COMMITTED"
   | "SKIPPED";
 
+/** Evidence failure for a 1-based slot in the frozen plan/config expansion. */
+export type QuestionGenerationEvidenceIssue = {
+  slot: number;
+  reason: "INSUFFICIENT_EVIDENCE" | "NO_RETRIEVED_CONTEXT";
+};
+
 export type QuestionGenerationBatch = {
   plan_id?: string | null;
   plan_snapshot?: import("./knowledge-plan").FrozenPlan | null;
@@ -96,6 +102,8 @@ export type QuestionGenerationBatch = {
   total_items: number;
   question_configs: QuestionGenerationConfig[];
   error_code: string | null;
+  /** Detail-only evidence diagnostics; absent/empty issues leave failing slots unknown. */
+  error_details?: { issues: QuestionGenerationEvidenceIssue[] };
   created_at: string;
 };
 export type QuestionGenerationItem = {

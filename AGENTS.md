@@ -7,6 +7,17 @@
 - Backend handles globally distinct question allocation across overlapping branches and returns CHAPTER_DISTRIBUTION_INSUFFICIENT when quotas cannot all be filled.
 - Verify deep-tree traversal, bounded rendering and saved chapter selections under section 7. Existing node scripts/check-chapter-tree.cjs provides only partial evidence; source/AST assertions do not prove behavior. Backend contract: ../testhub-v2-backend/docs/chapter-hierarchy.md.
 
+## Grounded evidence-failure guidance
+
+- AI_INSUFFICIENT_EVIDENCE is distinct from AI_OUTPUT_INVALID. Optional batch
+  error_details.issues contains only slot and a bounded reason enum; empty/missing
+  issues mean the deficient slots are unknown, not that every slot failed.
+- Resolve 1-based slots through frozen plan items expanded by count; use owned
+  labels/objectives/type/format, not provider-provided identifiers or free text.
+- Show vi/en actionable source/objective guidance. Do not automatically retry,
+  split batches, create drafts or write bank questions on an evidence failure.
+- Preserve success contracts, citations and UNASSESSED/recheck guidance.
+
 ## Knowledge matrix authoring (2026-10-25)
 
 - Generation uploads topic-owned documents without selecting a chapter. Create/resume a durable plan via ?plan=id, edit tree and topic x cognition matrix, save, confirm, then generate.

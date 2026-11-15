@@ -117,6 +117,14 @@ export const learningDocumentService = {
       timeout: 120_000,
     });
   },
+  /** Lecturer confirms using the extracted pages of a PARTIAL version. */
+  async confirmPartial(id: string, versionId: string) {
+    return (
+      await apiClient.post<{ partial_confirmed_at: string }>(
+        paths.CONFIRM_PARTIAL(id, versionId),
+      )
+    ).data;
+  },
   async complete(id: string, versionId: string) {
     return (
       await apiClient.post<DocumentCompletion>(

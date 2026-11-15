@@ -9,6 +9,7 @@ import { Link } from "@/i18n/navigation";
 import apiClient from "@/lib/api-client";
 import { ENDPOINTS } from "@/constants/endpoints";
 import { learningDocumentService as api } from "@/services/learningDocumentService";
+import { isUsableVersion } from "@/types/learning-document";
 import type {
   DocumentArchiveFilter,
   DocumentContent,
@@ -51,6 +52,7 @@ const statusClassName = {
   QUEUED: "border-blue-100 bg-blue-50 text-blue-700",
   PROCESSING: "border-blue-100 bg-blue-50 text-blue-700",
   EXTRACTED: "border-emerald-100 bg-emerald-50 text-emerald-700",
+  PARTIAL: "border-amber-100 bg-amber-50 text-amber-800",
   OCR_REQUIRED: "border-amber-100 bg-amber-50 text-amber-800",
   FAILED: "border-red-100 bg-red-50 text-red-700",
 };
@@ -229,7 +231,9 @@ export function LearningDocumentsScreen() {
     if (
       selectedId &&
       versionId &&
-      (status === "EXTRACTED" || status === "OCR_REQUIRED")
+      (status === "EXTRACTED" ||
+        status === "PARTIAL" ||
+        status === "OCR_REQUIRED")
     ) {
       void api
         .content(selectedId, versionId, contentPage, controller.signal)
@@ -394,6 +398,22 @@ export function LearningDocumentsScreen() {
           ? t("manage.reusedExtraction")
           : t("success"),
       );
+    } catch {
+      toast.error(t("failed"));
+    } finally {
+      lock.current = false;
+      setBusy(false);
+      refresh();
+    }
+  };
+  const confirmPartial = async () => {
+    if (!document || !version || lock.current || !window.confirm(t("partial.confirmPrompt")))
+      return;
+    lock.current = true;
+    setBusy(true);
+    try {
+      await api.confirmPartial(document.id, version.id);
+      toast.success(t("partial.confirmed"));
     } catch {
       toast.error(t("failed"));
     } finally {
@@ -795,13 +815,40 @@ export function LearningDocumentsScreen() {
             )}
             {status === "OCR_REQUIRED" && (
               <p role="alert" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
-                <Info className="mt-1 size-4 shrink-0" aria-hidden="true" />{t("ocr")}
+                <Info className="mt-1 size-4 shrink-0" aria-hidden="true" />
+                {content?.warnings.includes("NO_USABLE_TEXT") ? t("noUsableText") : t("ocr")}
               </p>
+            )}
+            {status === "PARTIAL" && version?.quality && (
+              <div role="status" className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
+                <p className="flex items-start gap-2">
+                  <Info className="mt-1 size-4 shrink-0" aria-hidden="true" />
+                  {t("partial.summary", {
+                    text: version.quality.text_units,
+                    total: version.quality.total_units,
+                    unit: t(version.source_type === "PPTX" ? "partial.slide" : "partial.page"),
+                    missing: [
+                      ...new Set([
+                        ...version.quality.ocr_suspected_units,
+                        ...version.quality.blank_units,
+                      ]),
+                    ]
+                      .sort((a, b) => a - b)
+                      .join(", "),
+                  })}
+                </p>
+                <p>{version.partial_confirmed_at ? t("partial.confirmedNotice") : t("partial.warning")}</p>
+                {!version.partial_confirmed_at && !document.archived_at && (
+                  <Button type="button" variant="outline" className="cursor-pointer bg-white" disabled={busy} onClick={() => void confirmPartial()}>
+                    {t("partial.confirm")}
+                  </Button>
+                )}
+              </div>
             )}
             {status === "EXTRACTED" && <p className="flex items-start gap-2 text-sm leading-6 text-gray-500"><Info className="mt-1 size-4 shrink-0 text-[#0066cc]" aria-hidden="true" />{t("extracted")}</p>}
             {version &&
               !document.archived_at &&
-              (status === "EXTRACTED" ||
+              (isUsableVersion(version) ||
                 status === "QUEUED" ||
                 status === "PROCESSING") && (
                 <Button asChild variant="outline" className="w-fit cursor-pointer">

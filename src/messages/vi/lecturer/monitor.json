@@ -49,5 +49,19 @@
   "extendedTime": "Gia hạn thêm thời gian",
   "numberOfMinutes": "Số phút",
   "cancel": "Hủy",
-  "confirm": "Xác nhận"
+  "confirm": "Xác nhận",
+  "attemptNoLongerActive": "Lượt thi không còn đang làm hoặc dữ liệu đã cũ. Hãy đóng hộp thoại và làm mới danh sách.",
+  "extending": "Đang gia hạn…",
+  "loading": "Đang tải danh sách giám sát…",
+  "lastUpdated": "Dữ liệu cập nhật lúc {time}",
+  "staleData": "Chưa cập nhật được dữ liệu. Danh sách bên dưới là dữ liệu gần nhất và có thể đã cũ. Hãy làm mới trước khi xử lý.",
+  "pollingHint": "Kênh trực tiếp đang gián đoạn. Hệ thống vẫn tải lại danh sách mỗi 30 giây và tự thử kết nối lại.",
+  "filterStatus": "Lọc trạng thái thí sinh",
+  "allStudents": "Tất cả thí sinh",
+  "withSignals": "Có tín hiệu bất thường",
+  "showingCount": "Hiển thị {visible}/{total} thí sinh",
+  "clearFilters": "Xóa bộ lọc",
+  "noStudentsYet": "Chưa có thí sinh trong danh sách giám sát. Thí sinh sẽ xuất hiện khi đăng ký hoặc vào thi.",
+  "lastSeen": "Kết nối {time}",
+  "extendHint": "Nhập từ 1 đến 120 phút. Thời gian được cộng thêm vào hạn nộp hiện tại của lượt thi, không thay đổi giờ kết thúc chung."
 }

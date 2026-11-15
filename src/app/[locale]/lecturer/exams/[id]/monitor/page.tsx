@@ -1,9 +1,11 @@
 "use client";
 
+import axios from "axios";
 import { useLocale, useTranslations } from "next-intl";
 import { intlLocales } from "@/i18n/config";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
+import { examListReturnHref } from "@/components/exams/exam-form";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "sonner";
 import {
@@ -20,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -96,6 +99,27 @@ type DeltaRow = {
   lastViolationType?: ViolationType | null;
   lastViolationAt?: string | null;
 };
+
+function mergeDeltaRow(current: RosterRow, delta: DeltaRow): RosterRow {
+  return {
+      ...current,
+      status: delta.status ?? current.status,
+      last_ping: delta.lastPing !== undefined ? delta.lastPing : current.last_ping,
+      answered: delta.answered ?? current.answered,
+      total: delta.total ?? current.total,
+      submitted_at:
+        delta.submittedAt !== undefined ? delta.submittedAt : current.submitted_at,
+      violations: delta.violations ?? current.violations,
+      last_violation_type:
+        delta.lastViolationType !== undefined
+          ? delta.lastViolationType
+          : current.last_violation_type,
+      last_violation_at:
+        delta.lastViolationAt !== undefined
+          ? delta.lastViolationAt
+          : current.last_violation_at,
+    };
+}
 
 type PresenceState =
   | "NOT_STARTED"
@@ -174,6 +198,8 @@ export default function ExamMonitorPage() {
     return t("hoursAgo", { count: Math.floor(diffMin / 60) });
   };
   const params = useParams();
+  const searchParams = useSearchParams();
+  const returnHref = examListReturnHref(searchParams.get("returnTo"));
   const router = useRouter();
   const examId = params.id as string;
 
@@ -181,12 +207,22 @@ export default function ExamMonitorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<PresenceState | "ALL" | "ALERTS">("ALL");
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [extendError, setExtendError] = useState(false);
+  const extendLock = useRef(false);
+  const extendTrigger = useRef<HTMLElement | null>(null);
+  const rosterRequest = useRef<AbortController | null>(null);
+  const rosterRevision = useRef(0);
+  const pendingDeltas = useRef<Array<{ row: DeltaRow; serverTime: string }>>([]);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [connection, setConnection] = useState<"connecting" | "live" | "degraded">(
     "connecting",
   );
   const [extendTarget, setExtendTarget] = useState<{
     studentId: string;
+    submissionId: string;
     name: string;
   } | null>(null);
   const [extendMinutes, setExtendMinutes] = useState("15");
@@ -202,38 +238,68 @@ export default function ExamMonitorPage() {
   }, []);
 
   const fetchRoster = useCallback(async () => {
+    if (rosterRequest.current) return;
+    const controller = new AbortController();
+    rosterRequest.current = controller;
+    const revision = rosterRevision.current;
+    const deltas: Array<{ row: DeltaRow; serverTime: string }> = [];
+    pendingDeltas.current = deltas;
+    setRefreshing(true);
     try {
       const response = await apiClient.get<RosterResponse>(
         ENDPOINTS.EXAM_RUNTIME.MONITOR_ROSTER(examId),
+        { signal: controller.signal },
       );
+      if (controller.signal.aborted || revision !== rosterRevision.current) return;
       applyClockOffset(response.data.server_time);
       rowsBySubmissionRef.current = new Map(
         response.data.rows
           .filter((r) => r.submission_id)
           .map((r) => [r.submission_id as string, r]),
       );
-      setRoster(response.data);
+      // A REST snapshot can predate deltas received while it was in flight.
+      let updatedAt = response.data.server_time;
+      for (const delta of deltas) {
+        if (Date.parse(delta.serverTime) <= Date.parse(response.data.server_time)) continue;
+        const current = rowsBySubmissionRef.current.get(delta.row.submissionId);
+        if (current) rowsBySubmissionRef.current.set(delta.row.submissionId, mergeDeltaRow(current, delta.row));
+        updatedAt = delta.serverTime;
+      }
+      applyClockOffset(updatedAt);
+      setRoster({ ...response.data, rows: response.data.rows.map((row) => row.submission_id ? (rowsBySubmissionRef.current.get(row.submission_id) ?? row) : row) });
+      setLastUpdated(updatedAt);
       setError(null);
-      lastSeqRef.current = 0;
     } catch (err) {
-      console.error("Fetch monitor roster error:", err);
+      if (controller.signal.aborted || revision !== rosterRevision.current) return;
+      if (axios.isAxiosError(err) && (err.response?.status === 403 || err.response?.status === 404)) {
+        setRoster(null);
+        rowsBySubmissionRef.current.clear();
+      }
       setError(t("unableToLoadMonitoringListPlease"));
     } finally {
-      setIsLoading(false);
+      if (rosterRequest.current === controller) {
+        rosterRequest.current = null;
+        setRefreshing(false);
+        setIsLoading(false);
+      }
     }
   }, [examId, applyClockOffset, t]);
 
   const handleExtendTime = async () => {
-    if (!extendTarget) return;
+    if (!extendTarget || extendLock.current) return;
+    const current = rowsBySubmissionRef.current.get(extendTarget.submissionId);
+    if (error || current?.status !== "IN_PROGRESS") { toast.error(t("attemptNoLongerActive")); return; }
     const extraMinutes = Number(extendMinutes);
     if (
       !Number.isInteger(extraMinutes) ||
       extraMinutes < 1 ||
       extraMinutes > 120
     ) {
-      toast.error(t("theNumberOfMinutesMustBe"));
+      setExtendError(true);
+      document.getElementById("extend-minutes")?.focus();
       return;
     }
+    extendLock.current = true;
     setIsExtending(true);
     try {
       await apiClient.post(
@@ -243,10 +309,10 @@ export default function ExamMonitorPage() {
       toast.success(t("timeExtended", { minutes: extraMinutes, name: extendTarget.name }));
       setExtendTarget(null);
       void fetchRoster();
-    } catch (error) {
-      console.error("Extend time error:", error);
+    } catch {
       toast.error(t("errorWhenExtendingTime"));
     } finally {
+      extendLock.current = false;
       setIsExtending(false);
     }
   };
@@ -254,6 +320,7 @@ export default function ExamMonitorPage() {
   // Initial load
   useEffect(() => {
     void fetchRoster();
+    return () => { rosterRequest.current?.abort(); rosterRequest.current = null; };
   }, [fetchRoster]);
 
   // 30s REST backstop, independent of SSE health — makes the whole feature
@@ -263,38 +330,16 @@ export default function ExamMonitorPage() {
     return () => window.clearInterval(id);
   }, [fetchRoster]);
 
-  // 1s re-render tick so presence badges age in place instead of only
-  // updating when a server message happens to arrive.
+  // Presence badges age even between server messages.
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1_000);
     return () => window.clearInterval(id);
   }, []);
 
-  /** Returns false when the submission id isn't in the current snapshot —
-   * e.g. a student re-entered after submitting and a brand new submission
-   * now exists. A sparse delta can only patch rows it already knows about,
-   * so the caller falls back to a full roster refetch in that case. */
   const applyDeltaRow = useCallback((delta: DeltaRow): boolean => {
     const current = rowsBySubmissionRef.current.get(delta.submissionId);
     if (!current) return false;
-    const merged: RosterRow = {
-      ...current,
-      status: delta.status ?? current.status,
-      last_ping: delta.lastPing !== undefined ? delta.lastPing : current.last_ping,
-      answered: delta.answered ?? current.answered,
-      total: delta.total ?? current.total,
-      submitted_at:
-        delta.submittedAt !== undefined ? delta.submittedAt : current.submitted_at,
-      violations: delta.violations ?? current.violations,
-      last_violation_type:
-        delta.lastViolationType !== undefined
-          ? delta.lastViolationType
-          : current.last_violation_type,
-      last_violation_at:
-        delta.lastViolationAt !== undefined
-          ? delta.lastViolationAt
-          : current.last_violation_at,
-    };
+    const merged = mergeDeltaRow(current, delta);
     rowsBySubmissionRef.current.set(delta.submissionId, merged);
     return true;
   }, []);
@@ -302,6 +347,7 @@ export default function ExamMonitorPage() {
   // SSE connection
   useEffect(() => {
     let cancelled = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
     const connect = () => {
       if (cancelled) return;
@@ -313,11 +359,24 @@ export default function ExamMonitorPage() {
       );
       eventSourceRef.current = source;
 
-      source.addEventListener("open", () => setConnection("live"));
+      const resync = () => {
+        source.close();
+        rosterRequest.current?.abort();
+        rosterRequest.current = null;
+        lastSeqRef.current = 0;
+        setConnection("degraded");
+        void fetchRoster();
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connect, 5_000);
+      };
+      source.addEventListener("open", () => { if (!cancelled) setConnection("live"); });
 
       source.addEventListener("EXAM_MONITOR_SNAPSHOT", (event: MessageEvent) => {
         try {
           const data = JSON.parse(event.data) as RosterResponse;
+          if (cancelled) return;
+          rosterRevision.current += 1;
+          lastSeqRef.current = 0;
           applyClockOffset(data.server_time);
           rowsBySubmissionRef.current = new Map(
             data.rows
@@ -325,6 +384,9 @@ export default function ExamMonitorPage() {
               .map((r) => [r.submission_id as string, r]),
           );
           setRoster(data);
+          setLastUpdated(data.server_time);
+          setIsLoading(false);
+          setError(null);
           setConnection("live");
         } catch {
           // ignore malformed payload
@@ -340,12 +402,15 @@ export default function ExamMonitorPage() {
             submittedCount: number;
             rows: DeltaRow[];
           };
+          if (cancelled) return;
           applyClockOffset(data.serverTime);
+          if (rosterRequest.current) pendingDeltas.current.push(...data.rows.map((row) => ({ row, serverTime: data.serverTime })));
+          setLastUpdated(data.serverTime);
 
           // A seq gap means we missed a delta — resync from a full
           // snapshot rather than silently drifting forever.
           if (lastSeqRef.current !== 0 && data.seq !== lastSeqRef.current + 1) {
-            void fetchRoster();
+            resync();
             return;
           }
           lastSeqRef.current = data.seq;
@@ -357,7 +422,7 @@ export default function ExamMonitorPage() {
             // A new submission (re-entered after submitting) isn't in the
             // snapshot this delta is patching — a sparse patch can't add
             // a row, only a full roster refetch can.
-            void fetchRoster();
+            resync();
             return;
           }
 
@@ -423,9 +488,10 @@ export default function ExamMonitorPage() {
           // -> retry interceptor as every other request on this page, then
           // we open a brand new stream.
           source.close();
-          void fetchRoster().finally(() => {
-            if (!cancelled) connect();
-          });
+          if (reconnectTimer) clearTimeout(reconnectTimer);
+          reconnectTimer = setTimeout(() => {
+            void fetchRoster().finally(() => { if (!cancelled) connect(); });
+          }, 5000);
         }
       };
     };
@@ -434,6 +500,7 @@ export default function ExamMonitorPage() {
 
     return () => {
       cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       eventSourceRef.current?.close();
       eventSourceRef.current = null;
     };
@@ -493,7 +560,8 @@ export default function ExamMonitorPage() {
     return summary;
   }, [rowsWithPresence, roster]);
 
-  const visibleRows = rowsWithPresence.filter(({ row }) => {
+  const visibleRows = rowsWithPresence.filter(({ row, presence }) => {
+    if (filter === "ALERTS" ? row.violations === 0 : filter !== "ALL" && filter !== presence) return false;
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return (
@@ -504,20 +572,22 @@ export default function ExamMonitorPage() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div role="status" className="flex min-h-[60vh] items-center justify-center gap-3">
+        <span>{t("loading")}</span>
         <Loader2 className="h-8 w-8 animate-spin text-accent-600" />
       </div>
     );
   }
 
-  if (error || !roster) {
+  if (!roster) {
     return (
       <div className="flex flex-col items-center gap-3 py-24 text-center">
         <ShieldAlert className="h-9 w-9 text-red-400" />
         <p className="text-neutral-700">
           {error ?? t("noTestFound")}
         </p>
-        <Button variant="outline" onClick={() => void fetchRoster()}>
+        <Button variant="ghost" onClick={() => router.push(returnHref)}>{t("examManagement")}</Button>
+        <Button variant="outline" disabled={refreshing} onClick={() => void fetchRoster()}>
           {t("retry")}</Button>
       </div>
     );
@@ -525,16 +595,16 @@ export default function ExamMonitorPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-col items-start justify-between gap-3 lg:flex-row">
+        <div className="w-full min-w-0 lg:flex-1">
           <button
             type="button"
-            onClick={() => router.push("/lecturer/exams")}
+            onClick={() => router.push(returnHref)}
             className="mb-2 flex cursor-pointer items-center gap-1 text-sm text-neutral-500 hover:text-neutral-800"
           >
             <ArrowLeft className="h-4 w-4" />
             {t("examManagement")}</button>
-          <h2 className="text-2xl font-bold text-neutral-900">
+          <h2 className="break-words text-2xl font-bold text-neutral-900">
             {t("monitorExam", { title: roster.exam.title })}
           </h2>
           <p className="mt-1 text-sm text-neutral-500">
@@ -561,12 +631,16 @@ export default function ExamMonitorPage() {
             size="sm"
             className="cursor-pointer gap-1.5"
             onClick={() => void fetchRoster()}
+            disabled={refreshing}
           >
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             {t("refresh")}</Button>
         </div>
       </div>
 
+      {lastUpdated && <p className="text-xs text-neutral-500">{t("lastUpdated", { time: new Date(lastUpdated).toLocaleTimeString(intlLocales[locale]) })}</p>}
+      {error && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">{t("staleData")}</div>}
+      {connection === "degraded" && <p role="status" className="text-sm text-neutral-600">{t("pollingHint")}</p>}
       <SessionTransferPanel examId={examId} />
 
       {/* Summary strip */}
@@ -602,21 +676,34 @@ export default function ExamMonitorPage() {
         </div>
       )}
 
-      <div className="relative w-full max-w-xs">
+      <div className="flex flex-wrap items-center gap-3">
+      <div className="relative w-full sm:max-w-xs">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("searchByNameOrEmail")}
+          aria-label={t("searchByNameOrEmail")}
           className="pl-8"
         />
       </div>
 
+      <Select value={filter} onValueChange={(value) => setFilter(value as typeof filter)}>
+        <SelectTrigger aria-label={t("filterStatus")} className="w-full border-gray-300 bg-white sm:w-52"><SelectValue /></SelectTrigger>
+        <SelectContent className="bg-white">
+          <SelectItem value="ALL">{t("allStudents")}</SelectItem>
+          <SelectItem value="ALERTS">{t("withSignals")}</SelectItem>
+          {(Object.keys(presenceLabels) as PresenceState[]).map((state) => <SelectItem key={state} value={state}>{presenceLabels[state]}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <p className="text-sm text-neutral-500" role="status">{t("showingCount", { visible: visibleRows.length, total: roster.rows.length })}</p>
+      {(search || filter !== "ALL") && <Button variant="ghost" onClick={() => { setSearch(""); setFilter("ALL"); }}>{t("clearFilters")}</Button>}
+      </div>
       <Card className="border-gray-300 bg-white py-0 shadow-sm">
         <CardContent className="divide-y divide-neutral-100 px-0">
           {visibleRows.length === 0 ? (
             <div className="px-6 py-14 text-center text-sm text-neutral-500">
-              {t("thereAreNoMatchingStudents")}</div>
+              {roster.rows.length ? t("thereAreNoMatchingStudents") : t("noStudentsYet")}</div>
           ) : (
             visibleRows.map(({ row, presence }) => {
               const meta = PRESENCE_META[presence];
@@ -626,7 +713,7 @@ export default function ExamMonitorPage() {
                   className="flex flex-wrap items-center gap-4 px-6 py-3.5"
                 >
                   <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${meta.dot}`} />
-                  <div className="min-w-[180px] flex-1">
+                  <div className="min-w-0 basis-full break-words sm:basis-44 sm:flex-1">
                     <p className="font-medium text-neutral-900">
                       {row.student.full_name}
                       {row.attempt > 1 && (
@@ -635,7 +722,7 @@ export default function ExamMonitorPage() {
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-neutral-500">{row.student.email}</p>
+                    <p className="break-all text-xs text-neutral-500">{row.student.email}</p>
                   </div>
 
                   <Badge className={`${meta.badge} shrink-0 border-transparent`}>
@@ -646,7 +733,7 @@ export default function ExamMonitorPage() {
                     {presence === "SUBMITTED"
                       ? t("submittedAgo", { time: timeAgo(row.submitted_at, correctedNow) })
                       : row.last_ping
-                        ? `Ping ${timeAgo(row.last_ping, correctedNow)}`
+                        ? t("lastSeen", { time: timeAgo(row.last_ping, correctedNow) })
                         : "—"}
                   </span>
 
@@ -675,12 +762,13 @@ export default function ExamMonitorPage() {
                         variant="outline"
                         size="sm"
                         className="ml-auto shrink-0 cursor-pointer gap-1.5 text-xs"
-                        onClick={() =>
-                          setExtendTarget({
-                            studentId: row.student.id,
-                            name: row.student.full_name,
-                          })
-                        }
+                        disabled={!!error || isExtending}
+                        onClick={(event) => {
+                          extendTrigger.current = event.currentTarget;
+                          setExtendMinutes("15");
+                          setExtendError(false);
+                          setExtendTarget({ studentId: row.student.id, submissionId: row.submission_id as string, name: row.student.full_name });
+                        }}
                       >
                         <TimerReset className="h-3.5 w-3.5" />
                         {t("extendedTime")}</Button>
@@ -694,9 +782,9 @@ export default function ExamMonitorPage() {
 
       <Dialog
         open={!!extendTarget}
-        onOpenChange={(open) => !open && setExtendTarget(null)}
+        onOpenChange={(open) => { if (!open && !extendLock.current) setExtendTarget(null); }}
       >
-        <DialogContent className="bg-white">
+        <DialogContent className="bg-white" onCloseAutoFocus={(event) => { event.preventDefault(); extendTrigger.current?.focus(); }}>
           <DialogHeader>
             <DialogTitle>{t("extendedTime")}</DialogTitle>
             <DialogDescription>
@@ -709,24 +797,34 @@ export default function ExamMonitorPage() {
             type="number"
             min={1}
             max={120}
+            disabled={isExtending}
+            aria-invalid={extendError}
+            aria-describedby={extendError ? "extend-error" : "extend-hint"}
             value={extendMinutes}
-            onChange={(e) => setExtendMinutes(e.target.value)}
+            onChange={(e) => { setExtendMinutes(e.target.value); setExtendError(false); }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") { event.preventDefault(); void handleExtendTime(); }
+            }}
             placeholder={t("numberOfMinutes")}
           />
+          <p id="extend-hint" className="text-sm text-neutral-500">{t("extendHint")}</p>
+          {extendError && <p id="extend-error" role="alert" className="text-sm text-red-700">{t("theNumberOfMinutesMustBe")}</p>}
+          {extendTarget && rowsBySubmissionRef.current.get(extendTarget.submissionId)?.status !== "IN_PROGRESS" && <p role="alert" className="text-sm text-amber-700">{t("attemptNoLongerActive")}</p>}
           <DialogFooter>
             <Button
               variant="outline"
+              disabled={isExtending}
               onClick={() => setExtendTarget(null)}
               className="cursor-pointer"
             >
               {t("cancel")}</Button>
             <Button
               onClick={() => void handleExtendTime()}
-              disabled={isExtending}
-              className="cursor-pointer"
+              disabled={isExtending || !!error || (!!extendTarget && rowsBySubmissionRef.current.get(extendTarget.submissionId)?.status !== "IN_PROGRESS")}
+              className="cursor-pointer bg-[#0066cc] text-white hover:bg-[#0052a3]"
             >
               {isExtending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <><Loader2 className="h-4 w-4 animate-spin" />{t("extending")}</>
               ) : (
                 t("confirm")
               )}

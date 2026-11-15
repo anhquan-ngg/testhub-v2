@@ -1,4 +1,10 @@
 {
+  "emptyFile": "Tệp đã chọn không có dữ liệu. Vui lòng chọn tệp khác.",
+  "loadingReview": "Đang tải câu hỏi để kiểm tra…",
+  "selectAllValid": "Chọn tất cả câu hỏi hợp lệ",
+  "selectRow": "Chọn câu hỏi dòng {row}",
+  "optionLabel": "Nội dung lựa chọn {key}",
+  "correctOptionLabel": "Lựa chọn {key} là đáp án đúng",
   "retryUploadConfirmation": "Xác nhận lại tệp đã tải lên",
   "importSummary": "Đã tạo {created} câu hỏi, bỏ qua {skipped} câu trùng.",
   "totalCount": "Tổng {count}",

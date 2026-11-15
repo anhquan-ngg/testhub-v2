@@ -26,7 +26,9 @@
     "actions": "Actions",
     "remove": "Remove",
     "addRow": "Add knowledge row",
-    "removeRowsFirst": "Remove matrix rows using this branch first.",
+    "matrixStale": "The chapter list changed, so the topic × cognitive-level matrix may no longer match. Rebuild it to get the full batch size; rows of deleted chapters are dropped and hand-edited objectives/counts are regenerated.",
+    "matrixMismatch": "The matrix has {total} questions but the batch requires {target}. Rebuild the matrix or adjust the counts.",
+    "rebuildMatrix": "Rebuild matrix from chapter list",
     "total": "{total}/20 questions · {uncovered} leaf topics without a matrix row",
     "reviewWarning": "Suggestions use document headings and page text. Review inferred topics, sources and objectives. Cognitive level and answer correctness remain unassessed. Only branches needed by selected approved questions are created, atomically with those questions.",
     "unsaved": "Save your edits before confirming.",
@@ -44,6 +46,13 @@
       "REVIEW_REQUIRED": "Review plan",
       "APPROVED": "Confirmed",
       "FAILED": "Preparation failed"
+    },
+    "retry": "Prepare plan again",
+    "errors": {
+      "PLAN_OUTLINE_INVALID": "The AI-proposed chapter/topic tree was invalid (for example duplicate topic names). Prepare again; duplicate names are now disambiguated. Plans never retry on page load.",
+      "PLAN_SOURCE_UNAVAILABLE": "The source document is not ready: extraction must finish, or a partial extraction must be confirmed in the document library.",
+      "PLAN_SOURCE_TIMEOUT": "The document was not ready within the wait window (20 minutes). Check its extraction status, then prepare again.",
+      "PLAN_SCOPE_REVOKED": "Access to the document was revoked; the plan cannot be prepared again."
     },
     "reload": "Reload saved plan (discard edits)"
   },
@@ -127,6 +136,20 @@
   "loadError": "Data could not be loaded, or access is no longer available. Reload to check.",
   "processing": "The batch is processing. This page updates automatically; you can return later.",
   "failed": "Generation failed. Check the configuration or create a new batch after resolving the issue.",
+  "insufficientEvidence": {
+    "title": "Not enough source evidence to generate questions",
+    "explanation": "The retrieved content does not sufficiently support the requested learning objectives, question types or cognitive levels. This is an evidence limitation, not an invalid JSON response or a provider configuration error.",
+    "unknownSlots": "The service did not identify which question slots failed. Do not assume that a particular plan row or question failed.",
+    "slot": "Question slot {slot}:",
+    "planSlot": "Question slot {slot} · {title} · {type} · {format}:",
+    "configSlot": "Question slot {slot} · {type} · {format}:",
+    "reasons": {
+      "INSUFFICIENT_EVIDENCE": "The retrieved evidence cannot support this request.",
+      "NO_RETRIEVED_CONTEXT": "No relevant source context was retrieved for this request."
+    },
+    "action": "Review the plan's objectives, question types and cognitive levels; check the relevant source pages/slides or choose a better source, and consider reducing the requested count before explicitly creating a new batch.",
+    "noDrafts": "This batch remains failed. No drafts were created or saved to the question bank, and generation will not retry automatically."
+  },
   "completed": "This batch is complete. Saved questions show their bank IDs below.",
   "reviewHint": "AI can make mistakes. Check the content, answers and cognitive level before approving. Only approved, selected questions are saved.",
   "summary": "{total} drafts · {approved} approved · {committed} saved",

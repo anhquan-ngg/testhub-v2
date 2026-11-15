@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Database, Info, Loader2, Search, Sparkles } from "lucide-react";
 import { learningDocumentService as api } from "@/services/learningDocumentService";
-import type { DocumentVersion, RetrievalResult } from "@/types/learning-document";
+import { isUsableVersion, type DocumentVersion, type RetrievalResult } from "@/types/learning-document";
 
 /** Explicit indexing and source retrieval preview. No automatic question generation. */
 export function DocumentRagPanel({
@@ -51,7 +51,7 @@ export function DocumentRagPanel({
       }
     }
   };
-  if (version.status !== "EXTRACTED") return null;
+  if (!isUsableVersion(version)) return null;
   return (
     <section aria-labelledby={`rag-title-${version.id}`} className="space-y-5 rounded-xl border border-blue-100 bg-blue-50/30 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
