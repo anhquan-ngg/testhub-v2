@@ -412,7 +412,16 @@ export function LearningDocumentsScreen() {
     lock.current = true;
     setBusy(true);
     try {
-      await api.confirmPartial(document.id, version.id);
+      const { partial_confirmed_at } = await api.confirmPartial(document.id, version.id);
+      setDocument((current) => current?.id === document.id ? {
+        ...current,
+        versions: current.versions.map((item) => item.id === version.id
+          ? { ...item, partial_confirmed_at }
+          : item),
+      } : current);
+      setExtraVersions((current) => current.map((item) => item.id === version.id
+        ? { ...item, partial_confirmed_at }
+        : item));
       toast.success(t("partial.confirmed"));
     } catch {
       toast.error(t("failed"));
@@ -819,9 +828,9 @@ export function LearningDocumentsScreen() {
                 {content?.warnings.includes("NO_USABLE_TEXT") ? t("noUsableText") : t("ocr")}
               </p>
             )}
-            {status === "PARTIAL" && version?.quality && (
+            {status === "PARTIAL" && version && (
               <div role="status" className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
-                <p className="flex items-start gap-2">
+                {version.quality && <p className="flex items-start gap-2">
                   <Info className="mt-1 size-4 shrink-0" aria-hidden="true" />
                   {t("partial.summary", {
                     text: version.quality.text_units,
@@ -836,7 +845,7 @@ export function LearningDocumentsScreen() {
                       .sort((a, b) => a - b)
                       .join(", "),
                   })}
-                </p>
+                </p>}
                 <p>{version.partial_confirmed_at ? t("partial.confirmedNotice") : t("partial.warning")}</p>
                 {!version.partial_confirmed_at && !document.archived_at && (
                   <Button type="button" variant="outline" className="cursor-pointer bg-white" disabled={busy} onClick={() => void confirmPartial()}>
