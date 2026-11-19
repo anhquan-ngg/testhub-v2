@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Network, Trash2 } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
@@ -19,6 +19,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   GENERATION_QUESTION_FORMATS as levels,
@@ -458,27 +465,34 @@ export function KnowledgePlanWorkspace({
                                   aria-label={t("name")}
                                   {...register(`nodes.${index}.name`)}
                                 />
-                                <select
-                                  aria-label={t("parent")}
-                                  className="h-9 min-w-0 cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20"
-                                  value={node.parent_id ?? ""}
-                                  onChange={(event) =>
+                                <Select
+                                  disabled={!editable}
+                                  value={node.parent_id ?? "__root__"}
+                                  onValueChange={(value) =>
                                     setValue(
                                       `nodes.${index}.parent_id`,
-                                      event.target.value || null,
+                                      value === "__root__" ? null : value,
                                       { shouldDirty: true },
                                     )
                                   }
                                 >
-                                  <option value="">{t("root")}</option>
-                                  {matrix.nodes
-                                    .filter((value) => value.id !== node.id)
-                                    .map((value) => (
-                                      <option key={value.id} value={value.id}>
-                                        {path(value.id)}
-                                      </option>
-                                    ))}
-                                </select>
+                                  <SelectTrigger
+                                    aria-label={t("parent")}
+                                    className="w-full min-w-0 cursor-pointer border-gray-300 bg-white"
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__root__">{t("root")}</SelectItem>
+                                    {matrix.nodes
+                                      .filter((value) => value.id !== node.id)
+                                      .map((value) => (
+                                        <SelectItem key={value.id} value={value.id}>
+                                          {path(value.id)}
+                                        </SelectItem>
+                                      ))}
+                                  </SelectContent>
+                                </Select>
                                 <UnitInput
                                   key={`${plan.revision}-${formVersion}-${node.id}`}
                                   label={t("sources")}
@@ -577,30 +591,46 @@ export function KnowledgePlanWorkspace({
                               <span className="block text-xs font-medium @min-[64rem]/matrix:hidden">
                                 {t("tree")}
                               </span>
-                              <select
-                                aria-label={t("tree")}
-                                title={path(row.node_id)}
-                                className="h-9 w-full min-w-0 max-w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20"
-                                {...register(`rows.${index}.node_id`, {
-                                  onChange: (event) => {
-                                    const target = matrix.nodes.find(
-                                      (node) => node.id === event.target.value,
-                                    );
-                                    if (target)
-                                      setValue(
-                                        `rows.${index}.source_units`,
-                                        target.source_units,
-                                        { shouldDirty: true },
+                              <Controller
+                                control={form.control}
+                                name={`rows.${index}.node_id`}
+                                render={({ field }) => (
+                                  <Select
+                                    name={field.name}
+                                    disabled={!editable}
+                                    value={field.value}
+                                    onValueChange={(value) => {
+                                      field.onChange(value);
+                                      const target = matrix.nodes.find(
+                                        (node) => node.id === value,
                                       );
-                                  },
-                                })}
-                              >
-                                {matrix.nodes.map((node) => (
-                                  <option key={node.id} value={node.id}>
-                                    {path(node.id)}
-                                  </option>
-                                ))}
-                              </select>
+                                      if (target)
+                                        setValue(
+                                          `rows.${index}.source_units`,
+                                          target.source_units,
+                                          { shouldDirty: true },
+                                        );
+                                    }}
+                                  >
+                                    <SelectTrigger
+                                      ref={field.ref}
+                                      onBlur={field.onBlur}
+                                      aria-label={t("tree")}
+                                      title={path(row.node_id)}
+                                      className="w-full min-w-0 max-w-full cursor-pointer border-gray-300 bg-white"
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {matrix.nodes.map((node) => (
+                                        <SelectItem key={node.id} value={node.id}>
+                                          {path(node.id)}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
                             </td>
                             <td className="min-w-0 space-y-1.5 @min-[64rem]/matrix:p-2">
                               <span className="block text-xs font-medium @min-[64rem]/matrix:hidden">
@@ -636,17 +666,34 @@ export function KnowledgePlanWorkspace({
                               <span className="block text-xs font-medium @min-[64rem]/matrix:hidden">
                                 {t("type")}
                               </span>
-                              <select
-                                aria-label={t("type")}
-                                className="h-9 w-full min-w-0 max-w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20"
-                                {...register(`rows.${index}.question_type`)}
-                              >
-                                {types.map((type) => (
-                                  <option key={type} value={type}>
-                                    {questionType(type)}
-                                  </option>
-                                ))}
-                              </select>
+                              <Controller
+                                control={form.control}
+                                name={`rows.${index}.question_type`}
+                                render={({ field }) => (
+                                  <Select
+                                    name={field.name}
+                                    disabled={!editable}
+                                    value={field.value}
+                                    onValueChange={field.onChange}
+                                  >
+                                    <SelectTrigger
+                                      ref={field.ref}
+                                      onBlur={field.onBlur}
+                                      aria-label={t("type")}
+                                      className="w-full min-w-0 max-w-full cursor-pointer border-gray-300 bg-white"
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {types.map((type) => (
+                                        <SelectItem key={type} value={type}>
+                                          {questionType(type)}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
                             </td>
                             <td
                               colSpan={4}

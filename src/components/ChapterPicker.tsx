@@ -9,6 +9,13 @@ import {
 } from "@/lib/chapter-tree";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 /** Search and page an arbitrary-depth flat adjacency list, without nested DOM recursion. */
 export function ChapterPicker({
@@ -62,24 +69,29 @@ export function ChapterPicker({
             className="border-gray-300 bg-white pl-9"
           />
         </div>
-        <select
-          id={id}
+        <Select
           disabled={disabled}
-          aria-label={t("chapter")}
-          title={selected ? paths.get(selected.id) : undefined}
-          className="h-9 w-full min-w-0 truncate rounded-md border border-gray-300 bg-white px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
           value={value ?? ""}
-          onChange={(event) => {
-            if (event.target.value) onChange(event.target.value);
+          onValueChange={(nextValue) => {
+            if (nextValue) onChange(nextValue);
           }}
         >
-          <option value="">{t("chooseChapterAtAnyDepth")}</option>
-          {visibleChapters.map((node) => (
-            <option key={node.id} value={node.id}>
-              {chapterPath(node.id, byId, 8)}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger
+            id={id}
+            aria-label={t("chapter")}
+            title={selected ? paths.get(selected.id) : undefined}
+            className="data-[size=default]:h-9 w-full min-w-0 truncate rounded-md border border-gray-300 bg-white px-3 text-sm shadow-xs outline-none transition-[color,box-shadow] data-[placeholder]:text-inherit focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <SelectValue placeholder={t("chooseChapterAtAnyDepth")} />
+          </SelectTrigger>
+          <SelectContent>
+            {visibleChapters.map((node) => (
+              <SelectItem key={node.id} value={node.id}>
+                {chapterPath(node.id, byId, 8)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       {selectedPath.length > 40 && (
         <p
