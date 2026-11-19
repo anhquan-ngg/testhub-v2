@@ -262,17 +262,17 @@ export function KnowledgePlanWorkspace({
     );
   };
   return (
-    <Card className="min-w-0 border-gray-300 bg-white shadow-sm">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg text-neutral-900">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+    <Card className="min-w-0 gap-0 overflow-hidden border-gray-200 bg-white py-0 shadow-sm">
+      <CardHeader className="border-b border-gray-100 p-4 sm:p-5">
+        <CardTitle className="flex items-center gap-2 text-base text-neutral-900">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
             <Network className="size-4" />
           </span>
           {t("title")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="min-w-0 space-y-5">
-        <p className="text-sm text-neutral-700">{t("explanation")}</p>
+      <CardContent className="min-w-0 space-y-4 p-4 sm:p-5">
+        <p className="max-w-4xl text-sm leading-6 text-neutral-500">{t("explanation")}</p>
         {error && (
           <p
             role="alert"
@@ -288,7 +288,7 @@ export function KnowledgePlanWorkspace({
               key={value.id}
               variant="outline"
               size="sm"
-              className={`cursor-pointer gap-1.5 border-gray-300 bg-white ${value.id === plan?.id ? "border-violet-300 bg-violet-50 ring-1 ring-violet-200" : ""}`}
+              className={`h-auto min-h-9 max-w-full cursor-pointer justify-start gap-2 border-gray-200 bg-white py-2 ${value.id === plan?.id ? "border-blue-300 bg-blue-50 ring-1 ring-blue-100" : ""}`}
               disabled={busy || disabled}
             >
               <Link
@@ -300,7 +300,9 @@ export function KnowledgePlanWorkspace({
                   }
                 }}
               >
-                {value.sourceVersion.file_name}
+                <span className="min-w-0 truncate" title={value.sourceVersion.file_name}>
+                  {value.sourceVersion.file_name}
+                </span>
                 <Badge
                   variant="outline"
                   className={planStatusClass(value.status)}
@@ -343,7 +345,7 @@ export function KnowledgePlanWorkspace({
                 </Button>
               )}
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
-              <span className="font-medium text-neutral-900">
+              <span className="min-w-0 break-words font-medium text-neutral-900">
                 {plan.sourceVersion.file_name}
               </span>
               <Badge variant="outline" className={planStatusClass(plan.status)}>
@@ -401,7 +403,7 @@ export function KnowledgePlanWorkspace({
                                   ? "border-amber-200 bg-amber-50 text-amber-700"
                                   : origin.origin === "HEADING"
                                     ? "border-blue-200 bg-blue-50 text-blue-700"
-                                    : "border-violet-200 bg-violet-50 text-violet-700"
+                                    : "border-teal-200 bg-teal-50 text-teal-700"
                               }
                             >
                               {origin
@@ -551,7 +553,7 @@ export function KnowledgePlanWorkspace({
                         ))}
                         <col className="w-[6%]" />
                       </colgroup>
-                      <thead className="hidden bg-violet-50/60 text-violet-900 @min-[64rem]/matrix:table-header-group [&_th]:break-words [&_th]:px-2 [&_th]:py-3 [&_th]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium">
+                      <thead className="hidden bg-blue-50/60 text-blue-900 @min-[64rem]/matrix:table-header-group [&_th]:break-words [&_th]:px-2 [&_th]:py-3 [&_th]:text-left [&_th]:align-middle [&_th]:text-xs [&_th]:font-medium">
                         <tr>
                           <th>{t("tree")}</th>
                           <th>{t("objective")}</th>
@@ -751,7 +753,7 @@ export function KnowledgePlanWorkspace({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="cursor-pointer border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
+                      className="h-auto min-h-8 max-w-full cursor-pointer whitespace-normal border-amber-300 bg-white text-amber-800 hover:bg-amber-100"
                       disabled={!editable || !matrix.nodes.length}
                       onClick={() =>
                         void mutate(async () =>
@@ -763,7 +765,7 @@ export function KnowledgePlanWorkspace({
                     </Button>
                   </div>
                 )}
-                <p className="inline-block rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-sm font-medium text-violet-700">
+                <p className="inline-block rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
                   {t("total", { total, uncovered })}
                 </p>
                 <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -777,7 +779,7 @@ export function KnowledgePlanWorkspace({
                 <div className="flex flex-wrap gap-3">
                   <Button
                     type="submit"
-                    className="cursor-pointer bg-accent-600 text-white hover:bg-accent-700"
+                    className="h-auto min-h-9 max-w-full cursor-pointer whitespace-normal bg-[#0066cc] text-white hover:bg-[#0052a3]"
                     disabled={!editable || !isDirty}
                   >
                     {t("save")}
@@ -785,7 +787,7 @@ export function KnowledgePlanWorkspace({
                   <Button
                     type="button"
                     variant="outline"
-                    className="cursor-pointer gap-1.5 border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                    className="h-auto min-h-9 max-w-full cursor-pointer gap-1.5 whitespace-normal border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                     disabled={
                       !editable ||
                       plan.status !== "REVIEW_REQUIRED" ||
@@ -801,7 +803,7 @@ export function KnowledgePlanWorkspace({
                   </Button>
                   <Button
                     type="button"
-                    className="cursor-pointer gap-1.5 bg-violet-600 text-white hover:bg-violet-700"
+                    className="h-auto min-h-9 max-w-full cursor-pointer gap-1.5 whitespace-normal bg-[#0066cc] text-white hover:bg-[#0052a3]"
                     disabled={
                       plan.status !== "APPROVED" ||
                       isDirty ||
@@ -833,7 +835,7 @@ export function KnowledgePlanWorkspace({
                   <Button
                     type="button"
                     variant="outline"
-                    className="cursor-pointer gap-1.5 border-violet-300 bg-white text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                    className="h-auto min-h-9 max-w-full cursor-pointer gap-1.5 whitespace-normal border-blue-300 bg-white text-blue-700 hover:bg-blue-50 hover:text-blue-800"
                     title={t("generateNewHint")}
                     disabled={
                       plan.status !== "APPROVED" ||

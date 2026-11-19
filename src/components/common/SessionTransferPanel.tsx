@@ -136,7 +136,15 @@ export default function SessionTransferPanel({ examId }: { examId?: string }) {
         </div>
       ))}
       <AlertDialog open={!!target} onOpenChange={(open) => { if (!open && !approveLock.current) setTarget(null); }}>
-        <AlertDialogContent className="bg-white" onCloseAutoFocus={(event) => { event.preventDefault(); (trigger.current?.isConnected ? trigger.current : heading.current)?.focus(); }}>
+        <AlertDialogContent className="bg-white" onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          const button = trigger.current;
+          if (button?.isConnected && !button.matches(":disabled, [aria-disabled='true']") && !button.closest("[inert]")) {
+            button.focus();
+            if (button.ownerDocument.activeElement === button) return;
+          }
+          heading.current?.focus();
+        }}>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("approve")}</AlertDialogTitle>
             <AlertDialogDescription>{t("approveDescription", { name: target?.user.full_name ?? "" })}</AlertDialogDescription>

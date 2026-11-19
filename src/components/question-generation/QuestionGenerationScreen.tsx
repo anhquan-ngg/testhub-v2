@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   CheckCheck,
   ClipboardCheck,
+  FileText,
+  FolderOpen,
   History,
   Loader2,
   RefreshCw,
@@ -70,7 +72,7 @@ const isReusable = (version: DocumentVersion) =>
   version.status === "QUEUED" ||
   version.status === "PROCESSING";
 const selectClass =
-  "h-9 w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20 disabled:cursor-not-allowed disabled:opacity-60";
+  "h-10 w-full min-w-0 cursor-pointer rounded-md border border-gray-200 bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-[#0066cc] focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
 
 type Target = {
   id: string;
@@ -447,9 +449,9 @@ export function QuestionGenerationScreen() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-10">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+    <div className="min-w-0 space-y-5 pb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 basis-80">
           <Link
             href="/lecturer/questions"
             className="mb-2 flex cursor-pointer items-center gap-1 text-sm text-neutral-500 hover:text-neutral-800"
@@ -457,19 +459,15 @@ export function QuestionGenerationScreen() {
             <ArrowLeft className="size-4" />
             {t("back")}
           </Link>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-neutral-900">
-            <Sparkles className="size-6 text-violet-500" />
+          <h1 className="flex items-center gap-2.5 text-2xl font-bold tracking-tight text-neutral-900">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600">
+              <Sparkles className="size-5" aria-hidden="true" />
+            </span>
             {t("title")}
           </h1>
-          <p className="mt-1 max-w-3xl text-sm text-neutral-700">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-500">
             {t("description")}
           </p>
-          <Badge
-            variant="outline"
-            className="mt-3 border-violet-200 bg-violet-50 text-violet-700"
-          >
-            {t("textOnly")}
-          </Badge>
         </div>
         <Button
           asChild
@@ -477,25 +475,43 @@ export function QuestionGenerationScreen() {
           className="cursor-pointer gap-1.5 border-gray-300 bg-white"
         >
           <Link href="/lecturer/questions/documents">
+            <FolderOpen className="size-4" aria-hidden="true" />
             {documentText("title")}
           </Link>
         </Button>
       </div>
-      <Card className="border-gray-300 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg text-neutral-900">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
-              <Wand2 className="size-4" />
+      <ol className="grid gap-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4 sm:grid-cols-3 sm:gap-5">
+        {(["source", "plan", "review"] as const).map((step, index) => (
+          <li key={step} className="flex min-w-0 items-start gap-3">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-white text-xs font-semibold text-blue-600">
+              {index + 1}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-neutral-900">{t(`workspace.${step}`)}</p>
+              <p className="mt-0.5 text-xs leading-5 text-neutral-500">{t(`workspace.${step}Hint`)}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <Card className="gap-0 overflow-hidden border-gray-200 bg-white py-0 shadow-sm">
+        <CardHeader className="border-b border-gray-100 p-4 sm:p-5">
+          <CardTitle className="flex items-center gap-2 text-base text-neutral-900">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+              <Wand2 className="size-4" aria-hidden="true" />
             </span>
             {t("createTitle")}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-5">
           <form
             onSubmit={(event) => void create(event)}
-            className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]"
+            className="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]"
           >
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4 rounded-lg border border-gray-200 bg-gray-50/50 p-4">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-neutral-900">
+                <FileText className="size-4 text-blue-600" aria-hidden="true" />
+                {t("fileSource")}
+              </h2>
               {targetError && (
                 <p
                   role="alert"
@@ -508,7 +524,7 @@ export function QuestionGenerationScreen() {
                 <Label htmlFor="ai-topic">{t("topic")}</Label>
                 <select
                   id="ai-topic"
-                  className="h-9 w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className={selectClass}
                   value={topicId}
                   disabled={creating}
                   onChange={(event) => {
@@ -525,7 +541,7 @@ export function QuestionGenerationScreen() {
                 </select>
               </div>
               <div
-                className="grid grid-cols-2 gap-1 rounded-md bg-gray-100 p-1"
+                className="grid grid-cols-1 gap-1 rounded-lg border border-gray-200 bg-white p-1 sm:grid-cols-2"
                 role="group"
                 aria-label={t("fileSource")}
               >
@@ -536,7 +552,7 @@ export function QuestionGenerationScreen() {
                     size="sm"
                     variant={sourceMode === mode ? "default" : "ghost"}
                     aria-pressed={sourceMode === mode}
-                    className="cursor-pointer"
+                    className={`h-auto min-h-9 cursor-pointer whitespace-normal px-2 py-2 text-xs ${sourceMode === mode ? "bg-blue-50 text-blue-700 shadow-none hover:bg-blue-100" : "text-neutral-500 hover:bg-gray-50 hover:text-neutral-900"}`}
                     disabled={creating}
                     onClick={() => {
                       setSourceMode(mode);
@@ -649,7 +665,7 @@ export function QuestionGenerationScreen() {
                 </div>
               </div>
             </div>
-            <div className="space-y-4">
+            <div className="min-w-0 space-y-4">
               <QuestionConfigTable
                 rows={configs}
                 disabled={creating}
@@ -658,7 +674,7 @@ export function QuestionGenerationScreen() {
                   setInvalidCommand(false);
                 }}
               />
-              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+              <div className="flex items-start gap-2.5 rounded-lg border border-blue-100 bg-blue-50/50 p-3 [&_[data-slot=checkbox]]:mt-0.5">
                 <Checkbox
                   id="ai-consent"
                   checked={consent}
@@ -667,7 +683,7 @@ export function QuestionGenerationScreen() {
                 />
                 <Label
                   htmlFor="ai-consent"
-                  className="text-xs leading-relaxed text-amber-900"
+                  className="cursor-pointer text-xs leading-5 text-neutral-700"
                 >
                   {t("consent")}
                 </Label>
@@ -681,7 +697,7 @@ export function QuestionGenerationScreen() {
                 </p>
               )}
               <Button
-                className="w-full cursor-pointer bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:bg-violet-200 disabled:text-violet-700 disabled:opacity-100"
+                className="h-auto min-h-10 w-full cursor-pointer whitespace-normal bg-[#0066cc] text-white hover:bg-[#0052a3] disabled:cursor-not-allowed"
                 type="submit"
                 disabled={
                   creating ||
@@ -713,18 +729,18 @@ export function QuestionGenerationScreen() {
           setRefresh((value) => value + 1);
         }}
       />
-      <div className="grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="space-y-5">
-          <Card className="border-gray-300 bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg text-neutral-900">
+      <div className="grid min-w-0 items-start gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="min-w-0 space-y-5">
+          <Card className="gap-0 overflow-hidden border-gray-200 bg-white py-0 shadow-sm">
+            <CardHeader className="border-b border-gray-100 p-4">
+              <CardTitle className="flex items-center gap-2 text-base text-neutral-900">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
                   <History className="size-4" />
                 </span>
                 {t("history")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 p-4">
               {historyError ? (
                 <p role="alert" className="text-sm text-destructive">
                   {t("loadError")}
@@ -739,13 +755,13 @@ export function QuestionGenerationScreen() {
                     key={record.id}
                     disabled={busy || creating || Boolean(editingId)}
                     onClick={() => openBatch(record.id)}
-                    className={`w-full cursor-pointer rounded-md border p-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${batchId === record.id ? "border-violet-300 bg-violet-50 ring-1 ring-violet-200" : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"}`}
+                    className={`w-full cursor-pointer rounded-md border p-3 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${batchId === record.id ? "border-blue-300 bg-blue-50 ring-1 ring-blue-100" : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"}`}
                   >
-                    <span className="block font-medium">
+                    <span className="block break-words font-medium">
                       {topics.find((topic) => topic.id === record.topic_id)
                         ?.name ?? t("batchLabel")}
                     </span>
-                    <span className="mt-1.5 flex items-center gap-2 text-xs text-neutral-500">
+                    <span className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
                       <Badge
                         variant="outline"
                         className={batchStatusClass(record.status)}
@@ -791,19 +807,23 @@ export function QuestionGenerationScreen() {
         </aside>
         <section className="min-w-0 space-y-4" aria-live="polite">
           {!batchId ? (
-            <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50/40 p-10 text-center">
-              <Sparkles className="mx-auto mb-4 size-10 text-violet-400" />
-              <h2 className="font-semibold text-neutral-900">{t("emptyTitle")}</h2>
-              <p className="mt-2 text-sm text-neutral-500">
-                {t("emptyDescription")}
-              </p>
+            <div className="flex flex-col items-center gap-4 rounded-xl border border-gray-200 bg-gradient-to-br from-blue-50/60 via-white to-white p-6 text-center shadow-sm sm:flex-row sm:text-left">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-blue-100 bg-white text-blue-600 shadow-xs">
+                <ClipboardCheck className="size-6" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="font-semibold text-neutral-900">{t("emptyTitle")}</h2>
+                <p className="mt-1 max-w-xl text-sm leading-6 text-neutral-500">
+                  {t("emptyDescription")}
+                </p>
+              </div>
             </div>
           ) : (
             <>
-              <Card className="border-gray-300 bg-white shadow-sm">
-                <CardContent className="space-y-4 pt-6">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
+              <Card className="gap-0 border-gray-200 bg-white py-0 shadow-sm">
+                <CardContent className="space-y-4 p-4 sm:p-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
                         <ClipboardCheck className="size-4" />
                       </span>
@@ -862,9 +882,7 @@ export function QuestionGenerationScreen() {
                             <li key={index}>
                               <Badge
                                 variant="outline"
-                                className={questionTypeClass(
-                                  config.question_type,
-                                )}
+                                className={`max-w-full whitespace-normal text-left ${questionTypeClass(config.question_type)}`}
                               >
                                 {t("configSummary", {
                                   count: config.count,
@@ -917,7 +935,7 @@ export function QuestionGenerationScreen() {
                           <div className="flex flex-wrap gap-2">
                             <Button
                               variant="outline"
-                              className="cursor-pointer gap-1.5 border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                              className="h-auto min-h-9 max-w-full cursor-pointer gap-1.5 whitespace-normal border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
                               disabled={
                                 !editable ||
                                 busy ||
@@ -939,7 +957,7 @@ export function QuestionGenerationScreen() {
                               {t("selectApproved")}
                             </Button>
                             <Button
-                              className="cursor-pointer gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+                              className="h-auto min-h-9 max-w-full cursor-pointer gap-1.5 whitespace-normal bg-emerald-600 text-white hover:bg-emerald-700"
                               disabled={
                                 !editable ||
                                 busy ||

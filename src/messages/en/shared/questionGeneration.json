@@ -1,4 +1,12 @@
 {
+  "workspace": {
+    "source": "Choose a document",
+    "sourceHint": "Upload a file or select one from your library, then set question counts.",
+    "plan": "Review the knowledge matrix",
+    "planHint": "Check chapters, objectives and cognitive levels before generating questions.",
+    "review": "Review and save questions",
+    "reviewHint": "Review each draft and select suitable questions to save to the bank."
+  },
   "plan": {
     "title": "Knowledge plan",
     "propose": "Propose knowledge matrix",
@@ -128,8 +136,8 @@
   "batchLabel": "Question batch",
   "previous": "Previous",
   "next": "Next",
-  "emptyTitle": "Start with a learning document",
-  "emptyDescription": "Create a batch above or open a recent batch to continue reviewing.",
+  "emptyTitle": "Your drafts will appear here",
+  "emptyDescription": "Choose a document and propose a matrix above to get started, or open a recent batch to continue reviewing questions.",
   "reviewTitle": "Review drafts",
   "reload": "Reload",
   "loading": "Loading…",

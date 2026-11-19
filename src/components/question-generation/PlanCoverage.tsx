@@ -29,7 +29,7 @@ export function PlanCoverage({
   };
   return (
     <details
-      className="rounded-xl border border-gray-300 bg-white p-4 text-sm shadow-sm"
+      className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 text-sm shadow-sm sm:p-5"
       open
     >
       <summary className="cursor-pointer font-semibold text-neutral-900">

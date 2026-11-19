@@ -84,10 +84,10 @@ export function GenerationDraftCard({
   }
   return (
     <Card
-      className={`border-l-4 border-gray-300 bg-white shadow-sm ${ITEM_ACCENT[item.status] ?? "border-l-gray-300"}`}
+      className={`min-w-0 gap-0 border-gray-200 border-l-4 bg-white py-0 shadow-sm ${ITEM_ACCENT[item.status] ?? "border-l-gray-300"}`}
     >
-      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 pb-3">
-        <div className="flex items-center gap-3">
+      <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 border-b border-gray-100 p-4 sm:px-5">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Checkbox
             aria-label={t("selectItem", { number: item.source_index })}
             checked={selected}
@@ -107,7 +107,7 @@ export function GenerationDraftCard({
           {t("revision", { revision: item.revision })}
         </span>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="min-w-0 space-y-4 p-4 sm:p-5">
         {item.provenance?.knowledge_title && (
           <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-sm">
             <p className="font-medium text-slate-900">

@@ -1,4 +1,12 @@
 {
+  "workspace": {
+    "source": "Chọn tài liệu",
+    "sourceHint": "Tải tệp hoặc chọn từ thư viện, thiết lập số câu.",
+    "plan": "Duyệt ma trận kiến thức",
+    "planHint": "Kiểm tra chương, mục tiêu và mức độ trước khi sinh câu hỏi.",
+    "review": "Kiểm tra và lưu câu hỏi",
+    "reviewHint": "Duyệt từng bản nháp, chọn câu phù hợp để lưu vào ngân hàng."
+  },
   "plan": {
     "title": "Kế hoạch kiến thức",
     "propose": "Đề xuất ma trận kiến thức",
@@ -128,9 +136,9 @@
   "batchLabel": "Lô câu hỏi",
   "previous": "Trước",
   "next": "Sau",
-  "emptyTitle": "Bắt đầu từ tài liệu học tập",
-  "emptyDescription": "Tạo lô mới ở phía trên hoặc mở một lô gần đây để tiếp tục review.",
-  "reviewTitle": "Review bản nháp",
+  "emptyTitle": "Bản nháp sẽ xuất hiện tại đây",
+  "emptyDescription": "Chọn tài liệu và đề xuất ma trận ở trên để bắt đầu, hoặc mở một lô gần đây để tiếp tục duyệt câu hỏi.",
+  "reviewTitle": "Duyệt bản nháp",
   "reload": "Tải lại",
   "loading": "Đang tải…",
   "loadError": "Không tải được dữ liệu hoặc bạn không còn quyền truy cập. Tải lại để kiểm tra.",
