@@ -1,0 +1,76 @@
+{
+  "title": "Exam quality",
+  "subtitle": "Difficulty and discrimination analysis of each question based on submitted attempts",
+  "viewLink": "Exam quality",
+  "backToReport": "Back to results report",
+  "loadError": "Unable to load analytics data. Please try again.",
+  "retry": "Retry",
+  "noData": "There are no submissions to analyze yet.",
+  "lowSampleWarning": "Only {count} submissions so far (minimum {min}). Per-question indices are indicative only; questions without enough data are marked separately.",
+  "summary": {
+    "submissions": "Submissions",
+    "mean": "Mean score",
+    "median": "Median",
+    "stdDev": "Std. deviation",
+    "range": "Min - max",
+    "avgDifficulty": "Average difficulty (P)",
+    "needsReview": "Questions to review"
+  },
+  "charts": {
+    "scoreDistribution": "Score distribution",
+    "scoreDistributionHint": "Number of submissions per score band (scale of 10)",
+    "students": "Submissions",
+    "difficultyMix": "Difficulty mix",
+    "discriminationMix": "Discrimination mix"
+  },
+  "difficulty": {
+    "EASY": "Easy",
+    "MEDIUM": "Medium",
+    "HARD": "Hard",
+    "INSUFFICIENT_DATA": "Not enough data"
+  },
+  "discrimination": {
+    "HIGH": "Good",
+    "MODERATE": "Fair",
+    "LOW": "Low",
+    "NEGATIVE": "Negative",
+    "INSUFFICIENT_DATA": "Not enough data"
+  },
+  "flags": {
+    "TOO_EASY": "Too easy",
+    "TOO_HARD": "Too hard",
+    "LOW_DISCRIMINATION": "Low discrimination",
+    "NEGATIVE_DISCRIMINATION": "Negative discrimination"
+  },
+  "flagHints": {
+    "TOO_EASY": "Almost everyone answers correctly, so the question does not separate students.",
+    "TOO_HARD": "Very few students answer correctly. Check the answer key or the question wording.",
+    "LOW_DISCRIMINATION": "Top and bottom groups perform almost the same.",
+    "NEGATIVE_DISCRIMINATION": "The bottom group outperforms the top group; the key may be wrong or the question misleading."
+  },
+  "review": {
+    "title": "Questions to review",
+    "description": "Questions with low or negative discrimination. Review the key and the wording.",
+    "empty": "No question needs review.",
+    "editQuestion": "Edit question"
+  },
+  "table": {
+    "title": "Question details",
+    "index": "#",
+    "question": "Question",
+    "chapter": "Chapter",
+    "attempts": "Attempts",
+    "difficultyP": "Difficulty P",
+    "difficultyLevel": "Difficulty level",
+    "discriminationD": "Discrimination D",
+    "discriminationLevel": "Discrimination level",
+    "upperLower": "Upper / lower group",
+    "flags": "Flags",
+    "ok": "OK"
+  },
+  "legend": {
+    "title": "How to read the indices",
+    "p": "P = proportion answering correctly. P ≥ 0.8: easy; P ≤ 0.3: hard.",
+    "d": "D = P(top 27% group) − P(bottom 27% group). D ≥ 0.4: good; 0.2–0.4: fair; 0–0.2: low; < 0: negative."
+  }
+}

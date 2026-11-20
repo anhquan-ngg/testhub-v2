@@ -322,7 +322,43 @@ export default function LecturerQuestions() {
   useEffect(() => {
     if (hasStartedUrlRestore.current) return;
     hasStartedUrlRestore.current = true;
-    applyUrlState(new URLSearchParams(window.location.search))
+    const initialParams = new URLSearchParams(window.location.search);
+    const editId = initialParams.get("edit");
+
+    // Deep link `?edit=<questionId>`: jump to the question's chapter list, then open its edit dialog.
+    const restore = async () => {
+      if (!editId) {
+        await applyUrlState(initialParams);
+        return;
+      }
+      try {
+        const questionRes = await apiClient.get<Question>(
+          ENDPOINTS.QUESTIONS.DETAIL(editId),
+        );
+        const question = questionRes.data;
+        const chapterRes = await apiClient.get<Chapter>(
+          ENDPOINTS.CHAPTERS.DETAIL(question.chapter_id),
+        );
+        await applyUrlState(
+          new URLSearchParams({
+            topic: chapterRes.data.topic_id,
+            chapter: question.chapter_id,
+            view: "questions",
+          }),
+        );
+        setQuestionForm(getQuestionFormFromQuestion(question));
+        setEditingQuestionId(question.id);
+        setEditingQuestionFiles(question.files ?? []);
+        setSelectedFiles([]);
+        setReplaceQuestionFiles(false);
+        setIsQuestionDialogOpen(true);
+      } catch {
+        toast.error(t("unableToLoadQuestionForUpdate"));
+        await applyUrlState(new URLSearchParams());
+      }
+    };
+
+    restore()
       .catch(() => toast.error(t("unableToLoadQuestionBankData")))
       .finally(() => setIsUrlReady(true));
   }, [applyUrlState, t]);
