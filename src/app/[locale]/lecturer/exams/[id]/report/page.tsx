@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Loader2,
   ChevronLeft,
+  BarChart3,
   Trash2,
   Printer,
   CheckCircle2,
@@ -84,6 +85,7 @@ const getReportScore = (submission: ReportSubmission) => {
 export default function ExamReportPage() {
   const t = useTranslations("lecturer.examReport");
   const iconLabels = useIconLabels();
+  const quality = useTranslations("lecturer.examQuality");
   const regrading = useTranslations("shared.regrading");
   const params = useParams();
   const router = useRouter();
@@ -387,6 +389,14 @@ export default function ExamReportPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          {!isAdmin && (
+            <Button asChild variant="outline" className="bg-white">
+              <Link href={`/lecturer/exams/${examId}/quality`}>
+                <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                {quality("viewLink")}
+              </Link>
+            </Button>
+          )}
           <Button
             onClick={handlePrintReport}
             disabled={isPrinting || isLoadingSubmissions || reportError || reportIncomplete || hasUnscoredSubmissions || totalSubmissions === 0}

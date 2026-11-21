@@ -70,6 +70,7 @@ export const ENDPOINTS = {
     BASE: "/exams",
     DETAIL: (id: string) => `/exams/${id}`,
     PRINT: (id: string) => `/exams/${id}/print`,
+    ANALYTICS: (id: string) => `/exams/${id}/analytics`,
     DISTRIBUTION_DELTA_CHECK: "/exams/distribution-delta/check",
     QUESTIONS: {
       BASE: (id: string) => `/exams/${id}/questions`,

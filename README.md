@@ -228,7 +228,7 @@ The [Next proxy](src/proxy.ts) verifies HS256 `access_token` claims, including r
 
 Backend httpOnly cookies must be available to the frontend host. Different ports on `localhost` can share host cookies; different hosts need a suitable same-origin reverse proxy/BFF arrangement or equivalent carefully configured shared-cookie design. Backend `FRONTEND_URL` controls allowed origins. Enabling CORS alone does not make a backend-host-only cookie visible to the frontend proxy. Google OAuth begins at `/auth/google`; do not infer Microsoft/Outlook OAuth support from a UI label.
 
-Students have one active browser session. A pending new login does not eject the old session; an in-progress exam requires lecturer/admin approval before transfer, followed by confirmation in the new browser. Lecturers/admins can keep multiple sessions and log out the current one. Deploy the backend auth-session migration and reauthenticate legacy tokens; see the [session guide](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/auth-sessions.md).
+Students have one active browser session. A pending new login does not eject the old session; an in-progress exam requires lecturer/admin approval before transfer, followed by confirmation in the new browser. Lecturers/admins can keep multiple sessions and log out the current one. Deploy the backend auth-session migration and reauthenticate legacy tokens; see the [session guide](https://github.com/anhquan-ngg/testhub-v2-backend/blob/dev/docs/auth-sessions.md).
 
 Notifications use credentialed Socket.IO at `${NEXT_PUBLIC_API_URL}/notifications`. Student runtime and lecturer monitoring use credentialed SSE endpoints from [the endpoint registry](src/constants/endpoints.ts). The backend must not trust role/user query hints as authorization.
 
@@ -278,7 +278,7 @@ Provision and configure backend/AI dependencies separately, deploy compatible mi
 
 - [Frontend agent guide](AGENTS.md) and [Claude-specific instructions](CLAUDE.md): repository conventions; some historical checker references are stale as noted above.
 - [Backend README](https://github.com/anhquan-ngg/testhub-v2-backend#readme): npm setup, infrastructure, migrations, environment and worker commands.
-- [Authentication sessions](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/auth-sessions.md): cookies, recovery, device transfers and auth migration requirements.
+- [Authentication sessions](https://github.com/anhquan-ngg/testhub-v2-backend/blob/dev/docs/auth-sessions.md): cookies, recovery, device transfers and auth migration requirements.
 - [Chapter hierarchy](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/chapter-hierarchy.md) and [question-import fixtures](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/src/question-imports/parsers/fixtures/README.md): selection/import contracts and disposable test-data guidance.
 - [Learning documents](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/learning-documents.md), [RAG indexing](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/rag-indexing.md) and [AI question generation](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/ai-question-generation.md): source preparation, migrations, workers and review/commit workflows.
 - [AI service README](https://github.com/anhquan-ngg/testhub-ai-service#readme): Python setup, internal API, provider configuration and readiness/deadline behavior.
