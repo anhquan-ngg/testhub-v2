@@ -600,6 +600,7 @@ export function KnowledgePlanWorkspace({
                                     disabled={!editable}
                                     value={field.value}
                                     onValueChange={(value) => {
+                                      if (!value) return;
                                       field.onChange(value);
                                       const target = matrix.nodes.find(
                                         (node) => node.id === value,
@@ -674,7 +675,10 @@ export function KnowledgePlanWorkspace({
                                     name={field.name}
                                     disabled={!editable}
                                     value={field.value}
-                                    onValueChange={field.onChange}
+                                    onValueChange={(value) => {
+                                      if (!value) return;
+                                      field.onChange(value);
+                                    }}
                                   >
                                     <SelectTrigger
                                       ref={field.ref}
