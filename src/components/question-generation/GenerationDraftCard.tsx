@@ -10,6 +10,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { MathRenderer } from "@/components/MathRenderer";
 import type {
@@ -214,24 +221,30 @@ export function GenerationDraftCard({
               ))}
             </fieldset>
             <Label htmlFor={`level-${item.id}`}>{t("level")}</Label>
-            <select
-              id={`level-${item.id}`}
-              className="h-9 w-full cursor-pointer rounded-md border border-gray-300 bg-white px-2 text-sm focus:border-accent-600 focus:outline-none focus:ring-2 focus:ring-accent-600/20 disabled:cursor-not-allowed disabled:opacity-60"
+            <Select
               disabled={busy}
               value={draft.question_format}
-              onChange={(event) =>
+              onValueChange={(value) =>
                 setDraft({
                   ...draft,
-                  question_format: event.target.value as QuestionFormat,
+                  question_format: value as QuestionFormat,
                 })
               }
             >
-              {GENERATION_QUESTION_FORMATS.map((value) => (
-                <option key={value} value={value}>
-                  {questionFormat(value)}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger
+                id={`level-${item.id}`}
+                className="w-full cursor-pointer border-gray-300 bg-white"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {GENERATION_QUESTION_FORMATS.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {questionFormat(value)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {invalid && (
               <p
                 role="alert"

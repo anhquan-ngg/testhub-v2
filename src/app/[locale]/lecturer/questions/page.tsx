@@ -909,7 +909,7 @@ export default function LecturerQuestions() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-white border-gray-300">
-                <DropdownMenuItem asChild className="cursor-pointer gap-2 text-violet-700 focus:text-violet-800">
+                <DropdownMenuItem asChild className="cursor-pointer gap-2 text-blue-700 focus:text-blue-800">
                   <Link href={{ pathname: "/lecturer/questions/generate", query: {
                     topic: selectedTopic.id,
                     ...(currentChapter ? { chapter: currentChapter.id } : {}),

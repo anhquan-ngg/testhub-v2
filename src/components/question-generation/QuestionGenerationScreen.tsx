@@ -32,6 +32,15 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +81,7 @@ const isReusable = (version: DocumentVersion) =>
   version.status === "QUEUED" ||
   version.status === "PROCESSING";
 const selectClass =
-  "h-10 w-full min-w-0 cursor-pointer rounded-md border border-gray-200 bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-[#0066cc] focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
+  "data-[size=default]:h-10 w-full min-w-0 cursor-pointer rounded-md border border-gray-200 bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-[#0066cc] focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
 
 type Target = {
   id: string;
@@ -522,23 +531,26 @@ export function QuestionGenerationScreen() {
               )}
               <div className="space-y-2">
                 <Label htmlFor="ai-topic">{t("topic")}</Label>
-                <select
-                  id="ai-topic"
-                  className={selectClass}
-                  value={topicId}
+                <Select
+                  value={topicId || "__none__"}
                   disabled={creating}
-                  onChange={(event) => {
-                    setTopicId(event.target.value);
+                  onValueChange={(value) => {
+                    setTopicId(value === "__none__" ? "" : value);
                     setExistingVersionId("");
                   }}
                 >
-                  <option value="">{t("chooseTopic")}</option>
-                  {topics.map((topic) => (
-                    <option key={topic.id} value={topic.id}>
-                      {topic.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="ai-topic" className={selectClass}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">{t("chooseTopic")}</SelectItem>
+                    {topics.map((topic) => (
+                      <SelectItem key={topic.id} value={topic.id}>
+                        {topic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div
                 className="grid grid-cols-1 gap-1 rounded-lg border border-gray-200 bg-white p-1 sm:grid-cols-2"
@@ -568,43 +580,47 @@ export function QuestionGenerationScreen() {
                   <Label htmlFor="ai-existing-version">
                     {t("existing.label")}
                   </Label>
-                  <select
-                    id="ai-existing-version"
-                    className={selectClass}
-                    value={existingVersionId}
+                  <Select
+                    value={existingVersionId || "__none__"}
                     disabled={creating || !libraryDocs?.length}
-                    onChange={(event) => {
-                      setExistingVersionId(event.target.value);
+                    onValueChange={(value) => {
+                      setExistingVersionId(value === "__none__" ? "" : value);
                       setInvalidCommand(false);
                     }}
                   >
-                    <option value="">{t("existing.choose")}</option>
-                    {(libraryDocs ?? []).map((doc) => (
-                      <optgroup key={doc.id} label={doc.title}>
-                        {doc.versions.map((version) => {
-                          const reusable = isReusable(version);
-                          const ready = version.indexes.some(
-                            (index) => index.status === "READY",
-                          );
-                          return (
-                            <option
-                              key={version.id}
-                              value={version.id}
-                              disabled={!reusable}
-                            >
-                              {documentText("version", {
-                                version: version.version,
-                                name: version.file_name,
-                              })}
-                              {" · "}
-                              {documentText(`status.${version.status}`)}
-                              {ready ? ` · ${t("existing.indexed")}` : ""}
-                            </option>
-                          );
-                        })}
-                      </optgroup>
-                    ))}
-                  </select>
+                    <SelectTrigger id="ai-existing-version" className={selectClass}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">{t("existing.choose")}</SelectItem>
+                      {(libraryDocs ?? []).map((doc) => (
+                        <SelectGroup key={doc.id}>
+                          <SelectLabel>{doc.title}</SelectLabel>
+                          {doc.versions.map((version) => {
+                            const reusable = isReusable(version);
+                            const ready = version.indexes.some(
+                              (index) => index.status === "READY",
+                            );
+                            return (
+                              <SelectItem
+                                key={version.id}
+                                value={version.id}
+                                disabled={!reusable}
+                              >
+                                {documentText("version", {
+                                  version: version.version,
+                                  name: version.file_name,
+                                })}
+                                {" · "}
+                                {documentText(`status.${version.status}`)}
+                                {ready ? ` · ${t("existing.indexed")}` : ""}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectGroup>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <p className="text-xs text-muted-foreground">
                     {!uuidPattern.test(topicId)
                       ? t("existing.pickTopic")

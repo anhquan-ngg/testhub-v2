@@ -37,7 +37,7 @@ Use the localized import workspace and its Excel/Word template links. Official f
 - Choice editing preserves line breaks and assigns unused A-F keys. Re-read import state after ambiguous commit responses; replay completion for an uploaded file rather than creating another import.
 - This imports **questions**, not full exam definitions, schedules or grading structures. The backend can optionally attach imported questions to an existing manual exam.
 
-Parser fixtures and write-test guidance belong to the [backend import fixture guide](../testhub-v2-backend/src/question-imports/parsers/fixtures/README.md), not a frontend test runner.
+Parser fixtures and write-test guidance belong to the [backend import fixture guide](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/src/question-imports/parsers/fixtures/README.md), not a frontend test runner.
 
 ### Learning documents and AI review
 
@@ -146,9 +146,17 @@ Set-Location .\testhub-v2
 npm ci
 ```
 
+If you also need a local backend, clone it alongside the frontend. From the frontend repository root, run the following only if the backend has not already been cloned:
+
+```powershell
+git clone https://github.com/anhquan-ngg/testhub-v2-backend.git ..\testhub-v2-backend
+```
+
+This creates sibling directories named `testhub-v2` and `testhub-v2-backend`; the command leaves your current directory at the frontend root.
+
 Before starting the frontend:
 
-1. Follow the [backend README](../testhub-v2-backend/README.md) to configure dependencies, generate its ORM client and apply the appropriate migrations in a local development database. Never run backend migrations from this frontend or reset a shared database.
+1. Follow the [backend README](https://github.com/anhquan-ngg/testhub-v2-backend#readme) to configure dependencies, generate its ORM client and apply the appropriate migrations in a local development database. Never run backend migrations from this frontend or reset a shared database.
 2. Set backend `FRONTEND_URL` to the actual allowed frontend origin (normally `http://localhost:3000`). Set the frontend's API URL and matching server-only JWT secret as described above. Use `localhost` consistently rather than mixing it with `127.0.0.1`.
 3. Start the backend API on its configured port (default 3001). Enable/start AI services and workers only if needed; consult their guides for exact setup and migration order.
 4. Start the frontend:
@@ -220,7 +228,7 @@ The [Next proxy](src/proxy.ts) verifies HS256 `access_token` claims, including r
 
 Backend httpOnly cookies must be available to the frontend host. Different ports on `localhost` can share host cookies; different hosts need a suitable same-origin reverse proxy/BFF arrangement or equivalent carefully configured shared-cookie design. Backend `FRONTEND_URL` controls allowed origins. Enabling CORS alone does not make a backend-host-only cookie visible to the frontend proxy. Google OAuth begins at `/auth/google`; do not infer Microsoft/Outlook OAuth support from a UI label.
 
-Students have one active browser session. A pending new login does not eject the old session; an in-progress exam requires lecturer/admin approval before transfer, followed by confirmation in the new browser. Lecturers/admins can keep multiple sessions and log out the current one. Deploy the backend auth-session migration and reauthenticate legacy tokens; see the [session guide](../testhub-v2-backend/docs/auth-sessions.md).
+Students have one active browser session. A pending new login does not eject the old session; an in-progress exam requires lecturer/admin approval before transfer, followed by confirmation in the new browser. Lecturers/admins can keep multiple sessions and log out the current one. Deploy the backend auth-session migration and reauthenticate legacy tokens; see the [session guide](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/auth-sessions.md).
 
 Notifications use credentialed Socket.IO at `${NEXT_PUBLIC_API_URL}/notifications`. Student runtime and lecturer monitoring use credentialed SSE endpoints from [the endpoint registry](src/constants/endpoints.ts). The backend must not trust role/user query hints as authorization.
 
@@ -269,10 +277,10 @@ Provision and configure backend/AI dependencies separately, deploy compatible mi
 ## Further Documentation
 
 - [Frontend agent guide](AGENTS.md) and [Claude-specific instructions](CLAUDE.md): repository conventions; some historical checker references are stale as noted above.
-- [Backend README](../testhub-v2-backend/README.md): npm setup, infrastructure, migrations, environment and worker commands.
-- [Authentication sessions](../testhub-v2-backend/docs/auth-sessions.md): cookies, recovery, device transfers and auth migration requirements.
-- [Chapter hierarchy](../testhub-v2-backend/docs/chapter-hierarchy.md) and [question-import fixtures](../testhub-v2-backend/src/question-imports/parsers/fixtures/README.md): selection/import contracts and disposable test-data guidance.
-- [Learning documents](../testhub-v2-backend/docs/learning-documents.md), [RAG indexing](../testhub-v2-backend/docs/rag-indexing.md) and [AI question generation](../testhub-v2-backend/docs/ai-question-generation.md): source preparation, migrations, workers and review/commit workflows.
-- [AI service README](../testhub-ai-service/README.md): Python setup, internal API, provider configuration and readiness/deadline behavior.
+- [Backend README](https://github.com/anhquan-ngg/testhub-v2-backend#readme): npm setup, infrastructure, migrations, environment and worker commands.
+- [Authentication sessions](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/auth-sessions.md): cookies, recovery, device transfers and auth migration requirements.
+- [Chapter hierarchy](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/chapter-hierarchy.md) and [question-import fixtures](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/src/question-imports/parsers/fixtures/README.md): selection/import contracts and disposable test-data guidance.
+- [Learning documents](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/learning-documents.md), [RAG indexing](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/rag-indexing.md) and [AI question generation](https://github.com/anhquan-ngg/testhub-v2-backend/blob/master/docs/ai-question-generation.md): source preparation, migrations, workers and review/commit workflows.
+- [AI service README](https://github.com/anhquan-ngg/testhub-ai-service#readme): Python setup, internal API, provider configuration and readiness/deadline behavior.
 
-Sibling links assume the repositories are checked out side by side; they may not resolve in a standalone hosted repository view. No `LICENSE` file is present, so this README does not assert an MIT license or link to a nonexistent license. Contributions should follow the repository instructions; dependency/configuration repairs are separate changes from this documentation.
+Cross-repository links use official GitHub URLs and do not require sibling checkouts. No `LICENSE` file is present, so this README does not assert an MIT license or link to a nonexistent license. Contributions should follow the repository instructions; dependency/configuration repairs are separate changes from this documentation.

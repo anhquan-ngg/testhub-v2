@@ -28,6 +28,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, ArrowRight, BookOpen, CheckCircle2, ChevronLeft, ChevronRight,
@@ -38,6 +45,8 @@ import {
 const VERSION_PAGE_SIZE = 20;
 const DETAIL_VERSION_LIMIT = 50;
 const MB = 1024 * 1024;
+// Radix reserves "" for placeholders; this sentinel cannot collide with UUID IDs.
+const EMPTY_TARGET_VALUE = "__empty_target__";
 
 async function sha256Hex(file: File) {
   const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
@@ -46,7 +55,7 @@ async function sha256Hex(file: File) {
   ).join("");
 }
 
-const selectClassName = "h-10 w-full min-w-0 rounded-md border border-gray-200 bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-[#0066cc] focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
+const selectClassName = "data-[size=default]:h-10 w-full min-w-0 rounded-md border border-gray-200 bg-white px-3 text-sm shadow-xs outline-none focus-visible:border-[#0066cc] focus-visible:ring-2 focus-visible:ring-blue-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
 const statusClassName = {
   UPLOADING: "border-slate-200 bg-slate-50 text-slate-600",
   QUEUED: "border-blue-100 bg-blue-50 text-blue-700",
@@ -511,41 +520,47 @@ export function LearningDocumentsScreen() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
               <div className="space-y-2">
                 <Label htmlFor="document-topic">{t("topic")}</Label>
-                <select
-                  id="document-topic"
-                  className={selectClassName}
-                  value={topic}
+                <Select
+                  value={topic || EMPTY_TARGET_VALUE}
                   disabled={busy}
-                  onChange={(e) => {
-                    setTopic(e.target.value);
+                  onValueChange={(value) => {
+                    setTopic(value === EMPTY_TARGET_VALUE ? "" : value);
                     setChapter("");
                     setChapters([]);
                   }}
                 >
-                  <option value="">{t("choose")}</option>
-                  {topics.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="document-topic" className={selectClassName}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_TARGET_VALUE}>{t("choose")}</SelectItem>
+                    {topics.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="document-chapter">{t("chapterOptional")}</Label>
-                <select
-                  id="document-chapter"
-                  className={selectClassName}
-                  value={chapter}
+                <Select
+                  value={chapter || EMPTY_TARGET_VALUE}
                   disabled={busy || !topic}
-                  onChange={(e) => setChapter(e.target.value)}
+                  onValueChange={(value) => setChapter(value === EMPTY_TARGET_VALUE ? "" : value)}
                 >
-                  <option value="">{t("noChapter")}</option>
-                  {chapters.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.name}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger id="document-chapter" className={selectClassName}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={EMPTY_TARGET_VALUE}>{t("noChapter")}</SelectItem>
+                    {chapters.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="space-y-2">
@@ -682,29 +697,37 @@ export function LearningDocumentsScreen() {
                 onChange={(e) => setSearchInput(e.target.value)}
               />
             </div>
-            <select
-              className={selectClassName}
-              aria-label={t("manage.filterTopic")}
-              value={topicFilter}
-              onChange={(e) => changeFilter(() => setTopicFilter(e.target.value))}
-            >
-              <option value="">{t("manage.allTopics")}</option>
-              {topics.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
-            <select
-              className={selectClassName}
-              aria-label={t("manage.filterStatus")}
-              value={archivedFilter}
-              onChange={(e) =>
-                changeFilter(() => setArchivedFilter(e.target.value as DocumentArchiveFilter))
+            <Select
+              value={topicFilter || EMPTY_TARGET_VALUE}
+              onValueChange={(value) =>
+                changeFilter(() => setTopicFilter(value === EMPTY_TARGET_VALUE ? "" : value))
               }
             >
-              <option value="false">{t("manage.filterActive")}</option>
-              <option value="true">{t("manage.filterArchived")}</option>
-              <option value="all">{t("manage.filterAll")}</option>
-            </select>
+              <SelectTrigger className={selectClassName} aria-label={t("manage.filterTopic")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={EMPTY_TARGET_VALUE}>{t("manage.allTopics")}</SelectItem>
+                {topics.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={archivedFilter}
+              onValueChange={(value) =>
+                changeFilter(() => setArchivedFilter(value as DocumentArchiveFilter))
+              }
+            >
+              <SelectTrigger className={selectClassName} aria-label={t("manage.filterStatus")}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="false">{t("manage.filterActive")}</SelectItem>
+                <SelectItem value="true">{t("manage.filterArchived")}</SelectItem>
+                <SelectItem value="all">{t("manage.filterAll")}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent className="space-y-4 p-5 sm:p-6" aria-busy={historyLoading}>
@@ -770,24 +793,27 @@ export function LearningDocumentsScreen() {
           <CardContent className="space-y-5 p-5 sm:p-6">
             <div className="max-w-2xl space-y-2">
             <Label htmlFor="document-version">{t("workspace.selectedVersion")}</Label>
-            <select
-              id="document-version"
-              className={selectClassName}
+            <Select
               value={versionId}
               disabled={busy}
-              onChange={(e) => {
-                setVersionId(e.target.value);
+              onValueChange={(value) => {
+                setVersionId(value);
                 setContent(null);
                 setContentPage(1);
               }}
             >
-              {allVersions.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {t("version", { version: v.version, name: v.file_name })} —{" "}
-                  {t(`status.${v.status}`)}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="document-version" className={selectClassName}>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {allVersions.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {t("version", { version: v.version, name: v.file_name })} —{" "}
+                    {t(`status.${v.status}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {canLoadMoreVersions && (
               <Button
                 type="button"
