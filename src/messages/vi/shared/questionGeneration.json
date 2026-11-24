@@ -144,6 +144,7 @@
   "loadError": "Không tải được dữ liệu hoặc bạn không còn quyền truy cập. Tải lại để kiểm tra.",
   "processing": "Lô đang được xử lý. Trang tự cập nhật; bạn có thể quay lại sau.",
   "failed": "Không sinh được câu hỏi. Kiểm tra cấu hình hoặc tạo lô mới khi đã xử lý lỗi.",
+  "embeddingQuotaExhausted": "Hạn mức embedding trong ngày của dịch vụ AI đã hết nên chưa thể sinh câu hỏi từ tài liệu. Hãy tạo lô mới sau khi hạn mức được làm mới (khoảng 14:00–15:00 giờ Việt Nam) hoặc liên hệ quản trị viên để tăng hạn mức.",
   "insufficientEvidence": {
     "title": "Chưa đủ bằng chứng từ tài liệu để sinh câu hỏi",
     "explanation": "Nội dung truy xuất chưa đủ để đáp ứng mục tiêu học tập, loại câu hỏi hoặc mức nhận thức được yêu cầu. Đây là giới hạn về bằng chứng, không phải lỗi JSON không hợp lệ hay lỗi cấu hình nhà cung cấp AI.",

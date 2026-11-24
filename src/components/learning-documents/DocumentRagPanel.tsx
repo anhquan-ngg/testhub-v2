@@ -89,7 +89,7 @@ export function DocumentRagPanel({
                 max={Math.max(1, index.chunk_count)}
                 value={index.completed_chunks}
               />
-              {index.error_code && <p role="alert" className="break-words text-red-600">{t("errorCode", { code: index.error_code })}</p>}
+              {index.error_code && <p role="alert" className="break-words text-red-600">{index.error_code === "RAG_EMBEDDING_QUOTA_EXHAUSTED" ? t("embeddingQuotaExhausted") : t("errorCode", { code: index.error_code })}</p>}
               {index.status === "FAILED" && (
                 <Button
                   className="h-auto min-h-9 max-w-full whitespace-normal"

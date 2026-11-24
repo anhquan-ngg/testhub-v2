@@ -144,6 +144,7 @@
   "loadError": "Data could not be loaded, or access is no longer available. Reload to check.",
   "processing": "The batch is processing. This page updates automatically; you can return later.",
   "failed": "Generation failed. Check the configuration or create a new batch after resolving the issue.",
+  "embeddingQuotaExhausted": "The AI service's daily embedding quota is used up, so questions cannot be generated from documents right now. Create a new batch after the quota resets (about 07:00–08:00 UTC) or ask an administrator to raise the quota.",
   "insufficientEvidence": {
     "title": "Not enough source evidence to generate questions",
     "explanation": "The retrieved content does not sufficiently support the requested learning objectives, question types or cognitive levels. This is an evidence limitation, not an invalid JSON response or a provider configuration error.",

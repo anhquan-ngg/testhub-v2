@@ -90,6 +90,7 @@
   "failed": "The operation did not finish. Reload history before creating another document. A finished upload can be confirmed again.",
   "success": "Document accepted for background processing.",
   "errorCode": "Error code: {code}",
+  "embeddingQuotaExhausted": "The daily embedding quota is used up, so the document cannot be indexed yet. Try again after the quota resets (about 07:00–08:00 UTC).",
   "status": {
     "UPLOADING": "Awaiting upload completion",
     "QUEUED": "Queued",

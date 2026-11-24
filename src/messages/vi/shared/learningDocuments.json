@@ -90,6 +90,7 @@
   "failed": "Thao tác chưa hoàn tất. Tải lại danh sách để kiểm tra trước khi tạo mới. Nếu đã upload, có thể xác nhận lại.",
   "success": "Đã tiếp nhận tài liệu để xử lý nền.",
   "errorCode": "Mã lỗi: {code}",
+  "embeddingQuotaExhausted": "Hạn mức embedding trong ngày đã hết nên chưa thể lập chỉ mục tài liệu. Hãy thử lại sau khi hạn mức được làm mới (khoảng 14:00–15:00 giờ Việt Nam).",
   "status": {
     "UPLOADING": "Chờ hoàn tất upload",
     "QUEUED": "Đang chờ xử lý",
