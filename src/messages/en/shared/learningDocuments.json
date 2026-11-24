@@ -148,5 +148,21 @@
     "duplicateIgnore": "Upload anyway",
     "duplicateChecking": "Checking for duplicates...",
     "reusedExtraction": "Same content found in your library: extraction was reused, no new parsing needed."
+  },
+  "ocrSummary": {
+    "title": "Per-page OCR results",
+    "counts": "{total} pages with tracked status - {added} pages with added text - {candidates} detected candidates",
+    "pages": "Show page / slide outcomes",
+    "page": "Page / slide {position}",
+    "unknown": "Unknown status - reload and review",
+    "hint": "Only pages with added transcripts count as OCR text. Candidate pages are not completed OCR. Older versions may have no per-page metadata.",
+    "status": {
+      "PENDING": "Pending",
+      "COMPLETED": "Completed",
+      "NO_TEXT": "No additional text",
+      "FAILED": "Failed",
+      "BUDGET_EXHAUSTED": "Budget/page limit reached",
+      "DISABLED": "OCR disabled"
+    }
   }
 }

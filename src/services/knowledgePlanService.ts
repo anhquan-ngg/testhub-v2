@@ -1,4 +1,5 @@
 import apiClient from "@/lib/api-client";
+import { ENDPOINTS } from "@/constants/endpoints";
 import type {
   KnowledgePlan,
   PlanMatrix,
@@ -67,6 +68,25 @@ export const knowledgePlanService = {
   async retry(plan: KnowledgePlan) {
     return (await apiClient.post<KnowledgePlan>(`${base}/${plan.id}/retry`))
       .data;
+  },
+  /** Explicit teacher consent; the server derives owned source positions. Replays reuse the version. */
+  async supplementOcr(plan: KnowledgePlan) {
+    return (
+      await apiClient.post<{ version_id: string }>(ENDPOINTS.KNOWLEDGE_PLANS.OCR(plan.id), {
+        revision: plan.revision,
+        consent: true,
+      })
+    ).data;
+  },
+  /** An explicit consented retry creates a new child for unresolved pages; replays reuse that child. */
+  async retryOcr(plan: KnowledgePlan, versionId: string) {
+    return (
+      await apiClient.post<{ version_id: string }>(ENDPOINTS.KNOWLEDGE_PLANS.OCR_RETRY(plan.id), {
+        revision: plan.revision,
+        consent: true,
+        version_id: versionId,
+      })
+    ).data;
   },
   async generate(plan: KnowledgePlan, key: string) {
     return (

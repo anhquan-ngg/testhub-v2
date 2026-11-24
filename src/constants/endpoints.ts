@@ -44,7 +44,12 @@ export const ENDPOINTS = {
       `/question-generation-batches/${id}/items/${itemId}/review`,
     COMMIT: (id: string) => `/question-generation-batches/${id}/commit`,
   },
+  KNOWLEDGE_PLANS: {
+    OCR: (id: string) => `/question-generation-plans/${id}/ocr`,
+    OCR_RETRY: (id: string) => `/question-generation-plans/${id}/ocr/retry`,
+  },
   LEARNING_DOCUMENTS: {
+    VERSION: (id: string) => `/learning-documents/versions/${id}`,
     INDEX: (id: string, version: string) =>
       `/learning-documents/${id}/versions/${version}/index`,
     RETRY_INDEX: (id: string) => `/learning-documents/indexes/${id}/retry`,

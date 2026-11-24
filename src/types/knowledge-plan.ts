@@ -1,4 +1,4 @@
-import type { GenerationQuestionType } from "./question-generation";
+import type { GenerationQuestionType, QuestionGenerationConfig } from "./question-generation";
 import type { QuestionFormat } from "./backend-enums";
 
 export type SourceUnit = { kind: "PAGE" | "SLIDE" | "NOTES"; position: number };
@@ -46,7 +46,8 @@ export type KnowledgePlan = {
   error_code: string | null;
   /** Questions the batch must contain; the matrix has to add up to it. */
   target_total: number | null;
-  sourceVersion: { file_name: string };
+  sourceVersion: { file_name: string; document_id?: string };
+  question_configs?: QuestionGenerationConfig[];
   matrix: PlanMatrix | null;
   content_map: {
     nodes: (PlanNode & { origin: "HEADING" | "INFERRED"; evidence: string })[];

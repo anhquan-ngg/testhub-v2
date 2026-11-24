@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
+import { Link } from "@/i18n/navigation";
+import { Button } from "@/components/ui/button";
 import type { QuestionGenerationBatch } from "@/types/question-generation";
 
 function slotTarget(batch: QuestionGenerationBatch, slot: number) {
@@ -95,6 +97,13 @@ export function GenerationBatchFailure({
       )}
       <p>{t("insufficientEvidence.action")}</p>
       <p>{t("insufficientEvidence.noDrafts")}</p>
+      {(batch.plan_id || batch.plan_snapshot?.plan_id) && (
+        <Button asChild variant="outline" className="h-auto whitespace-normal">
+          <Link href={`/lecturer/questions/generate?plan=${encodeURIComponent(batch.plan_id ?? batch.plan_snapshot?.plan_id ?? "")}`}>
+            {t("plan.ocr.recoverPlan")}
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

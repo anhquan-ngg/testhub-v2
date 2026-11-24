@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import axios from "axios";
 import { Network, Trash2 } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,9 +34,26 @@ import {
 } from "./generation-validation";
 import { planMatrixSchema } from "./plan-validation";
 import { planStatusClass } from "./generation-style";
+import { PlanOcrRecovery } from "./PlanOcrRecovery";
 
 const unitKey = (unit: SourceUnit) => `${unit.kind}:${unit.position}`;
 const unitText = (units: SourceUnit[]) => units.map(unitKey).join(", ");
+
+type EvidenceGap = { row_id: string; node_name: string; body_chars: number; substantive_chars?: number; fact_count?: number; reason: string; formats: string[] };
+
+function evidenceGaps(details: unknown): EvidenceGap[] {
+  const values = Array.isArray(details) ? details :
+    details && typeof details === "object" && "issues" in details && Array.isArray(details.issues) ? details.issues : [];
+  return values.filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === "object").map((value, index) => ({
+    row_id: typeof value.row_id === "string" ? value.row_id : String(index),
+    node_name: typeof value.node_name === "string" ? value.node_name : "",
+    body_chars: typeof value.body_chars === "number" && Number.isFinite(value.body_chars) ? value.body_chars : 0,
+    substantive_chars: typeof value.substantive_chars === "number" && Number.isFinite(value.substantive_chars) ? value.substantive_chars : undefined,
+    fact_count: typeof value.fact_count === "number" && Number.isFinite(value.fact_count) ? value.fact_count : undefined,
+    reason: typeof value.reason === "string" ? value.reason : typeof value.status === "string" ? value.status : "UNKNOWN",
+    formats: Array.isArray(value.formats) ? value.formats.filter((format): format is string => typeof format === "string") : [],
+  }));
+}
 
 function UnitInput({
   units,
@@ -117,7 +135,9 @@ export function KnowledgePlanWorkspace({
   const [activeNode, setActiveNode] = useState<string | null>(null);
   const [history, setHistory] = useState<KnowledgePlan[]>([]);
   const [busy, setBusy] = useState(false),
-    [error, setError] = useState(false);
+    [error, setError] = useState(false),
+    [evidence, setEvidence] = useState<EvidenceGap[] | null>(null),
+    [evidenceUnavailable, setEvidenceUnavailable] = useState(false);
   const lock = useRef(false),
     generationKey = useRef<{
       plan: string;
@@ -163,6 +183,8 @@ export function KnowledgePlanWorkspace({
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     setPlan(null);
+    setEvidence(null);
+    setEvidenceUnavailable(false);
     reset({ nodes: [], rows: [] });
     setError(false);
     if (!planId) return () => controller.abort();
@@ -193,10 +215,18 @@ export function KnowledgePlanWorkspace({
     lock.current = true;
     setBusy(true);
     setError(false);
+    setEvidence(null);
+    setEvidenceUnavailable(false);
     try {
       await operation();
-    } catch {
-      setError(true);
+    } catch (caught) {
+      const data = axios.isAxiosError<unknown>(caught) ? caught.response?.data : null;
+      if (data && typeof data === "object" && "code" in data && typeof data.code === "string" && data.code.startsWith("PLAN_EVIDENCE_")) {
+        setEvidence(evidenceGaps("details" in data ? data.details : null));
+        setEvidenceUnavailable(data.code === "PLAN_EVIDENCE_CHECK_UNAVAILABLE");
+      } else {
+        setError(true);
+      }
     } finally {
       lock.current = false;
       setBusy(false);
@@ -288,6 +318,31 @@ export function KnowledgePlanWorkspace({
             {t("error")}
           </p>
         )}
+        {evidence !== null && (
+          <div
+            role="alert"
+            className="space-y-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          >
+            <p className="font-medium">{t(evidenceUnavailable ? "evidenceUnavailableTitle" : "evidenceTitle")}</p>
+            <p>{t(evidenceUnavailable ? "evidenceUnavailableHint" : "evidenceHint")}</p>
+            {!evidenceUnavailable && evidence.length === 0 && <p>{t("evidenceReasons.UNKNOWN")}</p>}
+            <ul className="list-disc space-y-1 pl-5">
+              {evidence.map((gap, index) => {
+                const reasons = ["THIN_TEXT", "NO_TEXT", "TITLE_ONLY", "OCR_INCOMPLETE", "INSUFFICIENT_DEPTH", "SOURCE_MISSING"] as const;
+                const reason = reasons.find((value) => value === gap.reason) ?? "UNKNOWN";
+                const formats = levels.filter((format) => gap.formats.includes(format));
+                return (
+                  <li key={`${gap.row_id}-${index}`}>
+                    {t("evidenceItem", { name: gap.node_name || t("evidenceUnknownItem"), chars: gap.body_chars })}
+                    {gap.substantive_chars !== undefined && gap.fact_count !== undefined && <> {t("evidenceMetrics", { chars: gap.substantive_chars, facts: gap.fact_count })}</>}
+                    {" "}{t(`evidenceReasons.${reason}`)}
+                    {formats.length > 0 && <span> ({formats.map(questionFormat).join(", ")})</span>}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {history.map((value) => (
             <Button
@@ -370,6 +425,7 @@ export function KnowledgePlanWorkspace({
                 {planErrorMessage(plan.error_code)}
               </p>
             )}
+            <PlanOcrRecovery key={plan.id} plan={plan} disabled={busy || disabled} dirty={isDirty} />
             {plan.matrix && plan.content_map && (
               <form
                 onSubmit={handleSubmit(
