@@ -50,11 +50,11 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-[#a8c5e6] to-[#d4e4f7]">
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-gradient-to-br from-[#a8c5e6] to-[#d4e4f7]">
+      <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+        <LanguageSwitcher className="border-accent-700 bg-white text-accent-800 shadow-sm hover:border-accent-800 hover:bg-accent-100 hover:text-accent-900 data-[state=open]:border-accent-800 data-[state=open]:bg-white data-[state=open]:text-accent-900 dark:border-accent-700 dark:bg-white dark:hover:border-accent-800 dark:hover:bg-accent-100 dark:data-[state=open]:border-accent-800 dark:data-[state=open]:bg-white [&_svg]:text-accent-700" />
+      </div>
       <div className="w-full max-w-md space-y-8">
-        <div className="flex justify-end">
-          <LanguageSwitcher />
-        </div>
         {/* Logo/Brand */}
         <div className="text-center">
           <h1 className="text-5xl font-bold text-[#0066cc] tracking-tight">
