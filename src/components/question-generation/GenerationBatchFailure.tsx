@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { useEnumLabels } from "@/i18n/useEnumLabels";
+import { Link } from "@/i18n/navigation";
+import { Button } from "@/components/ui/button";
 import type { QuestionGenerationBatch } from "@/types/question-generation";
 
 function slotTarget(batch: QuestionGenerationBatch, slot: number) {
@@ -25,6 +27,17 @@ export function GenerationBatchFailure({
   const t = useTranslations("shared.questionGeneration");
   const { questionType, questionFormat } = useEnumLabels();
   if (batch.status !== "FAILED") return null;
+
+  if (batch.error_code === "AI_EMBEDDING_QUOTA_EXHAUSTED") {
+    return (
+      <p
+        role="alert"
+        className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+      >
+        {t("embeddingQuotaExhausted")}
+      </p>
+    );
+  }
 
   if (batch.error_code !== "AI_INSUFFICIENT_EVIDENCE") {
     return (
@@ -84,6 +97,13 @@ export function GenerationBatchFailure({
       )}
       <p>{t("insufficientEvidence.action")}</p>
       <p>{t("insufficientEvidence.noDrafts")}</p>
+      {(batch.plan_id || batch.plan_snapshot?.plan_id) && (
+        <Button asChild variant="outline" className="h-auto whitespace-normal">
+          <Link href={`/lecturer/questions/generate?plan=${encodeURIComponent(batch.plan_id ?? batch.plan_snapshot?.plan_id ?? "")}`}>
+            {t("plan.ocr.recoverPlan")}
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

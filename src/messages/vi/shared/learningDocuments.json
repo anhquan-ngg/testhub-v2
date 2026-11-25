@@ -90,6 +90,7 @@
   "failed": "Thao tác chưa hoàn tất. Tải lại danh sách để kiểm tra trước khi tạo mới. Nếu đã upload, có thể xác nhận lại.",
   "success": "Đã tiếp nhận tài liệu để xử lý nền.",
   "errorCode": "Mã lỗi: {code}",
+  "embeddingQuotaExhausted": "Hạn mức embedding trong ngày đã hết nên chưa thể lập chỉ mục tài liệu. Hãy thử lại sau khi hạn mức được làm mới (khoảng 14:00–15:00 giờ Việt Nam).",
   "status": {
     "UPLOADING": "Chờ hoàn tất upload",
     "QUEUED": "Đang chờ xử lý",
@@ -147,5 +148,21 @@
     "duplicateIgnore": "Vẫn tải lên",
     "duplicateChecking": "Đang kiểm tra trùng lặp...",
     "reusedExtraction": "Đã có nội dung giống hệt trong thư viện: tái sử dụng kết quả trích xuất, không cần phân tích lại."
+  },
+  "ocrSummary": {
+    "title": "Kết quả OCR từng trang",
+    "counts": "{total} trang có trạng thái theo dõi - {added} trang bổ sung văn bản - {candidates} trang nghi cần OCR",
+    "pages": "Xem kết quả từng trang / slide",
+    "page": "Trang / slide {position}",
+    "unknown": "Trạng thái chưa rõ - tải lại và kiểm tra",
+    "hint": "Chỉ trang có bản chép bổ sung mới được tính là văn bản OCR. Trang nghi cần OCR không phải OCR đã hoàn tất. Phiên bản cũ có thể chưa có dữ liệu từng trang.",
+    "status": {
+      "PENDING": "Đang chờ",
+      "COMPLETED": "Đã xử lý",
+      "NO_TEXT": "Không có văn bản bổ sung",
+      "FAILED": "Thất bại",
+      "BUDGET_EXHAUSTED": "Hết ngân sách / giới hạn trang",
+      "DISABLED": "OCR bị tắt"
+    }
   }
 }

@@ -22,6 +22,7 @@ import lecturerCreateExam from "./lecturer/createExam.json";
 import lecturerEditExam from "./lecturer/editExam.json";
 import lecturerMonitor from "./lecturer/monitor.json";
 import lecturerExamReport from "./lecturer/examReport.json";
+import lecturerExamQuality from "./lecturer/examQuality.json";
 import lecturerProfile from "./lecturer/profile.json";
 import regrading from "./shared/regrading.json";
 import questionImport from "./shared/questionImport.json";
@@ -42,7 +43,7 @@ const messages = {
   ...adminLayout,
   admin: { dashboard: adminDashboard, users: adminUsers, questions: adminQuestions, exams: adminExams, examReport: adminExamReport, submissionReport: adminSubmissionReport },
   student: { home: studentHome, exam: studentExam, results: studentResults, resultDetail: studentResultDetail, profile: studentProfile },
-  lecturer: { dashboard: lecturerDashboard, questions: lecturerQuestions, exams: lecturerExams, createExam: lecturerCreateExam, editExam: lecturerEditExam, monitor: lecturerMonitor, examReport: lecturerExamReport, profile: lecturerProfile },
+  lecturer: { dashboard: lecturerDashboard, questions: lecturerQuestions, exams: lecturerExams, createExam: lecturerCreateExam, editExam: lecturerEditExam, monitor: lecturerMonitor, examReport: lecturerExamReport, examQuality: lecturerExamQuality, profile: lecturerProfile },
   shared: { regrading, questionImport, questionGeneration, learningDocuments, examPrint, mathInput, fileUpload, ui, iconButton },
 };
 

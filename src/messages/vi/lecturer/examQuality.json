@@ -1,0 +1,87 @@
+{
+  "title": "Chất lượng đề thi",
+  "subtitle": "Phân tích độ khó và độ phân biệt của từng câu hỏi dựa trên kết quả làm bài",
+  "viewLink": "Chất lượng đề thi",
+  "workspaceLabel": "Phân tích đề thi",
+  "overview": "Tổng quan chất lượng",
+  "viewDetails": "Xem chi tiết câu hỏi",
+  "questionUnit": "câu hỏi",
+  "questionCount": "{count} câu hỏi",
+  "backToReport": "Về báo cáo kết quả",
+  "loadError": "Không thể tải dữ liệu phân tích. Vui lòng thử lại.",
+  "retry": "Thử lại",
+  "noData": "Chưa có bài làm nào để phân tích.",
+  "lowSampleWarning": "Mới có {count} bài làm (cần tối thiểu {min}). Chỉ số của từng câu chỉ mang tính tham khảo, các câu chưa đủ dữ liệu được đánh dấu riêng.",
+  "summary": {
+    "submissions": "Số bài làm",
+    "mean": "Điểm trung bình",
+    "median": "Trung vị",
+    "stdDev": "Độ lệch chuẩn",
+    "range": "Thấp nhất - cao nhất",
+    "avgDifficulty": "Độ khó trung bình (P)",
+    "needsReview": "Câu cần xem lại"
+  },
+  "charts": {
+    "scoreDistribution": "Phân bố điểm",
+    "scoreDistributionHint": "Số bài làm theo từng khoảng điểm (thang 10)",
+    "students": "Số bài",
+    "difficultyMix": "Cơ cấu độ khó",
+    "discriminationMix": "Cơ cấu độ phân biệt"
+  },
+  "difficulty": {
+    "EASY": "Dễ",
+    "MEDIUM": "Trung bình",
+    "HARD": "Khó",
+    "INSUFFICIENT_DATA": "Chưa đủ dữ liệu"
+  },
+  "discrimination": {
+    "HIGH": "Tốt",
+    "MODERATE": "Khá",
+    "LOW": "Thấp",
+    "NEGATIVE": "Âm",
+    "INSUFFICIENT_DATA": "Chưa đủ dữ liệu"
+  },
+  "flags": {
+    "TOO_EASY": "Quá dễ",
+    "TOO_HARD": "Quá khó",
+    "LOW_DISCRIMINATION": "Phân biệt thấp",
+    "NEGATIVE_DISCRIMINATION": "Phân biệt âm"
+  },
+  "flagHints": {
+    "TOO_EASY": "Hầu hết thí sinh đều làm đúng, câu hỏi không giúp phân loại.",
+    "TOO_HARD": "Rất ít thí sinh làm đúng, hãy kiểm tra đáp án hoặc nội dung câu hỏi.",
+    "LOW_DISCRIMINATION": "Nhóm giỏi và nhóm yếu làm đúng gần như nhau.",
+    "NEGATIVE_DISCRIMINATION": "Nhóm yếu làm đúng nhiều hơn nhóm giỏi, có thể sai đáp án hoặc câu hỏi gây hiểu nhầm."
+  },
+  "review": {
+    "title": "Câu hỏi cần xem lại",
+    "description": "Các câu có độ phân biệt thấp hoặc âm, nên rà soát đáp án và nội dung.",
+    "empty": "Không có câu hỏi nào cần xem lại.",
+    "editQuestion": "Chỉnh sửa câu hỏi"
+  },
+  "table": {
+    "title": "Chi tiết từng câu hỏi",
+    "pagination": "Phân trang chi tiết câu hỏi",
+    "range": "Hiển thị câu {start}–{end} trong {total} câu hỏi",
+    "pageOf": "Trang {page}/{total}",
+    "previous": "Trước",
+    "next": "Sau",
+    "scrollHint": "Cuộn ngang để xem đầy đủ các chỉ số và cảnh báo của từng câu hỏi.",
+    "index": "#",
+    "question": "Câu hỏi",
+    "chapter": "Chương",
+    "attempts": "Lượt làm",
+    "difficultyP": "Độ khó P",
+    "difficultyLevel": "Mức độ khó",
+    "discriminationD": "Độ phân biệt D",
+    "discriminationLevel": "Mức phân biệt",
+    "upperLower": "Nhóm trên / dưới",
+    "flags": "Cảnh báo",
+    "ok": "Đạt"
+  },
+  "legend": {
+    "title": "Cách đọc chỉ số",
+    "p": "P = tỷ lệ làm đúng. P ≥ 0,8: dễ; P ≤ 0,3: khó.",
+    "d": "D = P(nhóm 27% điểm cao) − P(nhóm 27% điểm thấp). D ≥ 0,4: tốt; 0,2–0,4: khá; 0–0,2: thấp; < 0: âm."
+  }
+}

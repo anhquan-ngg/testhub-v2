@@ -21,6 +21,7 @@
   "addedStudentsToTheTest": "Đã thêm sinh viên vào bài thi.",
   "errorWhenAddingStudents": "Lỗi khi thêm sinh viên.",
   "studentManagement": "Quản lý sinh viên",
+  "studentPagination": "Phân trang danh sách đăng ký làm bài thi",
   "studentEmail": "Email sinh viên",
   "enterStudentEmailToAddDirectly": "Nhập email sinh viên để thêm trực tiếp...",
   "more": "Thêm",

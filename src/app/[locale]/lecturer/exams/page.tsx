@@ -116,6 +116,10 @@ function StudentManagementDialog({
     ExamRegistrationWithStudent[]
   >([]);
   const [loadState, setLoadState] = useState<"loading" | "error" | "success">("loading");
+  const [registrationPage, setRegistrationPage] = useState(1);
+  const [registrationTotal, setRegistrationTotal] = useState(0);
+  const registrationPageSize = 5;
+  const registrationTotalPages = Math.max(1, Math.ceil(registrationTotal / registrationPageSize));
   const requestRef = useRef<AbortController | null>(null);
   const [registrationToDelete, setRegistrationToDelete] = useState<ExamRegistrationWithStudent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -132,18 +136,24 @@ function StudentManagementDialog({
       >(ENDPOINTS.EXAM_REGISTRATIONS.BASE, {
         signal: controller.signal,
         params: {
-          page: 1,
-          limit: 100,
+          page: registrationPage,
+          limit: registrationPageSize,
           exam_id: exam.id,
         },
       });
       if (controller.signal.aborted) return;
+      const totalPages = Math.max(1, Math.ceil(response.data.total / registrationPageSize));
+      setRegistrationTotal(response.data.total);
+      if (registrationPage > totalPages) {
+        setRegistrationPage(totalPages);
+        return;
+      }
       setRegistrations(response.data.data);
       setLoadState("success");
     } catch {
       if (!controller.signal.aborted) setLoadState("error");
     }
-  }, [exam.id]);
+  }, [exam.id, registrationPage]);
 
   useEffect(() => {
     void refetchRegistrations();
@@ -198,7 +208,12 @@ function StudentManagementDialog({
       }
       toast.success(t("addedStudentsToTheTest"));
       setStudentEmail("");
-      void refetchRegistrations();
+      if (registrationPage === 1) {
+        void refetchRegistrations();
+      } else {
+        setLoadState("loading");
+        setRegistrationPage(1);
+      }
       onRegistrationsChanged();
     } catch {
       toast.error(t("errorWhenAddingStudents"));
@@ -208,7 +223,7 @@ function StudentManagementDialog({
   };
 
   return (
-    <DialogContent className="bg-white border-gray-300 sm:max-w-2xl">
+    <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white border-gray-300 sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>{t("studentManagement")}</DialogTitle>
         <DialogDescription className="min-w-0 break-words">
@@ -270,7 +285,7 @@ function StudentManagementDialog({
                   </TableCell>
                 </TableRow>
               )}
-              {registrations.length > 0 ? (
+              {loadState === "success" && (registrations.length > 0 ? (
                 registrations.map((reg: ExamRegistrationWithStudent) => (
                   <TableRow key={reg.id} className="border-gray-300">
                     <TableCell>{reg.student?.full_name}</TableCell>
@@ -310,7 +325,7 @@ function StudentManagementDialog({
                     </TableCell>
                   </TableRow>
                 ))
-              ) : loadState === "success" ? (
+              ) : (
                 <TableRow>
                   <TableCell
                     colSpan={4}
@@ -318,10 +333,41 @@ function StudentManagementDialog({
                   >
                     {t("noStudentsHaveRegisteredYet")}</TableCell>
                 </TableRow>
-              ) : null}
+              ))}
             </TableBody>
           </Table>
         </div>
+        <nav aria-label={t("studentPagination")} className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
+            disabled={loadState !== "success" || isAdding || isDeleting || registrationPage <= 1}
+            onClick={() => {
+              setLoadState("loading");
+              setRegistrationPage((page) => page - 1);
+            }}
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            {t("before")}
+          </Button>
+          <span className="text-sm font-medium" aria-live="polite" aria-atomic="true">
+            {t("pageOf", { page: registrationPage, total: registrationTotalPages })}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="cursor-pointer"
+            disabled={loadState !== "success" || isAdding || isDeleting || registrationPage >= registrationTotalPages}
+            onClick={() => {
+              setLoadState("loading");
+              setRegistrationPage((page) => page + 1);
+            }}
+          >
+            {t("next")}
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </nav>
       </div>
       <AlertDialog
         open={registrationToDelete !== null}

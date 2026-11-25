@@ -7,6 +7,21 @@
 - Backend handles globally distinct question allocation across overlapping branches and returns CHAPTER_DISTRIBUTION_INSUFFICIENT when quotas cannot all be filled.
 - Verify deep-tree traversal, bounded rendering and saved chapter selections under section 7. Existing node scripts/check-chapter-tree.cjs provides only partial evidence; source/AST assertions do not prove behavior. Backend contract: ../testhub-v2-backend/docs/chapter-hierarchy.md.
 
+## Preparing-plan progress
+
+- Poll owned plan GET only. Optional source_progress distinguishes EXTRACTING/INDEXING/OUTLINING; missing totals/legacy metadata are indeterminate. 100% indexing is not plan completion. Never start work from progress rendering.
+- Preserve confirmed upload checkpoints for the same file/topic/speaker-note settings and prevent another equivalent open preparing-plan submit. The backend is authoritative for race-safe reuse across request keys; allow genuinely different versions/configurations.
+- Distinguish PLAN_SOURCE_TIMEOUT (20-minute inactivity) from PLAN_SOURCE_TOTAL_TIMEOUT (one-hour total). Retry is explicit and preserves indexing; reloading must never revive failed plans. Keep vi/en messages aligned.
+
+## Explicit saved-plan OCR recovery
+
+- PlanOcrRecovery uses explicit checked consent on saved REVIEW_REQUIRED/APPROVED revisions. Unsaved matrix/source edits must be saved first. Never invoke OCR, retry, plan creation or generation from effects or approval.
+- POST /question-generation-plans/:id/ocr sends only {revision,consent:true}. Its idempotent response {version_id} identifies a NEW persisted version. GET /learning-documents/versions/:versionId polls owned progress; ?ocrVersion stores only that business ID alongside ?plan.
+- An explicit consented POST /question-generation-plans/:id/ocr/retry sends {revision,consent:true,version_id} for a terminal incomplete/failed child. Replays reuse the same new child; reload only fetches state. Match both origin plan ID and revision before taking recovery actions.
+- Show quality.ocr_pages/request.pages statuses separately from ocr_units (transcripts actually added). Optional/nullable OCR metadata must tolerate older versions. Render source/reasons as text, never HTML.
+- A separate explicit action creates a NEW plan from a usable recovered version and saved question_configs, with stable ocr-recovery-<versionId> idempotency key. It prepares a new index; do not mutate old plans/batches, auto-approve or generate.
+- Local evidence errors block approval for THIN_TEXT, NO_TEXT, TITLE_ONLY, OCR_INCOMPLETE, INSUFFICIENT_DEPTH, SOURCE_MISSING and unknown results. PLAN_EVIDENCE_CHECK_UNAVAILABLE (503, retryable) remains blocked with explicit retry-later guidance, not a claim that the source is insufficient. Show optional substantive_chars/fact_count only when supplied. Explain source/objective/format recovery; the local heuristic is not a semantic guarantee and does not call another model.
+
 ## Grounded evidence-failure guidance
 
 - AI_INSUFFICIENT_EVIDENCE is distinct from AI_OUTPUT_INVALID. Optional batch
@@ -113,7 +128,7 @@ Giao diện web của hệ thống thi trực tuyến TestHub cho ba vai trò `A
 | Enum dùng chung | `src/types/backend-enums.ts`, đồng bộ giá trị với schema Prisma ở backend |
 | Package manager | npm (`package-lock.json`) |
 
-Chưa cấu hình framework test (Jest/Vitest/Playwright) hay package script `test`/`test:e2e`. Có các script kiểm tra trong `scripts/`; phạm vi và giới hạn sử dụng được quy định ở mục 7.
+Chưa cấu hình framework test (Jest/Vitest/Playwright) hay package script `test`/`test:e2e`. Các tham chiếu cũ tới `scripts/` không còn chạy được: thư mục và các checker i18n/chapter hiện không tồn tại. Không cài framework hay tạo script kiểm tra dùng một lần để thay thế.
 
 ## 2. Cấu trúc thư mục quan trọng
 
@@ -181,7 +196,7 @@ Chạy tại thư mục gốc repo.
 
 - Ngôn ngữ: `vi` (mặc định, nguồn chuẩn) và `en`. Trang nằm dưới `src/app/[locale]/`; URL chưa có tiền tố được proxy chuyển hướng theo cookie/ngôn ngữ trình duyệt. `roleBasedRoutes` so khớp đường dẫn sau khi bỏ tiền tố locale.
 - Cấu hình: `src/i18n/config.ts` (danh sách locale, tên cookie), `src/i18n/routing.ts` (routing), `src/i18n/request.ts` (nạp message theo segment locale), `src/i18n/navigation.ts` (Link, router, pathname có locale), plugin trong `next.config.ts`. `RootLayout` bọc `NextIntlClientProvider` và đặt `<html lang>`.
-- Message nằm trong `src/messages/vi` và `src/messages/en`, chia theo `shared`, `public`, `admin`, `student`, `lecturer` và trang. Hai locale phải **cùng cấu trúc key**; khi sửa message, chạy công cụ có sẵn `node scripts/check-i18n.cjs` để kiểm tra key, placeholder và cú pháp ICU, không coi đây là kiểm tra hành vi hay giao diện. Key được kiểm tra kiểu theo `src/messages/vi/index.ts` (`src/types/next-intl.d.ts`), nên `t("sai.key")` báo lỗi khi typecheck.
+- Message nằm trong `src/messages/vi` và `src/messages/en`, chia theo `shared`, `public`, `admin`, `student`, `lecturer` và trang. Hai locale phải **cùng cấu trúc key**; kiểm tra key, placeholder và cú pháp ICU bằng công cụ hiện có khi khả dụng, không coi đây là kiểm tra hành vi hay giao diện. `scripts/check-i18n.cjs` hiện không tồn tại; ghi rõ giới hạn thay vì báo checker đã chạy thành công. Key được kiểm tra kiểu theo `src/messages/vi/index.ts` (`src/types/next-intl.d.ts`), nên `t("sai.key")` báo lỗi khi typecheck.
 - Dùng trong component: `const t = useTranslations("namespace")` (Client Component) hoặc `await getTranslations("namespace")` (Server Component). Không hardcode chuỗi giao diện; thêm key vào cả hai file. Chuỗi có số lượng dùng ICU (`{count, plural, one {…} other {…}}`).
 - Enum backend → nhãn: dùng `useEnumLabels()` (`src/i18n/useEnumLabels.ts`, namespace `enums`). File `src/lib/constansts.ts` (map nhãn tiếng Việt cũ) đã bị xóa.
 - Nhãn menu: `nav-items.ts` chỉ giữ `labelKey` (namespace `nav`), component dịch lúc render.

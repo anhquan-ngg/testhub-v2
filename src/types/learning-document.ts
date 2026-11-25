@@ -30,13 +30,37 @@ export type RetrievalResult = {
     end_offset: number;
   }[];
 };
+export type OcrPageStatus =
+  | "PENDING"
+  | "COMPLETED"
+  | "NO_TEXT"
+  | "FAILED"
+  | "BUDGET_EXHAUSTED"
+  | "DISABLED";
+export type OcrPage = { position: number; status: OcrPageStatus; reason?: string | null };
+export type OcrRequest = {
+  retry_of_version_id?: string | null;
+  origin_plan_id: string;
+  origin_revision: number;
+  parent_version_id: string;
+  positions: number[];
+  pages: OcrPage[];
+  deliveries: number;
+  status: "PENDING" | "COMPLETED" | "INCOMPLETE";
+};
 export type ExtractionQuality = {
   total_units: number;
   text_units: number;
   ocr_suspected_units: number[];
   blank_units: number[];
+  /** Positions where OCR actually added a transcript, not all attempted pages. */
+  ocr_units?: number[];
+  ocr_candidate_units?: number[];
+  ocr_pages?: OcrPage[];
 };
 export type DocumentVersion = {
+  document_id?: string;
+  ocr_request?: OcrRequest | null;
   indexes: DocumentIndex[];
   id: string;
   version: number;

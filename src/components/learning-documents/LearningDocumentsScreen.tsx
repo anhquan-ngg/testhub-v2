@@ -22,6 +22,7 @@ import type {
   LearningDocument,
 } from "@/types/learning-document";
 import { DocumentRagPanel } from "./DocumentRagPanel";
+import { OcrSummary } from "./OcrSummary";
 import { DocumentManagePanel } from "./DocumentManagePanel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -141,7 +142,7 @@ export function LearningDocumentsScreen() {
   const status = version?.status;
   const pending = (value: LearningDocument) =>
     value.versions.some(
-      (v) => v.status === "QUEUED" || v.status === "PROCESSING" || v.indexes?.some(i => i.status === "QUEUED" || i.status === "INDEXING"),
+      (v) => v.status === "QUEUED" || v.status === "PROCESSING" || v.ocr_request?.status === "PENDING" || v.indexes?.some(i => i.status === "QUEUED" || i.status === "INDEXING"),
     );
   const shouldPoll = Boolean(
     (document && pending(document)) || history?.data.some(pending),
@@ -854,6 +855,7 @@ export function LearningDocumentsScreen() {
                 {content?.warnings.includes("NO_USABLE_TEXT") ? t("noUsableText") : t("ocr")}
               </p>
             )}
+            {version && <OcrSummary quality={version.quality} request={version.ocr_request} />}
             {status === "PARTIAL" && version && (
               <div role="status" className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
                 {version.quality && <p className="flex items-start gap-2">

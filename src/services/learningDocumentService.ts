@@ -21,6 +21,10 @@ const paths = ENDPOINTS.LEARNING_DOCUMENTS;
 
 /** Business calls use the cookie client; signed storage URLs never receive cookies or interceptors. */
 export const learningDocumentService = {
+  /** Owned business version detail, without storage credentials. */
+  async version(id: string, signal?: AbortSignal) {
+    return (await apiClient.get<DocumentVersion>(paths.VERSION(id), { signal })).data;
+  },
   async index(id: string, version: string) {
     return (await apiClient.post<DocumentIndex>(paths.INDEX(id, version))).data;
   },

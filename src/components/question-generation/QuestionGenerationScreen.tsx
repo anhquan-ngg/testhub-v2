@@ -1,5 +1,6 @@
 "use client";
 import { PlanCoverage } from "./PlanCoverage";
+import type { KnowledgePlan } from "@/types/knowledge-plan";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -146,6 +147,10 @@ export function QuestionGenerationScreen() {
   ]);
   const [consent, setConsent] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<KnowledgePlan | null>(null);
+  const [confirmedSource, setConfirmedSource] = useState<{
+    file: File; signature: string; versionId: string;
+  } | null>(null);
   const [invalidCommand, setInvalidCommand] = useState(false);
   const requestKey = useRef<{ canonical: string; key: string } | null>(null);
   const createLock = useRef(false);
@@ -300,9 +305,22 @@ export function QuestionGenerationScreen() {
         : t("actionError"),
     );
   }
+  const sourceSignature = JSON.stringify({
+    topicId,
+    includeNotes: Boolean(file?.name.toLowerCase().endsWith(".pptx") && includeNotes),
+  });
+  const selectedSourceVersionId = sourceMode === "existing" ? existingVersionId
+    : confirmedSource?.file === file && confirmedSource?.signature === sourceSignature
+      ? confirmedSource.versionId : null;
+  const equivalentPlanPreparing = Boolean(selectedPlan &&
+    ["WAITING_SOURCE", "PREPARING"].includes(selectedPlan.status) &&
+    selectedPlan.topic_id === topicId && selectedPlan.source_version_id === selectedSourceVersionId &&
+    JSON.stringify(selectedPlan.question_configs?.map(({ question_type, question_format, count }) => ({ question_type, question_format, count }))) ===
+      JSON.stringify(configs.map(({ question_type, question_format, count }) => ({ question_type, question_format, count }))));
+
   async function create(event: React.FormEvent) {
     event.preventDefault();
-    if (createLock.current) return;
+    if (createLock.current || equivalentPlanPreparing) return;
     const parsed = documentGenerationSettingsSchema.safeParse({
       topic_id: topicId,
       chapter_id: undefined,
@@ -399,6 +417,7 @@ export function QuestionGenerationScreen() {
           checkpoint.confirmed = true;
         }
         sourceVersionId = checkpoint.reservation.version_id;
+        setConfirmedSource({ file: source, signature, versionId: sourceVersionId });
       }
       const { question_configs } = parsed.data;
       const command = {
@@ -416,10 +435,10 @@ export function QuestionGenerationScreen() {
         requestKey.current.key,
       );
       requestKey.current = null;
-      uploadCheckpoint.current = null;
+      setSelectedPlan(result);
       router.replace(`/lecturer/questions/generate?plan=${result.id}`);
       setRefresh((value) => value + 1);
-      toast.success(t("queued"));
+      toast.success(t(result.reused ? "plan.preparation.reused" : "queued"));
     } catch (error) {
       showError(error);
     } finally {
@@ -720,6 +739,7 @@ export function QuestionGenerationScreen() {
                   busy ||
                   Boolean(editingId) ||
                   !consent ||
+                  equivalentPlanPreparing ||
                   (sourceMode === "upload" ? !file : !existingVersionId)
                 }
               >
@@ -728,8 +748,9 @@ export function QuestionGenerationScreen() {
                 ) : (
                   <Sparkles className="size-4" />
                 )}
-                {creating ? t(`uploadStage.${uploadStage}`) : t("plan.propose")}
+                {creating ? t(`uploadStage.${uploadStage}`) : equivalentPlanPreparing ? t("plan.preparation.alreadyPreparing") : t("plan.propose")}
               </Button>
+              {equivalentPlanPreparing && <p role="status" className="text-xs leading-5 text-neutral-600">{t("plan.preparation.alreadyPreparingHint")}</p>}
             </div>
           </form>
         </CardContent>
@@ -740,6 +761,7 @@ export function QuestionGenerationScreen() {
       <KnowledgePlanWorkspace
         planId={params.get("plan")}
         disabled={busy || Boolean(editingId) || creating}
+        onPlanChange={setSelectedPlan}
         onGenerated={(id) => {
           router.replace(`/lecturer/questions/generate?batch=${id}`);
           setRefresh((value) => value + 1);
