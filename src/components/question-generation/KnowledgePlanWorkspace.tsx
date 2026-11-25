@@ -35,6 +35,7 @@ import {
 import { planMatrixSchema } from "./plan-validation";
 import { planStatusClass } from "./generation-style";
 import { PlanOcrRecovery } from "./PlanOcrRecovery";
+import { PlanSourceProgress } from "./PlanSourceProgress";
 
 const unitKey = (unit: SourceUnit) => `${unit.kind}:${unit.position}`;
 const unitText = (units: SourceUnit[]) => units.map(unitKey).join(", ");
@@ -107,10 +108,12 @@ export function KnowledgePlanWorkspace({
   planId,
   disabled,
   onGenerated,
+  onPlanChange,
 }: {
   planId: string | null;
   disabled: boolean;
   onGenerated: (id: string) => void;
+  onPlanChange?: (plan: KnowledgePlan | null) => void;
 }) {
   const t = useTranslations("shared.questionGeneration.plan");
   const iconLabels = useIconLabels();
@@ -123,6 +126,8 @@ export function KnowledgePlanWorkspace({
         return t("errors.PLAN_SOURCE_UNAVAILABLE");
       case "PLAN_SOURCE_TIMEOUT":
         return t("errors.PLAN_SOURCE_TIMEOUT");
+      case "PLAN_SOURCE_TOTAL_TIMEOUT":
+        return t("errors.PLAN_SOURCE_TOTAL_TIMEOUT");
       case "PLAN_SCOPE_REVOKED":
         return t("errors.PLAN_SCOPE_REVOKED");
       default:
@@ -164,6 +169,7 @@ export function KnowledgePlanWorkspace({
   const matrix = watch();
   const accept = (value: KnowledgePlan) => {
     setPlan(value);
+    onPlanChange?.(value);
     if (value.matrix) {
       reset(value.matrix);
       setFormVersion((version) => version + 1);
@@ -183,6 +189,7 @@ export function KnowledgePlanWorkspace({
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     setPlan(null);
+    onPlanChange?.(null);
     setEvidence(null);
     setEvidenceUnavailable(false);
     reset({ nodes: [], rows: [] });
@@ -193,6 +200,7 @@ export function KnowledgePlanWorkspace({
         const value = await api.get(planId, controller.signal);
         if (controller.signal.aborted) return;
         setPlan(value);
+        onPlanChange?.(value);
         if (value.matrix) {
           reset(value.matrix);
           setFormVersion((version) => version + 1);
@@ -209,7 +217,7 @@ export function KnowledgePlanWorkspace({
       controller.abort();
       clearTimeout(timer);
     };
-  }, [planId, reset, loadKey]);
+  }, [planId, reset, loadKey, onPlanChange]);
   const mutate = async (operation: () => Promise<void>) => {
     if (lock.current) return;
     lock.current = true;
@@ -417,6 +425,9 @@ export function KnowledgePlanWorkspace({
                 {t("revision", { revision: plan.revision })}
               </span>
             </div>
+            {["WAITING_SOURCE", "PREPARING"].includes(plan.status) && (
+              <PlanSourceProgress progress={plan.source_progress} />
+            )}
             {plan.error_code && (
               <p
                 role="alert"

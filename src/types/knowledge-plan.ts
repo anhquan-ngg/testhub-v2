@@ -32,6 +32,14 @@ export type FrozenPlan = {
     count: number;
   }[];
 };
+export type PlanSourceProgress = {
+  stage: "EXTRACTING" | "INDEXING" | "OUTLINING";
+  completed_chunks: number;
+  total_chunks: number;
+  percent: number | null;
+  index_status: string | null;
+  error_code: string | null;
+};
 export type KnowledgePlan = {
   id: string;
   topic_id: string;
@@ -44,6 +52,8 @@ export type KnowledgePlan = {
     | "APPROVED"
     | "FAILED";
   error_code: string | null;
+  /** Optional for compatibility while the progress-enabled API rolls out. */
+  source_progress?: PlanSourceProgress | null;
   /** Questions the batch must contain; the matrix has to add up to it. */
   target_total: number | null;
   sourceVersion: { file_name: string; document_id?: string };

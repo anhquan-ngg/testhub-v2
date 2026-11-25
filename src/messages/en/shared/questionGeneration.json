@@ -71,11 +71,31 @@
       "APPROVED": "Confirmed",
       "FAILED": "Preparation failed"
     },
+    "preparation": {
+      "title": "Document indexing progress",
+      "starting": "Preparing source",
+      "stage": {
+        "EXTRACTING": "Extracting document",
+        "INDEXING": "Indexing document",
+        "OUTLINING": "Building the plan"
+      },
+      "chunks": "{completed}/{total} chunks indexed",
+      "percent": "{percent}% indexed",
+      "unknown": "Preparing; total chunk count is not available yet",
+      "waitingHint": "Progress refreshes automatically. Reaching 100% indexing does not mean the plan is ready yet.",
+      "rateLimited": "Waiting for embedding quota. Progress is saved; processing will resume from its checkpoint.",
+      "outlining": "The source is ready. The system is reading it to build the plan.",
+      "resumeHint": "You can leave and reopen this plan. There is no need to create another plan while waiting.",
+      "reused": "Reopened the existing plan without creating another one.",
+      "alreadyPreparing": "This plan is being prepared",
+      "alreadyPreparingHint": "Follow the open plan's progress below. Do not upload the document again or create duplicate plans."
+    },
     "retry": "Prepare plan again",
     "errors": {
       "PLAN_OUTLINE_INVALID": "The AI-proposed chapter/topic tree was invalid (for example duplicate topic names). Prepare again; duplicate names are now disambiguated. Plans never retry on page load.",
       "PLAN_SOURCE_UNAVAILABLE": "The source document is not ready: extraction must finish, or a partial extraction must be confirmed in the document library.",
-      "PLAN_SOURCE_TIMEOUT": "The document was not ready within the wait window (20 minutes). Check its extraction status, then prepare again.",
+      "PLAN_SOURCE_TIMEOUT": "Preparation made no progress for 20 minutes. Check extraction/indexing and embedding quota, then explicitly prepare again.",
+      "PLAN_SOURCE_TOTAL_TIMEOUT": "Preparation reached its total limit of 1 hour. Indexing progress is retained; check the source and embedding quota, then explicitly prepare again.",
       "PLAN_SCOPE_REVOKED": "Access to the document was revoked; the plan cannot be prepared again."
     },
     "reload": "Reload saved plan (discard edits)",

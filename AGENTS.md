@@ -7,6 +7,12 @@
 - Backend handles globally distinct question allocation across overlapping branches and returns CHAPTER_DISTRIBUTION_INSUFFICIENT when quotas cannot all be filled.
 - Verify deep-tree traversal, bounded rendering and saved chapter selections under section 7. Existing node scripts/check-chapter-tree.cjs provides only partial evidence; source/AST assertions do not prove behavior. Backend contract: ../testhub-v2-backend/docs/chapter-hierarchy.md.
 
+## Preparing-plan progress
+
+- Poll owned plan GET only. Optional source_progress distinguishes EXTRACTING/INDEXING/OUTLINING; missing totals/legacy metadata are indeterminate. 100% indexing is not plan completion. Never start work from progress rendering.
+- Preserve confirmed upload checkpoints for the same file/topic/speaker-note settings and prevent another equivalent open preparing-plan submit. The backend is authoritative for race-safe reuse across request keys; allow genuinely different versions/configurations.
+- Distinguish PLAN_SOURCE_TIMEOUT (20-minute inactivity) from PLAN_SOURCE_TOTAL_TIMEOUT (one-hour total). Retry is explicit and preserves indexing; reloading must never revive failed plans. Keep vi/en messages aligned.
+
 ## Explicit saved-plan OCR recovery
 
 - PlanOcrRecovery uses explicit checked consent on saved REVIEW_REQUIRED/APPROVED revisions. Unsaved matrix/source edits must be saved first. Never invoke OCR, retry, plan creation or generation from effects or approval.

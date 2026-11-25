@@ -71,11 +71,31 @@
       "APPROVED": "Đã xác nhận",
       "FAILED": "Chuẩn bị thất bại"
     },
+    "preparation": {
+      "title": "Tiến độ lập chỉ mục tài liệu",
+      "starting": "Đang chuẩn bị nguồn",
+      "stage": {
+        "EXTRACTING": "Đang trích xuất tài liệu",
+        "INDEXING": "Đang lập chỉ mục tài liệu",
+        "OUTLINING": "Đang xây dựng kế hoạch"
+      },
+      "chunks": "{completed}/{total} đoạn đã lập chỉ mục",
+      "percent": "Đã lập chỉ mục {percent}%",
+      "unknown": "Đang chuẩn bị, chưa xác định tổng số đoạn",
+      "waitingHint": "Tiến độ được cập nhật tự động. Đạt 100% lập chỉ mục chưa có nghĩa là kế hoạch đã sẵn sàng.",
+      "rateLimited": "Đang chờ hạn mức embedding. Tiến độ đã được lưu; hệ thống sẽ tiếp tục từ điểm đã xử lý.",
+      "outlining": "Nguồn đã sẵn sàng. Hệ thống đang đọc tài liệu để xây dựng kế hoạch.",
+      "resumeHint": "Có thể rời trang rồi mở lại kế hoạch này. Không cần tạo kế hoạch khác trong lúc chờ.",
+      "reused": "Đã mở lại kế hoạch hiện có, không tạo thêm kế hoạch mới.",
+      "alreadyPreparing": "Kế hoạch này đang được chuẩn bị",
+      "alreadyPreparingHint": "Theo dõi tiến độ kế hoạch đang mở bên dưới. Không tải lại tài liệu hay tạo thêm kế hoạch trùng."
+    },
     "retry": "Chuẩn bị lại kế hoạch",
     "errors": {
       "PLAN_OUTLINE_INVALID": "Cây chương/chủ đề do AI đề xuất không hợp lệ (ví dụ: tên chủ đề trùng nhau). Hãy chuẩn bị lại; hệ thống sẽ tự phân biệt tên trùng. Kế hoạch không tự chạy lại khi tải trang.",
       "PLAN_SOURCE_UNAVAILABLE": "Tài liệu nguồn chưa sẵn sàng: cần trích xuất xong, hoặc bản trích xuất một phần phải được xác nhận trong Thư viện tài liệu.",
-      "PLAN_SOURCE_TIMEOUT": "Tài liệu chưa sẵn sàng trong thời gian chờ (20 phút). Kiểm tra trạng thái trích xuất rồi chuẩn bị lại.",
+      "PLAN_SOURCE_TIMEOUT": "Quá trình chuẩn bị không có tiến triển trong 20 phút. Kiểm tra trạng thái trích xuất/lập chỉ mục và hạn mức embedding rồi chủ động chuẩn bị lại.",
+      "PLAN_SOURCE_TOTAL_TIMEOUT": "Quá trình chuẩn bị đã đạt giới hạn tổng 1 giờ. Tiến độ lập chỉ mục được giữ lại; kiểm tra nguồn và hạn mức embedding rồi chủ động chuẩn bị lại.",
       "PLAN_SCOPE_REVOKED": "Quyền truy cập tài liệu đã bị thu hồi; không thể chuẩn bị lại kế hoạch."
     },
     "reload": "Tải lại bản đã lưu (bỏ chỉnh sửa)",

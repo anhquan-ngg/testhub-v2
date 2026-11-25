@@ -23,7 +23,7 @@ export const knowledgePlanService = {
     key: string,
   ) {
     return (
-      await apiClient.post<KnowledgePlan>(base, input, {
+      await apiClient.post<KnowledgePlan & { reused?: boolean }>(base, input, {
         headers: { "Idempotency-Key": key },
       })
     ).data;

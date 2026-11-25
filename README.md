@@ -51,6 +51,13 @@ Open `/{locale}/lecturer/questions/documents` or `/{locale}/lecturer/questions/g
 - Batches support polling, history, draft edits, explicit approval/rejection and selected approved commit. Editing invalidates prior approval. Commit uses exact approved revisions and frozen plan targets; chapter matching/creation occurs only at that explicit commit. Generated content is never automatically approved or written to the bank.
 - Preserve citation quotes/positions and recheck evidence after editing. `AI_INSUFFICIENT_EVIDENCE` is distinct from invalid output: missing slot details mean unknown affected slots, not that every slot failed. The UI does not automatically retry, split batches or create drafts/bank entries after refusal.
 
+### Plan preparation progress and resuming
+
+- An open preparing plan polls its owned detail every five seconds. Optional `source_progress` reports extraction, indexing or outline construction; indexing shows `completed_chunks/total_chunks` and a percentage. An unknown denominator is indeterminate, and 100% indexing is not plan completion. Older API responses without progress remain supported.
+- Embedding throttling preserves checkpoints and shows a wait-for-quota message. Reopen the same `?plan=id` rather than upload the file or create another equivalent plan. The form disables duplicate submission for the open preparing plan's same source version, topic and ordered question configuration. A confirmed upload stays reusable while its file/topic/speaker-note settings are unchanged.
+- The backend reuses an equivalent owned `WAITING_SOURCE`/`PREPARING` plan even across new request keys. Other versions/configurations and terminal plans are distinct for new request keys; a same-key/same-payload replay still returns its original plan, even after it becomes terminal. A reuse response opens that plan with an explicit notice instead of claiming another plan was created. Preparation fails after **20 minutes without measurable progress**, or a **one-hour total limit**, with separate localized messages. Explicit preparation retry starts a fresh timeout window without discarding the index checkpoint; failed plans never retry on page load.
+- Roll out the backend preparation-checkpoint/idempotency migration and matching API before expecting live counters. GET/polling never creates an index or invokes a provider. No new frontend environment variable is required.
+
 ### Explicit OCR recovery for a saved plan
 
 1. Open a saved `REVIEW_REQUIRED`/`APPROVED` plan, or follow the saved-plan recovery link from an evidence-refused batch. Save matrix and source-page edits first.
